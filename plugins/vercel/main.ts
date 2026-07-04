@@ -299,6 +299,9 @@ export const buildVercelSummaryResult = (inputs: VercelSummaryInputs): Capabilit
       { key: 'month', label: 'Month', role: 'timestamp' },
       { key: 'amount', label: 'Spend', role: 'money' }
     ],
+    // Key by month so the chart accumulates in the ledger — the accrual backfill needs the spend series to
+    // persist past a single fetch's window, and past months survive the rolling invoice-fetch horizon.
+    key: 'month',
     rows: monthly
   })
   const projects = topProjects.length

@@ -13,7 +13,7 @@ import { resolveTableFiles, type TableFiles } from '../data/view.js'
 import { round2 } from '../util/money.js'
 
 import { type CreditsInput, creditsRecord, type PaymentMethodInput, paymentMethodRecord } from './blocks.js'
-import type { MtdBasis } from './mtd-basis.js'
+import { isAccrualBasis, type MtdBasis } from './mtd-basis.js'
 
 // One already-normalized USD invoice — the canonical invoice shape the billing preset + plugins map their raw
 // payload into (via money.ts), one definition so the two can't drift.
@@ -85,7 +85,7 @@ const monthOverMonthDelta = (months: MonthPoint[], currentMtd: number | null, ba
     return undefined
   }
 
-  const baseline = basis === 'accrued' || basis === 'upcoming' || basis === 'flat' ? months.at(-1) : months.at(-2)
+  const baseline = isAccrualBasis(basis) ? months.at(-1) : months.at(-2)
 
   return baseline ? round2(currentMtd - baseline.amount) : undefined
 }

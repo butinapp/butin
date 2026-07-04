@@ -1,7 +1,8 @@
-import type { DatasetLog, Ledger } from '@butinapp/shapes'
+import type { DatasetLog, Ledger, PresentationManifest, StoredDataset, StoredSummary } from '@butinapp/shapes'
 import { expect, test } from 'vitest'
 
 import {
+  backfillAccrualBars,
   dailySpend,
   dailyByColumn,
   primarySeries,
@@ -135,6 +136,85 @@ test('primarySeries falls back to the first series and is [] when none', () => {
     })
   ).toEqual([7])
   expect(primarySeries({ schemaVersion: 1, datasets: [], series: [] })).toEqual([])
+})
+
+// A spend chart (settled-invoice bars) + a spend summary whose spark binds it, and a ledger whose open-period
+// spend series captured June's peak ($720, over two June readings) then reset to July ($5). June + July have no
+// invoice bar yet (arrears lag).
+const monthly = (rows: { month: string; amount: number }[]): StoredDataset => ({
+  id: 'monthly',
+  shape: 'table',
+  key: 'month',
+  columns: [
+    { key: 'month', role: 'timestamp' },
+    { key: 'amount', role: 'money', currency: 'USD' }
+  ],
+  rows
+})
+const spendSummary: StoredSummary = { section: 'spend', value: 5, role: 'money', currency: 'USD', basis: 'accrued' }
+const sparkManifest: PresentationManifest = {
+  views: [],
+  summaries: { spend: { label: 'This month', spark: { dataset: 'monthly', x: 'month', y: 'amount' } } }
+}
+const accrualLedger: Ledger = {
+  schemaVersion: 1,
+  datasets: [],
+  series: [
+    {
+      section: 'spend',
+      points: [
+        { capturedAt: '2026-06-20T12:00:00Z', value: 610 },
+        { capturedAt: '2026-06-30T22:00:00Z', value: 720 },
+        { capturedAt: '2026-07-01T04:00:00Z', value: 5 }
+      ]
+    }
+  ]
+}
+
+test('backfillAccrualBars fills months missing from the invoice chart with the captured monthly peak', () => {
+  const ds = monthly([{ month: '2026-05', amount: 900 }])
+  const [out] = backfillAccrualBars([ds], [spendSummary], sparkManifest, accrualLedger)
+
+  // May (invoiced) untouched; June filled with its peak reading (720, not 610); July with the post-reset 5.
+  expect(out!.rows).toEqual([
+    { month: '2026-05', amount: 900 },
+    { month: '2026-06', amount: 720 },
+    { month: '2026-07', amount: 5 }
+  ])
+})
+
+test('backfillAccrualBars never overwrites a month the invoice history already carries', () => {
+  const ds = monthly([{ month: '2026-06', amount: 715 }]) // settled June invoice already posted
+  const [out] = backfillAccrualBars([ds], [spendSummary], sparkManifest, accrualLedger)
+
+  expect(out!.rows).toEqual([
+    { month: '2026-06', amount: 715 },
+    { month: '2026-07', amount: 5 }
+  ])
+})
+
+test('backfillAccrualBars is a no-op without a spend summary, a spark, or a spend series', () => {
+  const ds = monthly([{ month: '2026-05', amount: 900 }])
+
+  expect(backfillAccrualBars([ds], [], sparkManifest, accrualLedger)).toEqual([ds])
+  expect(backfillAccrualBars([ds], [spendSummary], { views: [] }, accrualLedger)).toEqual([ds])
+  expect(backfillAccrualBars([ds], [spendSummary], sparkManifest, null)).toEqual([ds])
+  expect(
+    backfillAccrualBars([ds], [spendSummary], sparkManifest, { schemaVersion: 1, datasets: [], series: [] })
+  ).toEqual([ds])
+})
+
+test('backfillAccrualBars only fills from an accrual basis — a settled invoiced/lastInvoice figure never seeds a bar', () => {
+  const ds = monthly([{ month: '2026-05', amount: 900 }])
+
+  // The captured series here is a past invoice / outstanding balance, not this month's accrual — filling the
+  // in-progress month with it would repeat a prior bill as a phantom bar.
+  for (const basis of ['invoiced', 'lastInvoice'] as const) {
+    expect(backfillAccrualBars([ds], [{ ...spendSummary, basis }], sparkManifest, accrualLedger)).toEqual([ds])
+  }
+
+  // An absent basis defaults to settled ('invoiced' in the preset), so it is likewise not projected.
+  expect(backfillAccrualBars([ds], [{ ...spendSummary, basis: undefined }], sparkManifest, accrualLedger)).toEqual([ds])
 })
 
 test('dailyByColumn differences a cumulative column per row from its versions', () => {

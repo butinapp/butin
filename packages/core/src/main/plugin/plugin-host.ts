@@ -8,7 +8,7 @@ import { env } from '../env.js'
 import { createLogger } from '../log.js'
 import { isSpaSessionExpired } from '../session/spa-session.js'
 import { accumulate, readLedger } from '../store/ledger.js'
-import { projectCurrent } from '../store/project-ledger.js'
+import { backfillAccrualBars, projectCurrent } from '../store/project-ledger.js'
 import { computeSince, mergeRawRows, readRawUnion, writeRawUnion } from '../store/raw-union.js'
 import { clearCapabilityReports, readCache, saveCurrent, writeCache } from '../store/store.js'
 import { wrapClearOnAuthError } from '../transport/client.js'
@@ -118,11 +118,14 @@ export const runCapability = async (
   const led = await readLedger(pluginId, capabilityId)
   // Keyed datasets render from the accumulated ledger; unkeyed datasets keep this fetch's rows verbatim.
   const current = led ? projectCurrent(led) : new Map<string, { id: string; rows: Record<string, unknown>[] }>()
-  const projectedDatasets = datasets.map((d) => {
+  const projected = datasets.map((d) => {
     const proj = current.get(d.id)
 
     return proj ? { ...d, rows: proj.rows } : d
   })
+  // Fill an arrears service's not-yet-invoiced months (just-closed + current) from the accrual peaks captured in
+  // the ledger, so the spend chart + Overview show the month's spend when it's observed, not when the invoice lands.
+  const projectedDatasets = backfillAccrualBars(projected, summaries, manifest, led)
 
   await saveCurrent(pluginId, capabilityId, { datasets: projectedDatasets, summaries, manifest })
   runLog.info('done, ledger + current cache written')
