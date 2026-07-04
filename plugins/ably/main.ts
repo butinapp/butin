@@ -11,7 +11,9 @@ import { sampleAblyBilling, sampleAblyUsage } from './sample.js'
 // NO JSON billing/usage API, so the capabilities scrape the HTML with cheerio.
 //
 // AUTH is a plain cookie session — the `_ably_session` Rails cookie, replayed verbatim, cleared on 401 only
-// (a 403 is a per-route permission, not a dead session — core's default).
+// (a 403 is a per-route permission, not a dead session — core's default). The usage stats route is the
+// exception: it returns 401 for a per-account permission denial, so its fetch tags that as `permissionDenied`
+// to keep the live session from being wiped (see fetchAblyUsage).
 //
 // CLOUDFLARE: ably.com sits behind Cloudflare and only accepts a real browser (cf-ray on every response) —
 // `requiresBrowserEngine: true` forces the Electron net.request transport with the real browser's TLS identity. The replay UA is
@@ -379,9 +381,20 @@ const fetchAblyBilling = async (ctx: CollectContext<AblyConfig>): Promise<AblyBi
   return { invoicesHtml, packageHtml }
 }
 
-const fetchAblyUsage = async (ctx: CollectContext<AblyConfig>): Promise<AblyUsageRaw> => ({
-  html: await ctx.client.getText(`${ORIGIN}/api/stats/account/${accountSlug(ctx)}/table`)
-})
+// The stats table is gated by a per-account permission Ably serves as 401 "Access denied" — the same session
+// reads invoices/package fine. Tag that 401 so it surfaces as a permission error on this tab rather than being
+// taken for a dead session and wiping the whole cookie (core's clearOnStatuses default).
+const fetchAblyUsage = async (ctx: CollectContext<AblyConfig>): Promise<AblyUsageRaw> => {
+  try {
+    return { html: await ctx.client.getText(`${ORIGIN}/api/stats/account/${accountSlug(ctx)}/table`) }
+  } catch (err) {
+    if ((err as { status?: number }).status === 401) {
+      ;(err as { permissionDenied?: boolean }).permissionDenied = true
+    }
+
+    throw err
+  }
+}
 
 // ── descriptor ───────────────────────────────────────────────────────────────────────
 

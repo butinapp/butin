@@ -14,6 +14,10 @@ export type FailureInput = {
   // The plugin returned a structurally/contract-invalid CapabilityResult — not an auth/network failure.
   // Re-login won't help; the service's shape changed or the plugin has a bug.
   dataInvalid?: boolean
+  // A capability tagged its error as a per-route authorization denial (a service that returns 401 for
+  // "access denied"). It's a permission failure, not a dead session, whatever the status code — so it wins
+  // over the clearOnStatuses / requiresBrowserEngine branches below.
+  permissionDenied?: boolean
   // A confirmed dead session with NO HTTP status to key off — an spa-bearer mint that timed out with no
   // bearer (the durable SSO cookie expired). Re-login fixes it, so it classifies as session-expired.
   sessionExpired?: boolean
@@ -47,6 +51,12 @@ export const classifyFailure = (input: FailureInput): ClassifiedFailure => {
 
     if (input.configMissing) {
       return 'config-missing'
+    }
+
+    // An explicit route-permission denial — a service that returns 401 for "access denied" on a route the
+    // session otherwise reads fine. Wins over the status branches so it's not mistaken for a dead session.
+    if (input.permissionDenied) {
+      return 'permission'
     }
 
     // A dead session, whether signalled by a clearing status (typically 401) or status-less (an spa-bearer

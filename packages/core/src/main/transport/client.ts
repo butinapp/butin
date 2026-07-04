@@ -22,6 +22,9 @@ import { getRequestCache, type RequestCache } from './request-cache.js'
 // A 401 raised by a SECONDARY backend (tagged `fromBackend` by createBackendClient) is left alone: that's the
 // backend's own session, and wiping the primary would disconnect the whole service over one tab's expiry —
 // the failure just surfaces on its tab. Mirrors testConnection, which never clears for a secondary probe.
+// A capability that tags its error `permissionDenied` is also left alone: some services return 401 for a
+// per-route authorization denial (the same session reads other routes fine), so that status is not proof the
+// session died — it surfaces as a permission error on the failing tab instead of disconnecting the service.
 export const wrapClearOnAuthError = <T>(
   plugin: Pick<ButinPlugin, 'auth' | 'meta'>,
   creds: CredentialStore,
@@ -35,8 +38,9 @@ export const wrapClearOnAuthError = <T>(
     } catch (err) {
       const status = (err as { status?: number }).status
       const fromBackend = (err as { fromBackend?: string }).fromBackend
+      const permissionDenied = (err as { permissionDenied?: boolean }).permissionDenied
 
-      if (status && clearOn.includes(status) && !fromBackend) {
+      if (status && clearOn.includes(status) && !fromBackend && !permissionDenied) {
         creds.set('cookie', '')
 
         if (plugin.auth.kind === 'spa-bearer') {

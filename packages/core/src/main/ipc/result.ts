@@ -35,14 +35,21 @@ export const safeResult = async <T>(
   try {
     return { ok: true, data: await fn() }
   } catch (err) {
-    const e = err as { message?: string; status?: number; response?: { status?: number }; dataInvalid?: boolean }
+    const e = err as {
+      message?: string
+      status?: number
+      response?: { status?: number }
+      dataInvalid?: boolean
+      permissionDenied?: boolean
+    }
     const { cause, actions } = classifyFailure({
       status: e.status ?? e.response?.status,
       sessionExpired: isSpaSessionExpired(err),
       message: e.message,
       requiresBrowserEngine: ctx?.requiresBrowserEngine,
       clearOnStatuses: ctx?.clearOnStatuses,
-      dataInvalid: e.dataInvalid
+      dataInvalid: e.dataInvalid,
+      permissionDenied: e.permissionDenied
     })
 
     return { ok: false, error: e.message ?? String(err), cause, actions }

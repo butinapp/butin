@@ -27,6 +27,19 @@ test('does not clear on a 403 (single-request rejection)', async () => {
   expect(creds.set).not.toHaveBeenCalled()
 })
 
+test('does not clear on a 401 tagged as a route-permission denial', async () => {
+  const creds: CredentialStore = { get: () => 'c', set: vi.fn() }
+  // A per-route "access denied" a service serves as 401 (the same session reads other routes fine) — not
+  // proof the session died, so the cookie stays.
+  const failing = async () => {
+    throw Object.assign(new Error('HTTP 401 Access denied'), { status: 401, permissionDenied: true })
+  }
+  const wrapped = wrapClearOnAuthError(plugin, creds, failing)
+
+  await expect(wrapped()).rejects.toThrow(/401/)
+  expect(creds.set).not.toHaveBeenCalled()
+})
+
 test('does not clear the primary session for a 401 raised by a secondary backend', async () => {
   const creds: CredentialStore = { get: () => 'c', set: vi.fn() }
   // A backend client tags its rejections with `fromBackend`; a tab failing on a legacy backend must not

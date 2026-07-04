@@ -206,12 +206,16 @@ export const ServiceView = ({
                 <Lock className="size-4 shrink-0" />
                 <span>{t.serviceDisabledBanner}</span>
               </div>
-            ) : !connected ? (
-              // Why the service is disconnected. The action lives in the header's morphed primary button
-              // (Reconnect / Connect), so this banner stays purely explanatory — one reconnect affordance, not two.
+            ) : state === 'disconnected' ? (
+              // Why the service is disconnected — shown iff the honest state (the red dot) says so, so the banner
+              // never contradicts the header pill. The action lives in the header's morphed primary button
+              // (Reconnect / Connect), so this stays purely explanatory — one reconnect affordance, not two. Copy
+              // is data-aware: a service with cached reports is showing its last data (not fetching a first one).
               <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-300">
                 <AlertTriangle className="size-4 shrink-0" />
-                <span className="flex-1">{t.connectPrompt(plugin.name)}</span>
+                <span className="flex-1">
+                  {plugin.lastRunAt ? t.disconnectedWithData(plugin.name) : t.connectPrompt(plugin.name)}
+                </span>
               </div>
             ) : null}
 

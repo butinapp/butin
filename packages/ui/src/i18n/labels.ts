@@ -218,6 +218,7 @@ export interface ButinLabels {
   refreshedAgo: (relative: string, absolute: string) => string
   refreshWarning: string
   connectPrompt: (service: string) => string
+  disconnectedWithData: (service: string) => string
 
   // Overview tiles.
   noDataYet: string
@@ -682,6 +683,7 @@ export const en: ButinLabels = {
   refreshedAgo: (relative, absolute) => `refreshed ${relative} · ${absolute}`,
   refreshWarning: 'Refresh failed — showing the last loaded data.',
   connectPrompt: (service) => `Connect ${service} to fetch its first report.`,
+  disconnectedWithData: (service) => `${service} is disconnected — showing the last loaded data.`,
 
   noDataYet: 'No data yet',
   serviceCount: (n) => `${n} ${n === 1 ? 'service' : 'services'}`,
@@ -1141,6 +1143,7 @@ export const fr: ButinLabels = {
   refreshedAgo: (relative, absolute) => `actualisé ${relative} · ${absolute}`,
   refreshWarning: 'Échec du rafraîchissement — affichage des dernières données chargées.',
   connectPrompt: (service) => `Connectez ${service} pour récupérer ses premières données.`,
+  disconnectedWithData: (service) => `${service} est déconnecté — affichage des dernières données chargées.`,
 
   noDataYet: 'Aucune donnée',
   serviceCount: (n) => `${n} ${n === 1 ? 'service' : 'services'}`,

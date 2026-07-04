@@ -32,6 +32,20 @@ describe('classifyFailure', () => {
     expect(classifyFailure({ status: 403 }).cause).toBe('permission')
   })
 
+  it('an explicit route-permission denial → permission, even as a 401 on a browser-engine plugin', () => {
+    // A service that serves "access denied" as 401 (Ably's usage stats): the tag wins over both the
+    // clearOnStatuses session-expired rule and the requiresBrowserEngine verification-required rule.
+    const out = classifyFailure({
+      status: 401,
+      permissionDenied: true,
+      requiresBrowserEngine: true,
+      clearOnStatuses: [401]
+    })
+
+    expect(out.cause).toBe('permission')
+    expect(out.actions).toContain('open-dashboard')
+  })
+
   it('no response → network', () => {
     expect(classifyFailure({ message: 'getaddrinfo ENOTFOUND api.x.com' }).cause).toBe('network')
   })
