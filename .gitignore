@@ -1,0 +1,37 @@
+node_modules/
+out/
+dist/
+dist-electron/
+release/
+coverage/
+.turbo/
+*.log
+.DS_Store
+.superpowers/
+
+# Local-first captured data + live sessions — NEVER commit. Holds real account data and cookies.
+.auth/
+.sessions/
+.data/
+/data/
+
+# Synthetic demo data written by `pnpm seed-demo` (an isolated BUTIN_HOME).
+.demo-home/
+.gateway-demo/
+
+# Private operator layer — never publish (local only)
+.agents/
+CLAUDE.local.md
+
+.claude/settings.json
+.claude/statusline.cjs
+cldp.cmd
+.playwright-mcp
+.github/skills
+
+# The impeccable design workflow lives in a private companion repo (skill + its context docs + critiques).
+# Guard the public tree against a stray local reinstall re-introducing either here.
+.claude/skills/impeccable
+.impeccable/
+
+.superpowers

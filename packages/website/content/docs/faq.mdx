@@ -1,0 +1,46 @@
+---
+title: FAQ
+description: Common questions about Butin.
+---
+
+### Does my data leave my machine?
+
+No. There's no cloud, no account, and no server. Everything Butin pulls is stored locally under `~/butin`,
+and sessions are encrypted with your OS keychain. There is nowhere for it to be sent.
+
+### Do I have to log in every time I want data?
+
+You have to log in again **when the session expires** — which is on the service's clock, anywhere from ~20
+minutes (banks) to a few days (long-lived services). While a session is alive, Butin fetches and refreshes
+without any further login. See [How it works](/docs/how-it-works).
+
+### Is Butin "hacking" or scraping services I shouldn't?
+
+No. Butin replays **your own** authenticated session to read **your own** data — exactly what your browser
+does when you open the dashboard yourself. It never touches anyone else's account and stores no credentials
+on any server.
+
+### Does Butin store my password?
+
+No. You sign in inside a normal browser window; Butin only keeps the resulting **session**, never your
+password.
+
+### Which services are supported?
+
+See the [Services catalog](/services). Coverage grows as plugins are added — and you can write your own
+(see [Write a plugin](/docs/contributing)).
+
+### Can I track two accounts of the same service?
+
+Yes, with **profiles**. Each profile is a fully separate, isolated context, switched from the top bar —
+connect your work account in one profile and your personal account in another. Within a single profile it's
+one account per service, so you switch between them rather than seeing both side by side.
+
+### Is it free?
+
+Yes — the app is free and open source under the MIT license. If it saves you time, you can
+[sponsor development](https://github.com/sponsors/allardy).
+
+### What platforms does it run on?
+
+macOS, Windows, and Linux (it's an Electron desktop app).

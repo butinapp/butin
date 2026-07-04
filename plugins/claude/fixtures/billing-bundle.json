@@ -1,0 +1,38 @@
+{
+  "invoices": [
+    {
+      "total": 9000,
+      "currency": "cad",
+      "status": "paid",
+      "created_ts": 1717000000,
+      "num_seats": 3,
+      "invoice_pdf_url": "https://x/pdf1",
+      "hosted_invoice_url": "https://x/h1"
+    },
+    {
+      "total": 200000,
+      "currency": "cad",
+      "status": "paid",
+      "created_ts": 1717500000,
+      "num_seats": null,
+      "invoice_pdf_url": null,
+      "hosted_invoice_url": null
+    },
+    { "total": 5000, "currency": "cad", "status": "void", "created_ts": 1717600000, "num_seats": null }
+  ],
+  "upcoming": {
+    "invoice": {
+      "total": 10170,
+      "currency": "cad",
+      "lines": [{ "total": 9000, "num_seats": 3, "description": "Team Standard" }]
+    }
+  },
+  "overage": { "is_enabled": true, "monthly_credit_limit": 500000, "used_credits": 123400, "currency": "cad" },
+  "prepaid": {
+    "amount": 76600,
+    "currency": "cad",
+    "auto_reload_settings": { "enabled": true, "threshold_in_minor_units": 50000, "reload_to_in_minor_units": 200000 }
+  },
+  "balance": { "balance": 0, "currency": "cad" },
+  "subscription": { "next_charge_date": "2026-06-28", "currency": "cad" }
+}

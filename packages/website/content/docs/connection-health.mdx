@@ -1,0 +1,29 @@
+---
+title: Connection health
+description: Green, blue, red — and how to reconnect.
+---
+
+Butin is honest about whether a session still works. Every service is in one of three states, shown by its
+sidebar dot and a status pill:
+
+- 🟢 **Green — verified.** Confirmed working _this session_ — a successful fetch, a Test, or a Reconnect
+  proved the session is live.
+- 🔵 **Blue — stored.** A session is saved and survived restart, but hasn't been checked yet this
+  session. Usually fine — run **Test** to confirm.
+- 🔴 **Red — expired.** The session is gone, or a fetch came back "logged out." **Reconnect** to sign in
+  again. Your already-downloaded data is not affected.
+
+For key-based services (like AWS), "connected" means the configuration is filled in rather than a live
+session.
+
+## Managing a connection
+
+Each service gathers its controls in one place:
+
+- **Reconnect** — re-run the login (or edit the config form, for key-based services).
+- **Test** — probe the session right now.
+- **Disconnect** — drop the stored session. Your downloaded files are kept.
+- **Enable / disable** — hide a service from the sidebar and Overview without deleting its data.
+
+> Blue just means "saved but not checked this session." It does **not** mean something's wrong — a quick
+> Test turns it green.

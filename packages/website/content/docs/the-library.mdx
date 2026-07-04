@@ -1,0 +1,34 @@
+---
+title: Your data & exports
+description: Where your data lives, full exports, and erasing it.
+---
+
+Everything Butin pulls lives in one place: **`~/butin`** in your home folder.
+
+```text
+~/butin/
+  config.json          ← your encrypted sessions and per-service settings
+  <service>/
+    reports/           ← the data behind each tab (billing, usage, …)
+    documents/         ← downloaded files (invoices, PDFs, records)
+```
+
+Sessions are **encrypted** (via your OS keychain). Reports and downloaded files sit in plain folders you
+can open and browse.
+
+## Pulling everything
+
+- **Save everything** (on a service's settings) pulls a full export of that service in one pass — every
+  report and every available document — into its folder.
+- Some services expose a bulk **Documents** tab (select files, download) or, for large record sets, a
+  one-shot **Export** (for example, a full health-record export).
+
+## Removing data
+
+- **Erase stored data** wipes one service's reports, keeping the session and any downloaded files.
+- **Uninstall a service** removes its session, settings, and cached data, but keeps downloaded files —
+  unless you tick the option to delete its whole data folder.
+- **Clear all** (in Settings) wipes everything, after a two-click confirm.
+- **Disconnect keeps your downloaded files** — it only drops the session.
+
+There is no cloud, no sync, and no account. There's nowhere for your data to go — which is the entire point.

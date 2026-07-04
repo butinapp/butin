@@ -1,0 +1,18 @@
+# Force LF in the working tree on EVERY platform, overriding a runner's core.autocrlf. Without this, the
+# windows-latest CI runner (autocrlf=true by default) checks out our LF-committed files as CRLF, and
+# `oxfmt --check` (endOfLine: lf) then flags every file. text=auto lets git still auto-detect binaries.
+* text=auto eol=lf
+
+# Known binaries — never normalize / never get an EOL applied.
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.icns binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary

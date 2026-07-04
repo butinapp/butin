@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "playwright-extension": {
+      "command": "npx",
+      "args": ["@playwright/mcp@0.0.77", "--extension"]
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@1.5.0"]
+    },
+    "butin-app": {
+      "command": "npx",
+      "args": ["@playwright/mcp@0.0.77", "--cdp-endpoint", "http://127.0.0.1:9222"]
+    }
+  }
+}

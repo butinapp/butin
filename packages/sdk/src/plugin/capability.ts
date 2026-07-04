@@ -1,0 +1,119 @@
+import type { CapabilityResult } from '../data/result.js'
+import { createSampleGen, resolveSampleConfig, type SampleConfig, type SampleGenerator } from '../testing/synthetic.js'
+
+import type { CredentialStore } from './auth.js'
+import type { BrowserSession } from './browser.js'
+import type { DocumentBytes } from './documents.js'
+import type { ButinClient } from './transport.js'
+
+// Everything a collector needs. `client` has auth + transport pre-applied; `config` is the plugin's
+// own typed settings (hardcoded ids: org slug, account id, region); `creds` allows write-back.
+export type CollectContext<TConfig = Record<string, unknown>> = {
+  client: ButinClient
+  // A client bound to one of the plugin's declared `backends` (a different host + token under the same
+  // session) — for accounts split across platforms. Lazily built + memoized; throws on an unknown key.
+  clientFor: (backendKey: string) => ButinClient
+  creds: CredentialStore
+  config: TConfig
+  // A live authenticated browser session (offscreen window on the captured partition), for legacy backends
+  // whose session can't be replayed with a bare headless request. Electron-backed; absent off-Electron and
+  // in embeds — a collector that needs it must guard `if (!ctx.browser)`. See BrowserSession.
+  browser?: BrowserSession
+  // For an incremental capability's `fetch` only: the cutoff ISO date (`YYYY-MM-DD`) below which the service's
+  // history is already stored, so the fetch can paginate newest-first and STOP once it crosses it. `undefined`
+  // means fetch everything — the first run, a forced full refetch, or a non-incremental capability. Core derives
+  // it from the stored row union (newest kept timestamp, minus the declared re-fetch window). See `incremental`.
+  since?: string
+  log: (message: string, extra?: Record<string, unknown>) => void
+}
+
+// `collect` is intentionally imperative — it can scrape a nonce, walk a Stripe portal, parse Remix
+// flight data, decode protobuf. The contract standardizes its inputs (authed client) and output: every
+// collector returns a CapabilityResult (datasets + views + summary), usually via a preset builder in
+// presets/, which the generic DashboardRenderer draws. A standard capability is just `{ id, label, collect }`.
+//
+// `fetchFile` is the optional per-row byte source for a table view whose `files` declare a `{ fetch: true }`
+// source (a POST/multi-step download — e.g. Videotron's invoice PDFs, carnet-sante's imaging/lab PDFs). Core
+// calls it once per selected row with that row's record (which carries whatever key the fetch needs, e.g. a
+// docId field not rendered as a column). Lives next to `collect` — never crosses IPC. When the files declare a
+// `{ url }` source, core GETs that column's URL itself and `fetchFile` is unused.
+// Declares a capability as incrementally fetchable. Its `fetch` returns a LIST of raw rows; core keeps a keyed
+// union of those rows on disk (merging each fetch by `id`, retaining rows the service no longer returns), and
+// runs `build` over the FULL union — so a partial fetch still renders the whole history with correct totals.
+// `id` names the raw row's identity field; `timestamp` its ISO-date field (drives the `ctx.since` watermark);
+// `window` is the trailing horizon always re-fetched to catch updates to recent rows (default applied by core).
+export type IncrementalSpec = {
+  id: string
+  timestamp: string
+  window?: { days: number }
+}
+
+// The runtime incremental hooks the host needs: the row-list `fetch` and the full-union `build`, kept SEPARATE
+// (the standard `collect` collapses them). Carried on the Capability so the host can run the union/rebuild flow
+// instead of a full collect. Rows are opaque records keyed by `id`.
+export type IncrementalCapability = IncrementalSpec & {
+  fetch: (ctx: CollectContext) => Promise<Record<string, unknown>[]>
+  build: (rows: Record<string, unknown>[]) => CapabilityResult
+}
+
+export type Capability<TConfig = Record<string, unknown>> = {
+  id: string
+  label: string
+  collect: (ctx: CollectContext<TConfig>) => Promise<CapabilityResult>
+  // Present when the capability opted into incremental fetch via defineCapability. The host runs the
+  // union/rebuild flow off these instead of `collect`; absent → every refresh is a full collect (the default).
+  incremental?: IncrementalCapability
+  // A synthetic snapshot for demo/seed runs, drawn by the generic renderer like any real result. Authored via
+  // defineCapability (a generator that builds a raw from the synthetic toolkit, then through `build`), so it
+  // renders exactly what the live collector would and cannot carry real data. `opts` lets the seed pick the
+  // dataset size + a per-capability seed; called with no args (the contract test) it uses the medium preset.
+  sample?: (opts?: { config?: SampleConfig; seed?: string }) => CapabilityResult
+  fetchFile?: (ctx: CollectContext<TConfig>, row: Record<string, unknown>) => Promise<DocumentBytes>
+}
+
+// There is ONE capability shape. A capability that wants a downloadable table marks it with a `files` view
+// descriptor (see view.ts). "Save everything" is entirely core-side: it serializes every capability's result
+// and downloads each `files` table, with no plugin code. Cross-service rollup keys off `summary.section`.
+
+// Author a capability by its two halves: `fetch` (the service-specific network/parse) and `build` (the pure
+// raw → CapabilityResult transform). `sample` is a GENERATOR that fabricates a synthetic raw from the seeded
+// toolkit (its people/emails are always fake — `@example.invalid`), so a sample can NEVER carry real recorded
+// data; `collect` and `sample` both close over the SAME `build`, so the demo render can't drift from the live
+// one. `build(sample(...))` also doubles as a contract test (validateCapabilityResult).
+// The row type of an array-shaped raw; `never` for a non-array raw, which makes the `incremental` field's key
+// names uninhabitable on a raw that isn't a list (incremental fetch only makes sense over a row list).
+type RowOf<TRaw> = TRaw extends readonly (infer R)[] ? R : never
+
+export const defineCapability = <TRaw, TConfig = Record<string, unknown>>(spec: {
+  id: string
+  label: string
+  fetch: (ctx: CollectContext<TConfig>) => Promise<TRaw>
+  build: (raw: TRaw) => CapabilityResult
+  sample: SampleGenerator<TRaw>
+  fetchFile?: (ctx: CollectContext<TConfig>, row: Record<string, unknown>) => Promise<DocumentBytes>
+  // Opt into incremental fetch — only for a `fetch` that returns a row LIST. `id`/`timestamp` name fields of
+  // that row. `fetch` must then honour `ctx.since` (paginate newest-first, stop past it); `build` already runs
+  // over the full row set, so it needs no change.
+  incremental?: {
+    id: keyof RowOf<TRaw> & string
+    timestamp: keyof RowOf<TRaw> & string
+    window?: { days: number }
+  }
+}): Capability<TConfig> => ({
+  id: spec.id,
+  label: spec.label,
+  collect: async (ctx) => spec.build(await spec.fetch(ctx)),
+  sample: (opts) => spec.build(spec.sample(createSampleGen(opts?.seed ?? spec.id), resolveSampleConfig(opts?.config))),
+  ...(spec.fetchFile ? { fetchFile: spec.fetchFile } : {}),
+  ...(spec.incremental
+    ? {
+        incremental: {
+          id: spec.incremental.id,
+          timestamp: spec.incremental.timestamp,
+          ...(spec.incremental.window ? { window: spec.incremental.window } : {}),
+          fetch: spec.fetch as unknown as IncrementalCapability['fetch'],
+          build: spec.build as unknown as IncrementalCapability['build']
+        }
+      }
+    : {})
+})

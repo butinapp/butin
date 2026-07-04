@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="v-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1b2129"/><stop offset="100%" stop-color="#0d1014"/>
+    </linearGradient>
+    <clipPath id="v-clip"><rect width="128" height="128" rx="28"/></clipPath>
+  </defs>
+  <g clip-path="url(#v-clip)">
+    <rect width="128" height="128" fill="url(#v-bg)"/>
+    <rect x="13" y="13" width="102" height="102" rx="19" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.10"/>
+    
+  <g>
+    <line x1="64.0" y1="30.0" x2="64.0" y2="48.0" stroke="#3c7d77" stroke-width="3.4" stroke-linecap="round"/>
+      <circle cx="64.0" cy="30.0" r="5" fill="#bdeee8"></circle>
+    <line x1="93.4" y1="47.0" x2="77.9" y2="56.0" stroke="#3c7d77" stroke-width="3.4" stroke-linecap="round"/>
+      <circle cx="93.4" cy="47.0" r="5" fill="#bdeee8"></circle>
+    <line x1="93.4" y1="81.0" x2="77.9" y2="72.0" stroke="#3c7d77" stroke-width="3.4" stroke-linecap="round"/>
+      <circle cx="93.4" cy="81.0" r="5" fill="#bdeee8"></circle>
+    <line x1="64.0" y1="98.0" x2="64.0" y2="80.0" stroke="#3c7d77" stroke-width="3.4" stroke-linecap="round"/>
+      <circle cx="64.0" cy="98.0" r="5" fill="#bdeee8"></circle>
+    <line x1="34.6" y1="81.0" x2="50.1" y2="72.0" stroke="#3c7d77" stroke-width="3.4" stroke-linecap="round"/>
+      <circle cx="34.6" cy="81.0" r="5" fill="#bdeee8"></circle>
+    <line x1="34.6" y1="47.0" x2="50.1" y2="56.0" stroke="#3c7d77" stroke-width="3.4" stroke-linecap="round"/>
+      <circle cx="34.6" cy="47.0" r="5" fill="#bdeee8"></circle>
+  </g>
+  <circle cx="64" cy="64" r="11" fill="#ef4444"></circle>
+  </g>
+</svg>

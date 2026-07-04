@@ -1,0 +1,25 @@
+appId: dev.butin.app
+productName: Butin
+executableName: butin
+directories:
+  output: release
+files:
+  - out/**/*
+  - package.json
+win:
+  target: nsis
+  icon: build/icon.png
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+mac:
+  target:
+    target: dmg
+    arch: universal
+  category: public.app-category.utilities
+  icon: build/icon.png
+linux:
+  target: AppImage
+  category: Utility
+  icon: build/icon.png

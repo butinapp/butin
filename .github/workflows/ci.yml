@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# A newer push to the same branch/PR supersedes an in-flight run — don't burn minutes on stale commits.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Linux runner: faster, and it checks out our LF-committed files as LF (no autocrlf rewrite), so
+    # oxfmt's endOfLine:lf check passes. oxfmt/oxlint pull their linux-x64-gnu bindings via their own
+    # optionalDependencies; the win32 bindings pinned in package.json (for local Windows dev) are skipped
+    # here on os/cpu mismatch. .gitattributes keeps the EOL pinned regardless.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.15.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Restore Turbo's cache across runs so unchanged typecheck/test/build tasks replay instead of
+      # re-executing on every fresh runner. Keyed per-sha (a fresh save each run) with a prefix restore-key
+      # so the latest prior cache is always pulled; Turbo's content hashing then decides the real hits.
+      - name: Turbo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - run: pnpm check
+      - run: pnpm build
+      - run: pnpm test

@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "vite/client"],
+    "jsx": "react-jsx",
+    "paths": {
+      "@butinapp/engine": ["../engine/src/index.ts"],
+      "@butinapp/sdk": ["../sdk/src/index.ts"],
+      "@butinapp/sdk/data": ["../sdk/src/data/index.ts"],
+      "@butinapp/sdk/presets": ["../sdk/src/presets/index.ts"],
+      "@butinapp/sdk/util": ["../sdk/src/util/index.ts"],
+      "@butinapp/ui": ["../ui/src/index.ts"],
+      "@butinapp/ui/primitives": ["../ui/src/primitives.ts"],
+      "@butinapp/ui/dashboard": ["../ui/src/dashboard.ts"],
+      "@butinapp/ui/shell": ["../ui/src/shell.ts"],
+      "@butinapp/ui/i18n": ["../ui/src/i18n/index.ts"],
+      "@/*": ["./src/renderer/*"]
+    }
+  },
+  "include": ["src", "electron.vite.config.ts"]
+}

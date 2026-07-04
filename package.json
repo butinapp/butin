@@ -1,0 +1,49 @@
+{
+  "name": "butin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Butin — a local-first desktop app that brings your own data home. Each plugin connects one service: you sign in once, then it fetches your data headless and keeps it encrypted on your machine.",
+  "license": "MIT",
+  "author": "Butin",
+  "type": "module",
+  "scripts": {
+    "prepare": "node scripts/install-hooks.mjs",
+    "dev": "pnpm --filter @butinapp/core dev",
+    "dev:debug": "node scripts/dev-debug.mjs",
+    "build": "turbo run build",
+    "package": "turbo run package",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:coverage": "vitest run --coverage --config vitest.coverage.config.ts",
+    "check:lint": "oxlint",
+    "check:format": "oxfmt --check .",
+    "fix:lint": "oxlint --fix",
+    "fix:format": "oxfmt .",
+    "check": "pnpm check:format && pnpm check:lint && pnpm check:typecheck",
+    "check:typecheck": "turbo run typecheck",
+    "fix": " pnpm fix:lint && pnpm fix:format",
+    "new-plugin": "node scripts/new-plugin.mjs",
+    "drive": "node scripts/drive.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "seed-demo": "tsx scripts/seed-demo.ts",
+    "record": "pnpm --filter @butinapp/recorder dev"
+  },
+  "devDependencies": {
+    "@oxfmt/binding-win32-x64-msvc": "^0.54.0",
+    "@oxlint/binding-win32-x64-msvc": "^1.58.0",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "@types/node": "catalog:",
+    "@typescript/native-preview": "7.0.0-dev.20260614.1",
+    "@vitest/coverage-v8": "^4.1.7",
+    "oxfmt": "^0.54.0",
+    "oxlint": "^1.58.0",
+    "playwright": "^1.60.0",
+    "tsx": "^4.20.6",
+    "turbo": "^2.9.18",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.6.0"
+}

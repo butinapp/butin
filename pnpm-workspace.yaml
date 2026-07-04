@@ -1,0 +1,42 @@
+packages:
+  - 'packages/*'
+  - 'plugins'
+
+useNodeVersion: 22.15.0
+
+overrides:
+  react: 'catalog:'
+  react-dom: 'catalog:'
+  '@types/react': 'catalog:'
+  '@types/react-dom': 'catalog:'
+
+# Single source of truth for versions shared across packages (referenced as `catalog:` in each package.json).
+# Anything depended on by more than one package lives here so versions can't drift — bump it once.
+catalog:
+  # React + the UI test stack (React is also pinned in pnpm.overrides so the whole graph resolves one copy).
+  react: ^19.2.7
+  react-dom: ^19.2.7
+  '@types/react': ^19.2.17
+  '@types/react-dom': ^19.2.3
+  '@testing-library/react': ^16.3.2
+  '@testing-library/jest-dom': ^6.9.1
+  '@testing-library/user-event': ^14.6.1
+  jsdom: ^29.1.1
+  # Toolchain shared across packages.
+  vitest: ^4.1.7
+  '@types/node': ^25.9.3
+  # Runtime libs shared across packages.
+  zod: ^4.3.6
+  lucide-react: ^0.525.0
+  cheerio: ^1.2.0
+  tailwindcss: ^4.3.1
+  luxon: ^3.7.2
+  '@types/luxon': ^3.7.1
+  lodash-es: ^4.18.1
+  '@types/lodash-es': ^4.17.12
+
+allowBuilds:
+  esbuild: true
+  electron: true
+  electron-winstaller: true
+  sharp: true

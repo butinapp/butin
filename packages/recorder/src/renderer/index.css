@@ -1,0 +1,46 @@
+@import 'tailwindcss';
+@import '@butinapp/ui/theme.css';
+/* @butinapp/ui ships no CSS — this build generates its classes by scanning the package source. */
+@source '../../../ui/src/**/*.{ts,tsx}';
+@source './**/*.{ts,tsx}';
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full bg-background;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    margin: 0;
+    overflow: hidden;
+    font-family: var(--font-sans);
+  }
+
+  :focus {
+    outline: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='tab']:not([aria-disabled='true']),
+  a[href] {
+    cursor: pointer;
+  }
+}

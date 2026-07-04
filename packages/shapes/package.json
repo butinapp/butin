@@ -1,0 +1,26 @@
+{
+  "name": "@butinapp/shapes",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bundle": "./src/bundle.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@butinapp/sdk": "workspace:*",
+    "@types/lodash-es": "catalog:",
+    "@types/luxon": "catalog:",
+    "lodash-es": "catalog:",
+    "luxon": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
+}

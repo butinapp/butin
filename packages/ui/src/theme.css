@@ -1,0 +1,137 @@
+/* The Butin design-system theme — the single source of truth for brand tokens.
+
+   A host's Tailwind build imports this right after `@import 'tailwindcss'`:
+     @import 'tailwindcss';
+     @import '@butinapp/ui/theme.css';
+     @source '<the host's component source>';   // host still scans the source it renders
+
+   It carries the semantic token palette (shadcn-named, dark-first), the `@theme inline` mapping that
+   turns those tokens into utilities, and the dark variant. This is SOURCE the host's single Tailwind
+   build consumes — @butinapp/ui still ships no compiled CSS (no preflight, no utilities), so there is no
+   second build to collide with. Importing the same tokens twice is idempotent.
+
+   Theme-portable by design: an embedder that wants its OWN palette skips this import and defines the same
+   semantic tokens itself; the components only ever reference the names. */
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  color-scheme: light;
+  --radius: 0.5rem;
+  /* Surface elevation mirrors dark's stack (canvas → chrome → card), inverted: the canvas is a soft
+     cool-gray so white cards lift off it. A flat all-white surface reads as unfinished. */
+  --background: oklch(0.973 0.004 275);
+  --foreground: oklch(0.205 0.014 275);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.205 0.014 275);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.205 0.014 275);
+  --primary: oklch(0.58 0.09 188);
+  --primary-foreground: oklch(0.99 0.005 220);
+  --secondary: oklch(0.955 0.006 275);
+  --secondary-foreground: oklch(0.25 0.012 275);
+  --muted: oklch(0.955 0.006 275);
+  --muted-foreground: oklch(0.5 0.018 275);
+  --accent: oklch(0.94 0.008 275);
+  --accent-foreground: oklch(0.25 0.012 275);
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(0.99 0.01 27);
+  --border: oklch(0.912 0.006 275);
+  --input: oklch(0.78 0.008 275);
+  --ring: oklch(0.58 0.09 188);
+  --chart-1: oklch(0.62 0.15 215);
+  --chart-2: oklch(0.55 0.1 230);
+  --chart-3: oklch(0.63 0.16 75);
+  --chart-4: oklch(0.6 0.16 162);
+  --chart-5: oklch(0.55 0.2 292);
+  --sidebar: oklch(0.965 0.005 275);
+  --sidebar-foreground: oklch(0.205 0.014 275);
+  --sidebar-primary: oklch(0.58 0.09 188);
+  --sidebar-primary-foreground: oklch(0.99 0.005 220);
+  --sidebar-accent: oklch(0.93 0.008 275);
+  --sidebar-accent-foreground: oklch(0.25 0.012 275);
+  --sidebar-border: oklch(0.912 0.006 275);
+  --sidebar-ring: oklch(0.58 0.09 188);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.177 0.011 261);
+  --foreground: oklch(0.957 0.006 256);
+  --card: oklch(0.22 0.016 257);
+  --card-foreground: oklch(0.957 0.006 256);
+  --popover: oklch(0.258 0.02 255);
+  --popover-foreground: oklch(0.957 0.006 256);
+  --primary: oklch(0.801 0.105 186);
+  --primary-foreground: oklch(0.2 0.02 250);
+  --secondary: oklch(0.282 0.022 254);
+  --secondary-foreground: oklch(0.957 0.006 256);
+  --muted: oklch(0.282 0.022 254);
+  --muted-foreground: oklch(0.628 0.029 252);
+  --accent: oklch(0.3 0.018 255);
+  --accent-foreground: oklch(0.957 0.006 256);
+  --destructive: oklch(0.681 0.148 30);
+  --destructive-foreground: oklch(0.97 0.01 30);
+  --border: oklch(1 0 0 / 6%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.801 0.105 186);
+  --chart-1: oklch(0.801 0.105 186);
+  --chart-2: oklch(0.62 0.1 230);
+  --chart-3: oklch(0.751 0.13 80);
+  --chart-4: oklch(0.725 0.131 161);
+  --chart-5: oklch(0.66 0.11 300);
+  --sidebar: oklch(0.195 0.012 259);
+  --sidebar-foreground: oklch(0.957 0.006 256);
+  --sidebar-primary: oklch(0.801 0.105 186);
+  --sidebar-primary-foreground: oklch(0.2 0.02 250);
+  --sidebar-accent: oklch(0.282 0.022 254);
+  --sidebar-accent-foreground: oklch(0.957 0.006 256);
+  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-ring: oklch(0.801 0.105 186);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Type system: geometric grotesk for the wordmark + headlines (font-display), monospace for all
+     data/status/numbers (font-mono — the "operator surface" signal), Inter/system for body. A host loads
+     the actual variable-font files; the stacks fall back gracefully when it doesn't. */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'Cascadia Code', 'Segoe UI Mono', monospace;
+}

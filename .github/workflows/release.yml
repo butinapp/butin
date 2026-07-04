@@ -1,0 +1,115 @@
+name: Release
+
+# Cut a release whenever the app's version (packages/core/package.json — the version electron-builder
+# stamps onto the installers) changes on master. Bump that field, commit, push: the matrix builds Win/mac/
+# Linux installers and publishes a GitHub release tagged v<version>. The check job no-ops if the tag exists.
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - packages/core/package.json
+  # A manual run builds all three installers as a dry run to verify the pipeline; the publish job below is
+  # gated to push events, so a manual run never cuts a tag or release.
+  workflow_dispatch:
+
+# Never cancel a release mid-build; let a started run finish even if another push lands.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      skip: ${{ steps.ver.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: ver
+        run: |
+          VERSION=$(node -p "require('./packages/core/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git ls-remote --tags origin "refs/tags/v$VERSION" | grep -q .; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-windows:
+    needs: check
+    if: needs.check.outputs.skip == 'false'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.15.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @butinapp/core build
+      - run: pnpm --filter @butinapp/core exec electron-builder --win --publish never
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: packages/core/release/*.exe
+
+  build-mac:
+    needs: check
+    if: needs.check.outputs.skip == 'false'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.15.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @butinapp/core build
+      # arch (universal) + target (dmg) come from packages/core/electron-builder.yml.
+      - run: pnpm --filter @butinapp/core exec electron-builder --mac --publish never
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mac
+          path: packages/core/release/*.dmg
+
+  build-linux:
+    needs: check
+    if: needs.check.outputs.skip == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.15.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @butinapp/core build
+      - run: pnpm --filter @butinapp/core exec electron-builder --linux --publish never
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux
+          path: packages/core/release/*.AppImage
+
+  release:
+    needs: [check, build-windows, build-mac, build-linux]
+    if: needs.check.outputs.skip == 'false' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check.outputs.version }}
+          name: v${{ needs.check.outputs.version }}
+          files: artifacts/**
+          generate_release_notes: true

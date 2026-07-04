@@ -1,0 +1,43 @@
+---
+title: Troubleshooting
+description: Fixes for the common snags.
+---
+
+### A service went red / "logged out"
+
+The stored session expired (services age sessions out). Open the service and **Reconnect** to sign in
+again. Your downloaded data is untouched.
+
+### The login window didn't close after I signed in
+
+Some services don't land on a marker Butin recognizes. Once you're clearly logged in, click **Capture
+session** in the login toolbar. If it happens every time for a service, turn on **manual capture** in
+Settings and capture by hand each time.
+
+### A service shows blue and I want to be sure it works
+
+Blue means "saved but not checked this session." Open the service and run **Test** — green means good.
+
+### A refresh failed but old numbers are still showing
+
+That's intentional — Butin keeps the last good data and shows a stale-data banner instead of blanking the
+screen. Reconnect if the session expired, then refresh.
+
+### A protected service won't load even though I'm logged in
+
+The fetch has to match the browser identity you logged in with. Reconnect from the same machine; don't
+hand-edit sessions. If it persists, capture a fresh session via Reconnect.
+
+### A service needs an ID or key I don't know
+
+A few services need a value pinned in their configuration that can't be auto-discovered — for example, Groq
+needs your **Organization ID** (found in the console billing-page URL). Open the service's settings and
+paste it in.
+
+### The app won't start (source builds)
+
+Run `node node_modules/electron/install.js` once, then `pnpm dev` again.
+
+### Something deeper is wrong
+
+Settings → **Diagnostics** has logs and status to help pinpoint it.

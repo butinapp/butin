@@ -1,0 +1,116 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "off",
+    "suspicious": "off",
+    "pedantic": "off",
+    "style": "off",
+    "restriction": "off",
+    "nursery": "off"
+  },
+  "ignorePatterns": [
+    "**/global.d.ts",
+    "**/*.scss.d.ts",
+    "pnpm-lock.yaml",
+    "**/node_modules/**/*",
+    "**/dist/**/*",
+    "**/dist-electron/**/*",
+    "**/out/**/*",
+    "**/release/**/*",
+    "**/gen/**/*",
+    "**/*.gen.ts",
+    "**/vite.config.ts",
+    "**/electron.vite.config.ts"
+  ],
+  "jsPlugins": ["@stylistic/eslint-plugin"],
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/ban-ts-comment": "warn",
+    "typescript/prefer-namespace-keyword": "error",
+    "typescript/no-namespace": "off",
+    "typescript/no-empty-function": "off",
+    "typescript/no-empty-object-type": "off",
+    "typescript/no-explicit-any": "off",
+    "typescript/no-unused-vars": "off",
+    "eslint/curly": "error",
+    "eslint/eqeqeq": ["error", "smart"],
+    "eslint/no-duplicate-imports": "error",
+    "eslint/no-var": "error",
+    "@stylistic/padding-line-between-statements": [
+      "error",
+      {
+        "blankLine": "always",
+        "prev": "*",
+        "next": "return"
+      },
+      {
+        "blankLine": "always",
+        "prev": ["const", "let", "var"],
+        "next": "*"
+      },
+      {
+        "blankLine": "any",
+        "prev": ["const", "let", "var"],
+        "next": ["const", "let", "var"]
+      },
+      {
+        "blankLine": "always",
+        "prev": "import",
+        "next": "*"
+      },
+      {
+        "blankLine": "any",
+        "prev": "import",
+        "next": "import"
+      },
+      {
+        "blankLine": "always",
+        "prev": "*",
+        "next": ["if", "for", "while", "switch", "try"]
+      },
+      {
+        "blankLine": "always",
+        "prev": ["if", "for", "while", "switch", "try"],
+        "next": "*"
+      },
+      {
+        "blankLine": "always",
+        "prev": "*",
+        "next": "export"
+      },
+      {
+        "blankLine": "any",
+        "prev": "export",
+        "next": "export"
+      },
+      {
+        "blankLine": "always",
+        "prev": "directive",
+        "next": "*"
+      },
+      {
+        "blankLine": "any",
+        "prev": "directive",
+        "next": "directive"
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["plugins/**/*.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["../../**"],
+                "message": "A plugin must not import another plugin or reach outside its own folder — plugins share code only through @butinapp/sdk. (The package boundary that used to enforce this is gone now that plugins are folders in @butinapp/plugins.)"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

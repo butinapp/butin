@@ -1,0 +1,440 @@
+import {
+  applyBrowserIdentity,
+  createMagicToolbar,
+  createStatusBar,
+  ensureClientHintsPreload,
+  popupWebPreferences,
+  promoteSessionCookies,
+  STATUS_BAR_HEIGHT,
+  TOOLBAR_EXPANDED_HEIGHT,
+  TOOLBAR_HEIGHT,
+  wireStatusBar
+} from '@butinapp/engine'
+import { BaseWindow, session, WebContentsView, type WebContents } from 'electron'
+
+import { writeHarForRun } from './recording/har.js'
+import { formatRunId } from './recording/naming.js'
+import { Recorder } from './recording/recorder.js'
+import { ensureRunDir, ensureSessionsRoot } from './recording/storage.js'
+import type { FilterConfig, RecorderLogLine } from './recording/types.js'
+import { recordingsRoot } from './store.js'
+
+/** Remembered debugging aids for the recorder window (toggled from the toolbar Debug panel). */
+export interface DebugSettings {
+  /** Open DevTools on the site view as soon as a recording starts. */
+  autoOpenDevTools: boolean
+  /** Block server 3xx redirects so a page can be inspected before it bounces away. */
+  freezeRedirects: boolean
+  /** Auto-pause capture after recording a response with an HTTP error status (>= 400). */
+  autoPauseOnError: boolean
+  /**
+   * Rewrite outgoing request headers to inject Butin's canonical browser identity (Sec-Ch-Ua, drop
+   * X-Requested-With). On by default so Chrome-only checks (Slack et al.) pass. Turn OFF for sites
+   * whose CSRF gateway requires the native Sec-Fetch-* / Origin headers that onBeforeSendHeaders drops
+   * (e.g. Stripe → wsp_400_csrf_invalid_request). `applyBrowserIdentity` always sets the UA regardless;
+   * `rewriteHeaders` only controls the per-request header injection.
+   */
+  browserHeaders: boolean
+}
+
+export interface RecordingHandle {
+  runId: string
+  runDir: string
+  partition: string
+  window: BaseWindow
+  recorder: Recorder
+  label: string
+  startUrl: string
+}
+
+export interface CreateRecorderOptions {
+  label: string
+  startUrl: string
+  /**
+   * Persistent session partition to record in. Defaults to `persist:butin` — the shared Butin
+   * partition so a logged-in session carries over. Override to `persist:butin-<id>` for a
+   * plugin-scoped partition, or omit entirely to share the main app session.
+   */
+  partition?: string
+  /**
+   * Record in a fresh in-memory partition (no persisted cookies/localStorage) instead of a profile's
+   * shared session — removes the stored cookie jar as a variable when diagnosing a login or
+   * browser-verification challenge. Cookies captured here never persist and never touch the app's session. Overrides `partition`.
+   */
+  isolated?: boolean
+  captureAll: boolean
+  filters: FilterConfig
+  autoRecord: boolean
+  exportHar: boolean
+  /** Remembered debugging aids (auto-open DevTools, freeze redirects, auto-pause on error). */
+  debug: DebugSettings
+  icon: string
+  onProgress: (counts: { requests: number; websockets: number }) => void
+  onLog?: (line: RecorderLogLine) => void
+  onClosed: (handle: RecordingHandle) => void
+}
+
+/** F12 / Ctrl+Shift+I that yields the recorder's debugger to DevTools first. */
+function bindDevToolsWithHandoff(contents: WebContents, recorder: Recorder): void {
+  contents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') {
+      return
+    }
+
+    const isF12 = input.key === 'F12'
+    const isCtrlShiftI = (input.control || input.meta) && input.shift && (input.key === 'I' || input.key === 'i')
+
+    if (!isF12 && !isCtrlShiftI) {
+      return
+    }
+
+    event.preventDefault()
+
+    if (contents.isDevToolsOpened()) {
+      contents.closeDevTools()
+    } else {
+      recorder.suspendForDevTools(contents)
+      contents.openDevTools({ mode: 'detach' })
+    }
+  })
+}
+
+export async function createRecorderWindow(opts: CreateRecorderOptions): Promise<RecordingHandle> {
+  const root = recordingsRoot()
+
+  await ensureSessionsRoot(root)
+  const runId = formatRunId(new Date(), opts.label)
+  const runDir = await ensureRunDir(root, runId)
+
+  // Shared Butin partition by default — the same persist:butin session the main app uses, so a
+  // logged-in service session is already live when the recorder opens. Pass opts.partition to scope
+  // to a specific plugin's partition (persist:butin-<id>) when that isolation is needed. An isolated
+  // recording instead uses an in-memory partition unique to this run (no `persist:` prefix → nothing is
+  // read from or written to disk), so a browser-verification challenge sees an empty cookie jar with no stale clearance cookie.
+  const partition = opts.isolated ? `butin-iso-${runId}` : (opts.partition ?? 'persist:butin')
+  const ses = session.fromPartition(partition)
+
+  // Delegate identity to @butinapp/engine: sets the UA from the real Chromium version and (when
+  // rewriteHeaders is true) injects Sec-Ch-Ua on every request, matching the main-app capture window
+  // identity exactly. Identity is idempotent — a second call on the same session is a no-op.
+  applyBrowserIdentity(ses, { rewriteHeaders: opts.debug.browserHeaders })
+
+  // NOTE: we deliberately do NOT strip embedding/isolation response headers (X-Frame-Options, COOP/COEP,
+  // CSP frame-ancestors). An earlier attempt stripped them to silence the ERR_BLOCKED_BY_RESPONSE logged
+  // when sites sync sessions across sibling domains via hidden iframes (e.g. Stripe's stripe.com/handoff
+  // chain). But those blocks are benign — the cookie-sync iframes simply no-op — whereas relaxing the
+  // headers let the handoff half-run and corrupt Stripe's CSRF/session state (wsp_400_csrf_invalid_request).
+  // Faithful recording means leaving response headers intact; the handoff console errors are cosmetic.
+
+  // ensureClientHintsPreload() writes the navigator.userAgentData override script to userData once and
+  // returns its absolute path — stays in sync with @butinapp/engine's real Chromium version rather
+  // than a hardcoded one. Requires contextIsolation:false on the view that loads it (already the case
+  // for the site view) so it can override navigator in the page main world.
+  const popupPreload = ensureClientHintsPreload()
+
+  const window = new BaseWindow({
+    width: 1280,
+    height: 920,
+    title: `Butin Recorder — ${opts.label}`,
+    backgroundColor: '#18181b',
+    icon: opts.icon
+  })
+
+  const site = new WebContentsView({
+    webPreferences: {
+      session: ses,
+      // contextIsolation:false lets the client-hints preload override navigator.userAgentData in the page's
+      // main world so Chrome-only checks see Google Chrome. sandbox stays ON: a sandboxed preload still
+      // reaches the main world (isolation is what gates that, not the sandbox), and contextIsolation:false +
+      // sandbox:false together crash the renderer/GPU on heavy pages — a real browser sandboxes every page.
+      contextIsolation: false,
+      nodeIntegration: false,
+      sandbox: true,
+      preload: popupPreload
+    }
+  })
+
+  let paused = !opts.autoRecord
+
+  const recorder = new Recorder({
+    runDir,
+    captureAll: opts.captureAll,
+    filters: opts.filters,
+    autoRecord: opts.autoRecord,
+    autoPauseOnError: opts.debug.autoPauseOnError,
+    onProgress: (counts) => {
+      opts.onProgress(counts)
+      toolbar.setCounts(counts.requests, counts.websockets)
+    },
+    onLog: opts.onLog
+  })
+
+  // --- debug aids (toggled live from the toolbar Debug panel) ---
+  let freezeRedirects = opts.debug.freezeRedirects
+
+  // Open/close DevTools on the site view via the recorder handoff (one debugger per webContents, so
+  // capture on this view pauses while DevTools is open and resumes on devtools-closed — see recorder).
+  const setSiteDevTools = (open: boolean) => {
+    const wc = site.webContents
+
+    if (wc.isDestroyed()) {
+      return
+    }
+
+    if (open && !wc.isDevToolsOpened()) {
+      recorder.suspendForDevTools(wc)
+      wc.openDevTools({ mode: 'detach' })
+    } else if (!open && wc.isDevToolsOpened()) {
+      wc.closeDevTools()
+    }
+  }
+
+  // The shared Butin browser chrome: the magic toolbar in its 'record' variant (nav + REC/elapsed/counts +
+  // Pause/Stop + the record debug panel) and the status bar (load progress, title, hovered-link URL).
+  const toolbar = createMagicToolbar({
+    variant: 'record',
+    initialCaptureAll: opts.captureAll,
+    initialPaused: paused,
+    initialFreeze: opts.debug.freezeRedirects,
+    initialAutoPause: opts.debug.autoPauseOnError,
+    initialAutoOpenDevTools: opts.debug.autoOpenDevTools,
+    initialBrowserHeaders: opts.debug.browserHeaders,
+    onNavigate: (url) => {
+      if (url) {
+        void site.webContents.loadURL(url).catch(() => {})
+      }
+    },
+    onBack: () => {
+      const nav = site.webContents.navigationHistory
+
+      if (nav.canGoBack()) {
+        nav.goBack()
+      }
+    },
+    onForward: () => {
+      const nav = site.webContents.navigationHistory
+
+      if (nav.canGoForward()) {
+        nav.goForward()
+      }
+    },
+    onReload: () => {
+      if (!site.webContents.isDestroyed()) {
+        site.webContents.reload()
+      }
+    },
+    onStop: () => window.close(),
+    onTogglePause: () => {
+      paused = !paused
+      applyPaused()
+    },
+    onSetExpanded: (on) => {
+      toolbarExpanded = on
+      layout()
+    },
+    onSetFreeze: (on) => {
+      freezeRedirects = on
+    },
+    onSetAutoPause: (on) => recorder.setAutoPauseOnError(on),
+    onSetAutoOpenDevTools: (on) => setSiteDevTools(on),
+    onSetBrowserHeaders: (on) => {
+      // Re-applying identity on the live session is a no-op (idempotent WeakSet guard in
+      // applyBrowserIdentity) — the toggle takes effect on the NEXT window / session open.
+      applyBrowserIdentity(ses, { rewriteHeaders: on })
+    }
+  })
+
+  const statusbar = createStatusBar()
+
+  wireStatusBar(site.webContents, statusbar)
+
+  window.contentView.addChildView(toolbar.view)
+  window.contentView.addChildView(site)
+  window.contentView.addChildView(statusbar.view)
+
+  let toolbarExpanded = false
+  const layout = () => {
+    const { width, height } = window.getContentBounds()
+    const top = toolbarExpanded ? TOOLBAR_EXPANDED_HEIGHT : TOOLBAR_HEIGHT
+
+    toolbar.view.setBounds({ x: 0, y: 0, width, height: top })
+    site.setBounds({ x: 0, y: top, width, height: Math.max(0, height - top - STATUS_BAR_HEIGHT) })
+    statusbar.view.setBounds({ x: 0, y: height - STATUS_BAR_HEIGHT, width, height: STATUS_BAR_HEIGHT })
+  }
+
+  layout()
+  window.on('resize', layout)
+
+  // Crash-resilient session persistence. Chromium holds auth session cookies in memory and drops them on
+  // exit, so they only survive if promoteSessionCookies runs — which the graceful-close path below does. But
+  // a recording can crash (a hostile login page can take the GPU down), and an abrupt exit never reaches that
+  // path, dropping a freshly captured login and forcing a fresh sign-in + MFA next launch. Promote on an
+  // interval too, so a captured session survives even when the window never closes cleanly.
+  const persistInterval = setInterval(() => void promoteSessionCookies(ses, [], { quiet: true }), 15_000)
+
+  const applyPaused = () => {
+    recorder.setPaused(paused)
+    toolbar.setPaused(paused)
+  }
+
+  // Freeze redirects: block server/JS-driven 3xx redirect hops so a page can be inspected before it
+  // bounces away (e.g. an auth handoff_complete chain). We only stop will-redirect, never will-navigate,
+  // so the user's own link clicks still work. Each blocked hop is logged.
+  const bindFreezeRedirects = (contents: WebContents) => {
+    contents.on('will-redirect', (event, url) => {
+      if (freezeRedirects) {
+        event.preventDefault()
+        recorder.log('warn', 'redirect-frozen', `Blocked redirect → ${url}`, { url })
+      }
+    })
+  }
+
+  // Surface Electron-level navigation failures (the "Failed to load URL … ERR_*" Electron logs)
+  // into the run's trace, so a dead-ended login or blocked page is visible in the panel + log.jsonl.
+  // ERR_ABORTED (-3) is the benign SPA double-navigation case we already swallow on the initial load.
+  const logLoadFailures = (contents: WebContents) => {
+    contents.on('did-fail-load', (_e, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (errorCode === -3) {
+        return
+      }
+
+      recorder.log('error', 'load-failed', `${errorDescription || 'load failed'} — ${validatedURL}`, {
+        url: validatedURL,
+        errorCode,
+        errorDescription,
+        isMainFrame
+      })
+    })
+  }
+
+  // Reflect the live URL + back/forward availability into the toolbar.
+  const pushUrl = (_e: unknown, url: string) => {
+    const nav = site.webContents.navigationHistory
+
+    toolbar.setUrl(url)
+    toolbar.setNav(nav.canGoBack(), nav.canGoForward())
+  }
+
+  // Capture popups / child windows. They open on the same partition (auth carries
+  // over), get the browser identity, F12 handoff, and are attached to the same recorder so
+  // their traffic lands in this run. Nested popups are wired recursively.
+  const wireChildWindows = (contents: WebContents) => {
+    contents.setWindowOpenHandler(() => ({
+      action: 'allow',
+      overrideBrowserWindowOptions: { width: 1100, height: 820, webPreferences: popupWebPreferences(partition) }
+    }))
+    contents.on('did-create-window', (childWindow) => {
+      const child = childWindow.webContents
+
+      recorder.attachTo(child, 'popup')
+      bindDevToolsWithHandoff(child, recorder)
+      logLoadFailures(child)
+      bindFreezeRedirects(child)
+      child.on('did-navigate', (_e, url) => pushUrl(_e, url))
+      wireChildWindows(child)
+    })
+  }
+
+  bindDevToolsWithHandoff(site.webContents, recorder)
+  // F12 on the toolbar pane is useless — redirect it to the site view.
+  toolbar.view.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') {
+      return
+    }
+
+    const isF12 = input.key === 'F12'
+    const isCtrlShiftI = (input.control || input.meta) && input.shift && (input.key === 'I' || input.key === 'i')
+
+    if (!isF12 && !isCtrlShiftI) {
+      return
+    }
+
+    event.preventDefault()
+
+    if (site.webContents.isDevToolsOpened()) {
+      site.webContents.closeDevTools()
+    } else {
+      recorder.suspendForDevTools(site.webContents)
+      site.webContents.openDevTools({ mode: 'detach' })
+    }
+  })
+
+  site.webContents.on('did-navigate', pushUrl)
+  site.webContents.on('did-navigate-in-page', pushUrl)
+  logLoadFailures(site.webContents)
+  bindFreezeRedirects(site.webContents)
+  wireChildWindows(site.webContents)
+
+  // Attach the recorder BEFORE the first navigation so nothing is missed.
+  recorder.attachTo(site.webContents, 'page')
+
+  recorder.log('info', 'start', `Recording started — ${opts.startUrl}`, {
+    url: opts.startUrl,
+    partition,
+    captureAll: opts.captureAll,
+    autoRecord: opts.autoRecord
+  })
+
+  // SPA signin pages (and meta-refresh / location.replace patterns) often initiate a second
+  // navigation before the first one resolves; Chromium then rejects the original loadURL with
+  // ERR_ABORTED even though the page is rendering. The recorder is already attached, so capture
+  // is unaffected — just don't surface that as a "start failed" error to the panel.
+  await site.webContents.loadURL(opts.startUrl).catch((err) => {
+    if (!String(err?.message ?? err).includes('ERR_ABORTED')) {
+      throw err
+    }
+  })
+
+  applyPaused() // sync the toolbar badge with the initial paused state
+
+  // Re-apply a remembered "auto-open DevTools" choice to this fresh recording.
+  if (opts.debug.autoOpenDevTools) {
+    setSiteDevTools(true)
+  }
+
+  const handle: RecordingHandle = {
+    runId,
+    runDir,
+    partition,
+    window,
+    recorder,
+    label: opts.label,
+    startUrl: opts.startUrl
+  }
+
+  let stopping = false
+
+  window.on('close', (event) => {
+    if (stopping) {
+      return
+    }
+
+    event.preventDefault()
+    stopping = true
+    clearInterval(persistInterval)
+    void recorder
+      .stop({ label: opts.label, startUrl: opts.startUrl, partition })
+      .then(async () => {
+        if (opts.exportHar) {
+          await writeHarForRun(runDir).catch((err) => console.error('[recorder] HAR export failed:', err))
+        }
+
+        // Promote session cookies to persistent so a login captured during this recording survives quit —
+        // Chromium drops in-memory session cookies even in a persist: partition. The recorder shares the
+        // persist:butin session, so the next recording (or the app) opens already logged in.
+        await promoteSessionCookies(ses)
+      })
+      .catch((err) => console.error('[recorder] stop failed:', err))
+      .finally(() => {
+        opts.onClosed(handle)
+
+        try {
+          window.destroy()
+        } catch {
+          // already destroyed
+        }
+      })
+  })
+
+  return handle
+}

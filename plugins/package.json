@@ -1,0 +1,21 @@
+{
+  "name": "@butinapp/plugins",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cost-explorer": "^3.1066.0",
+    "@aws-sdk/client-identitystore": "^3.1066.0",
+    "@butinapp/sdk": "workspace:*",
+    "cheerio": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
+  }
+}

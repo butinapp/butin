@@ -1,0 +1,56 @@
+---
+title: Write a plugin
+description: Add a service to Butin. (The plugin contract is still stabilizing.)
+---
+
+A **plugin** teaches Butin how to sign in to and read one service. Most plugins are small and mostly
+declarative: describe how to log in and what to fetch, return normalized data, and one generic renderer
+draws the dashboard. **Most plugins ship no UI at all.**
+
+> **Heads up:** the `@butinapp/sdk` contract is still evolving ahead of the public release, so this page is an
+> orientation, not a frozen API reference. The authoritative, always-current source is the repo itself.
+> Check [`CLAUDE.md`](https://github.com/allardy/butin/blob/master/CLAUDE.md) and the `@butinapp/sdk` package
+> before building.
+
+## The shape
+
+```ts
+import { definePlugin } from '@butinapp/sdk'
+import { billing } from '@butinapp/sdk/presets'
+
+export const acme = definePlugin({
+  meta: { id: 'acme', name: 'Acme' },
+  session: { loginUrl: 'https://acme.com/login', cookieDomains: ['acme.com'] },
+  auth: { kind: 'cookie' },
+  capabilities: [
+    {
+      id: 'billing',
+      label: 'Billing',
+      collect: async ({ client }) =>
+        billing.result({
+          /* … */
+        })
+    }
+  ]
+})
+```
+
+A plugin is a point in three axes the contract makes declarative:
+
+- **Transport** — standard Node, or an Electron path with a real browser identity for
+  services that need the browser engine.
+- **Auth** — plain cookie, cookie + a token read from the page, a minted short-lived JWT, a rotating refresh token, a
+  durable API key, and a few more. Common kinds need no code.
+- **Render shape** — JSON, GraphQL, HTML parsing, and so on — handled inside the capability's `collect()`.
+  The contract standardizes the authed client in and the normalized result out, not how you parse.
+
+## Getting started
+
+1. Reverse-engineer the service's real requests (the session recorder dev tool helps here).
+2. Scaffold the plugin folder.
+3. Put the `definePlugin` descriptor and the pure transform functions in one file, with fixture-based tests
+   alongside.
+4. Typecheck and run the tests — no live account needed for the pure transforms.
+
+The full, current walkthrough lives in the repo. Start with the existing plugins under `plugins/` as
+references, and open an issue or discussion on [GitHub](https://github.com/allardy/butin) if you get stuck.

@@ -1,0 +1,41 @@
+---
+title: Connecting a service
+description: Magic Login, pasted tokens, and key-based services.
+---
+
+Open a service from the sidebar and choose **Connect**. What happens next depends on how the service
+authenticates — there are three paths.
+
+## Magic Login (most services)
+
+A login window opens showing the service's own sign-in page, plus a thin Butin toolbar (the live URL, a
+Copy button, and a **Capture session** button).
+
+1. **Sign in by hand** — password, MFA, SSO redirect, magic link. Butin never sees or stores your
+   password; it only keeps the resulting session.
+2. **Automatic capture** — when the page settles on your logged-in home, Butin grabs the session,
+   encrypts it, and closes the window.
+3. **Manual capture** — some services land somewhere Butin can't auto-detect. Once you're clearly logged
+   in, click **Capture session** in the toolbar.
+
+The session is stored encrypted (via your OS secure storage) under `~/butin`. It persists across restarts,
+so you normally only do this once per session lifetime — see
+[How it works → sessions expire](/docs/how-it-works).
+
+## Pasted token / manual fields
+
+A few services need an extra value that isn't a cookie — a token you copy from the page, or a value you
+paste in. When that's the case, the connect flow shows a field for it alongside the login.
+
+## Key-based services (no login)
+
+Some services don't use a browser session at all — they authenticate with an access key or named profile
+(AWS is the classic example). For these, **Connect opens a small configuration form** instead of a login
+window: fill in the required values and save. Here, "connected" simply means the form is filled in
+correctly.
+
+## When the session expires
+
+Sessions lapse on the service's own clock. When one does, the service shows as disconnected — open it and
+**Reconnect** to sign in again. Your already-downloaded data is untouched. See
+[Connection health](/docs/connection-health).

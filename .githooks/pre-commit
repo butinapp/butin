@@ -1,0 +1,20 @@
+#!/bin/sh
+set -e
+
+# Format + lint only the staged JS/TS files, so a formatting/lint slip is caught here, not in CI.
+# --check (not --write) means the hook BLOCKS rather than rewriting under you — run `pnpm fix` to repair.
+# Installed via the package.json "prepare" script (git config core.hooksPath .githooks).
+# Skip in a genuine emergency with `git commit --no-verify` (CI still enforces all of the below).
+files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx|mjs|cjs)$' || true)
+
+if [ -n "$files" ]; then
+  echo "$files" | xargs pnpm exec oxfmt --check
+  # oxlint exits non-zero with "No files found to lint" when every staged file is in its
+  # ignorePatterns (a config-only commit touching e.g. **/electron.vite.config.ts). That is not a lint
+  # failure — suppress only that case; real diagnostics print and still block the commit.
+  lint_out=$(echo "$files" | xargs pnpm exec oxlint 2>&1) && lint_rc=0 || lint_rc=$?
+  printf '%s\n' "$lint_out"
+  if [ "$lint_rc" -ne 0 ] && ! printf '%s' "$lint_out" | grep -q 'No files found to lint'; then
+    exit "$lint_rc"
+  fi
+fi

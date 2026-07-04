@@ -1,0 +1,53 @@
+---
+title: How it works
+description: The engine behind Butin — and why it's private by design.
+---
+
+Most services show you rich data in their web dashboard but give you no clean way to get it out. Many have
+no API, or hide it behind a paid tier. Butin's trick: **it reads those dashboards the same way your browser
+does, using the session you already logged in with.**
+
+## Capture → replay → keep
+
+1. **Capture the session.** You log in by hand once. Butin captures the resulting session — cookies and
+   tokens — and stores it, encrypted, on your machine.
+2. **Replay headless.** While that session is valid, Butin fetches the service's data straight from Node,
+   no browser window open. _The read is the capture._
+3. **Keep your data.** Each fetch is normalized and saved locally, with history. It stays yours even after
+   the session is gone.
+
+## Sessions expire — that's expected
+
+A captured session lasts exactly as long as the **service** keeps it alive, and that varies enormously —
+roughly **20 minutes** for a bank, **~30 minutes** for some portals, **~1 hour** for others, up to **a few
+days** for the long-lived ones. Butin does not — and cannot — extend it.
+
+So the honest model is: sign in, let Butin do the reading and refreshing while the session holds, and
+**sign in again when it lapses** to pull fresh data. What's permanent is the **data already on your disk**,
+not the access.
+
+## Why it works without an API
+
+Butin replays the same authenticated requests your browser makes, so it doesn't need a vendor API. If a
+browser can render it, a plugin can fetch it. Under the hood it carries two fetch engines:
+
+- a standard **Node** path for most services, and
+- an **Electron** path that presents a real browser identity for services that need it — matching
+  the window you logged in with.
+
+How each service is parsed (JSON, GraphQL, HTML parsing, and so on) lives inside its plugin. The app
+normalizes every result into one shape and renders it through a single generic dashboard.
+
+## Private by design
+
+The trust story is the architecture, not a privacy policy:
+
+- **Your session, your machine.** It replays the requests your own browser makes — no middleman, no
+  shared credentials.
+- **No custody.** There's no account, no sync, and no server that could read your numbers. Captured data
+  lives under `~/butin`, encrypted with your OS keychain.
+- **Open source, MIT.** Read the engine, fork it, write your own plugins. Trust the code, not a promise.
+
+> Butin only ever reads data that is already yours — in your own authenticated session, on your own
+> hardware. It's a personal data-portability tool: nothing leaves your machine, and no server takes
+> custody of your credentials.

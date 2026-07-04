@@ -1,0 +1,32 @@
+---
+title: What is Butin
+description: A local-first desktop app that puts all your accounts in one place — readable offline, on your own machine.
+---
+
+Butin is a **local-first desktop app** that puts **all your accounts in one place**. It pulls the billing,
+usage, members, and documents from every service you use into a single local dashboard — readable without
+logging in, using the session **you** already logged in with, and kept on **your** machine.
+
+It reaches the data services keep behind their own dashboards (no API needed), downloads every document,
+and keeps the history they don't. No credentials handed to anyone. Nothing uploaded anywhere.
+
+## The model — in three steps
+
+1. **Sign in.** You log into a service by hand in a normal window (password, MFA, SSO — all fine). Butin
+   captures that session and stores it, encrypted, on your computer. It stays valid only as long as the
+   service keeps it alive — anywhere from ~20 minutes to a few days.
+2. **Fetch headless.** While the session holds, Butin reads the data quietly in the background — no
+   browser window to keep open. _The read is the capture._ When the session expires, you sign in again to
+   pull fresh data.
+3. **Keep your data.** Each fetch becomes a clean dashboard — spend, usage, members, documents — saved
+   only on your disk, with history. The data you&apos;ve already pulled stays yours even after the session
+   is gone.
+
+> The promise underneath all of it: it runs in **your** own session, **locally**, with no server custody
+> of your credentials. The account it reads is always your own.
+
+## Where to next
+
+- **[Getting started](/docs/getting-started)** — install and connect your first service.
+- **[How it works](/docs/how-it-works)** — the engine, and why it's private by design.
+- **[Write a plugin](/docs/contributing)** — add a service of your own.

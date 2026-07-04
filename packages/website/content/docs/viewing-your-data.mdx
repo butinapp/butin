@@ -1,0 +1,40 @@
+---
+title: Viewing your data
+description: Capability tabs, refresh, and the cross-service Overview.
+---
+
+Once a service is connected, its page shows its data as **tabs** — Billing, Usage, Members, Documents, and
+so on, depending on what the service exposes.
+
+## Service tabs
+
+- **Tabs load on demand.** Opening a tab fetches and renders it; switching back is fast afterward.
+- **Freshness is visible.** Each tab shows how recently its numbers were pulled — e.g. _refreshed 4
+  minutes ago_.
+- **Refresh** re-pulls that tab. If a refresh fails (say the session expired), the previous data stays on
+  screen with a stale-data warning rather than vanishing.
+- Standard tabs render automatically into stat cards, tables, and charts. A few service-specific tabs show
+  their raw data as formatted JSON.
+
+## The Overview
+
+Once you've connected a few services, the **Overview** becomes the screen you actually open. It reads from
+your local cache, so it **opens instantly with no network call**, and rolls everything up:
+
+- **total spend and usage** summed across every connected service — the single number no individual
+  dashboard gives you
+- a **combined monthly-spend chart**
+- **what changed** — the biggest movers since last month, so a runaway cost shows up before the invoice
+- a **by-service breakdown**
+
+To update it, refresh the underlying services; the Overview reflects whatever's currently cached.
+
+## Managing a service
+
+Each service has its own settings (reconnect, test, disconnect, enable/disable, refresh, full export, and
+where its files are saved). Those are covered in [Connection health](/docs/connection-health) and
+[Your data & exports](/docs/the-library).
+
+> **Multiple accounts** (e.g. a work and a personal GitHub) are handled by **profiles** — switchable,
+> fully-isolated contexts you toggle from the top bar. Within a single profile it's one account per service,
+> so you switch profiles rather than viewing both at once.

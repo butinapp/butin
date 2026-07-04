@@ -1,0 +1,73 @@
+import { describe, expect, test } from 'vitest'
+
+import { cookieRemoveUrl, cookieToDto, partitionLabel } from './dev.js'
+
+describe('cookieToDto', () => {
+  test('maps an Electron cookie, computing size and session/expires', () => {
+    const dto = cookieToDto({
+      name: 'sid',
+      value: 'abc',
+      domain: '.google.com',
+      path: '/',
+      secure: true,
+      httpOnly: true,
+      sameSite: 'no_restriction',
+      expirationDate: 1893456000
+    } as never)
+
+    expect(dto).toEqual({
+      name: 'sid',
+      value: 'abc',
+      domain: '.google.com',
+      path: '/',
+      size: 6,
+      expires: 1893456000,
+      session: false,
+      httpOnly: true,
+      secure: true,
+      sameSite: 'no_restriction'
+    })
+  })
+
+  test('a cookie with no expirationDate is a session cookie', () => {
+    const dto = cookieToDto({ name: 'x', value: 'y', domain: 'example.com', path: '/' } as never)
+
+    expect(dto.session).toBe(true)
+    expect(dto.expires).toBeNull()
+  })
+})
+
+describe('cookieRemoveUrl', () => {
+  test('builds an https url, stripping a leading dot from the host', () => {
+    expect(cookieRemoveUrl({ domain: '.google.com', path: '/', secure: true })).toBe('https://google.com/')
+  })
+
+  test('http when not secure; preserves the path', () => {
+    expect(cookieRemoveUrl({ domain: 'mail.google.com', path: '/mail', secure: false })).toBe(
+      'http://mail.google.com/mail'
+    )
+  })
+})
+
+describe('partitionLabel', () => {
+  const plugins = [
+    { meta: { id: 'stripe', name: 'Stripe' }, transport: { nativeBrowserHeaders: true } },
+    { meta: { id: 'acme', name: 'Acme' }, session: { partition: 'persist:acme-custom' } }
+  ] as never[]
+
+  test('the active partition is the default shared one', () => {
+    expect(partitionLabel('persist:butin', 'persist:butin', plugins)).toBe('Default (shared)')
+  })
+
+  test('a native partition reads its plugin name', () => {
+    expect(partitionLabel('persist:butin-native-stripe', 'persist:butin', plugins)).toBe('Stripe (isolated)')
+  })
+
+  test('a custom session.partition reads its plugin name', () => {
+    expect(partitionLabel('persist:acme-custom', 'persist:butin', plugins)).toBe('Acme')
+  })
+
+  test('an unknown partition falls back to the bare string', () => {
+    expect(partitionLabel('persist:butin-mystery', 'persist:butin', plugins)).toBe('butin-mystery')
+  })
+})

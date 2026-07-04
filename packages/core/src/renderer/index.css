@@ -1,0 +1,60 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+/* The brand tokens + @theme mapping + dark variant live in @butinapp/ui/theme.css (the single source of
+   truth shared with every Butin host). This build still generates @butinapp/ui's utility classes by
+   scanning the package source — the embeddable-viewer pattern; only the values are centralized. */
+@import '@butinapp/ui/theme.css';
+@source '../../../ui/src/**/*.{ts,tsx}';
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full bg-background;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    margin: 0;
+    /* Electron has no chrome to scroll the page, so the shell owns scrolling — never the body. */
+    overflow: hidden;
+    font-family: var(--font-sans);
+  }
+
+  :focus {
+    outline: none;
+  }
+
+  /* Every interactive affordance shows the pointer cursor — raw <button> rows (sidebar, service
+     cards, clickable table rows via [role]), radix tab triggers ([role=tab]), links, and checkboxes.
+     The Button/Switch primitives already set it inline; this covers everything that doesn't. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='tab']:not([aria-disabled='true']),
+  a[href],
+  summary,
+  label:has(input[type='checkbox']),
+  input[type='checkbox'] {
+    cursor: pointer;
+  }
+}
+
+/* Thin, theme-aware scrollbar — replaces the chunky OS default inside the app. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
