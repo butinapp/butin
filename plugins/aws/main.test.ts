@@ -6,11 +6,14 @@ import {
   awsMembersResult,
   awsPlugin,
   awsSummaryResult,
+  awsUsageResult,
   buildBillingReport,
+  buildInvoices,
   clientConfig,
   mapIdentityUser,
   type CeResultByTime,
-  type IdentityUserLike
+  type IdentityUserLike,
+  type RawInvoiceSummary
 } from './main.js'
 
 const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
@@ -28,7 +31,7 @@ test('every capability declares a sample that is contract-valid', () => {
 test('aws is an external, sessionless plugin (no Magic Login)', () => {
   expect(awsPlugin.auth.kind).toBe('external')
   expect(awsPlugin.session).toBeUndefined()
-  expect(awsPlugin.capabilities.map((c) => c.id)).toEqual(['summary', 'billing', 'members'])
+  expect(awsPlugin.capabilities.map((c) => c.id)).toEqual(['summary', 'billing', 'usage', 'members'])
   expect((awsPlugin.config?.fields ?? []).map((f) => f.key)).toEqual([
     'authMode',
     'profile',
@@ -144,12 +147,102 @@ test('awsSummaryResult is the lean rollup: headline cards + monthly spark + spen
   expect(r.summaries?.[0]?.spark).toEqual({ dataset: 'monthly', x: 'month', y: 'amount' })
 })
 
-test('awsBillingResult is the spend detail: by-service + by-account tables, no chart or rollup summary', () => {
-  const r = awsBillingResult(buildBillingReport(serviceResults, accountResults, accountNames))
+test('awsUsageResult is the spend detail: by-service + by-account tables, no chart or rollup summary', () => {
+  const r = awsUsageResult(buildBillingReport(serviceResults, accountResults, accountNames))
 
   expect(validateCapabilityResult(r)).toEqual([])
   expect(r.datasets.map((d) => d.id)).toEqual(['byService', 'byAccount'])
   expect(r.summaries ?? []).toEqual([])
+})
+
+// --- invoices ---
+
+const invoiceSummaries: RawInvoiceSummary[] = [
+  {
+    InvoiceId: 'AWS0002',
+    InvoiceType: 'INVOICE',
+    IssuedDate: '2026-05-03T00:00:00.000Z',
+    DueDate: '2026-05-18T00:00:00.000Z',
+    BillingPeriod: { Month: 4, Year: 2026 },
+    Entity: { InvoicingEntity: 'Amazon Web Services, Inc.' },
+    BaseCurrencyAmount: { TotalAmount: '1234.56', CurrencyCode: 'USD' }
+  },
+  {
+    InvoiceId: 'AWS0001',
+    InvoiceType: 'CREDIT_MEMO',
+    IssuedDate: '2026-04-02T00:00:00.000Z',
+    BillingPeriod: { Month: 3, Year: 2026 },
+    BaseCurrencyAmount: { TotalAmount: '40.00', CurrencyCode: 'USD' }
+  }
+]
+
+test('buildInvoices normalizes summaries newest-first, parses dollar strings, and omits the USD currency', () => {
+  const r = buildInvoices(invoiceSummaries)
+
+  expect(r.currency).toBeUndefined() // USD == reportingCurrency → left for core to stamp, no override
+  expect(r.rows).toEqual([
+    {
+      billingPeriod: '2026-04',
+      invoiceId: 'AWS0002',
+      invoiceType: 'INVOICE',
+      entity: 'Amazon Web Services, Inc.',
+      issuedDate: '2026-05-03',
+      dueDate: '2026-05-18',
+      amount: 1234.56,
+      name: 'AWS 2026-04 invoice AWS0002'
+    },
+    {
+      billingPeriod: '2026-03',
+      invoiceId: 'AWS0001',
+      invoiceType: 'CREDIT_MEMO',
+      entity: null,
+      issuedDate: '2026-04-02',
+      dueDate: null,
+      amount: 40,
+      name: 'AWS 2026-03 invoice AWS0001'
+    }
+  ])
+})
+
+test('buildInvoices reports a non-USD billing currency as an override', () => {
+  const r = buildInvoices([
+    { ...invoiceSummaries[0]!, BaseCurrencyAmount: { TotalAmount: '99.00', CurrencyCode: 'EUR' } }
+  ])
+
+  expect(r.currency).toBe('EUR')
+})
+
+test('awsBillingResult is a downloadable invoices table with the type as a category badge', () => {
+  const r = awsBillingResult(invoiceSummaries)
+
+  expect(validateCapabilityResult(r)).toEqual([])
+  expect(r.datasets.map((d) => d.id)).toEqual(['invoices'])
+  expect(r.summaries ?? []).toEqual([])
+
+  const invoices = r.datasets[0]
+
+  if (invoices.shape !== 'table') {
+    throw new Error('invoices should be a table')
+  }
+
+  expect(invoices.columns.find((c) => c.key === 'invoiceType')?.role).toBe('category')
+  expect(invoices.rows.map((row) => row.invoiceId)).toEqual(['AWS0002', 'AWS0001']) // newest billing period first
+
+  // the rows are downloadable PDFs via the capability's fetchFile hook (no per-row url column)
+  const view = r.views?.[0]
+
+  if (view?.type !== 'table') {
+    throw new Error('expected a table view')
+  }
+
+  expect(view.files).toMatchObject({ name: 'name', source: { fetch: true }, ext: 'pdf' })
+})
+
+test('the billing (invoices) capability is incremental (InvoiceId / IssuedDate) and downloadable', () => {
+  const billing = awsPlugin.capabilities.find((c) => c.id === 'billing')
+
+  expect(billing?.incremental).toMatchObject({ id: 'InvoiceId', timestamp: 'IssuedDate' })
+  expect(billing?.fetchFile).toBeTypeOf('function')
 })
 
 // --- members ---

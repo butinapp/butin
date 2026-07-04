@@ -11,8 +11,8 @@ import { sampleCerebrasBilling, sampleCerebrasKeys, sampleCerebrasMembers, sampl
 //   2. Next.js Server Actions on the billing pages — every $ figure (credits, accrued usage, invoices, the
 //      Stripe customer) lives ONLY here, behind per-deploy ROTATING `Next-Action` hashes. The hashes aren't in
 //      the RSC payload, so we rediscover them each run: fetch the billing pages' JS chunks and read the stable
-//      action NAME off each `createServerReference("<hash>", …, "<name>")` call, then POST the action by name.
-//      Actions resolve globally within the deployment, so one billing route serves them all.
+//      action NAME off each `createServerReference("<hash>", …, "<name>")` call, then POST the action by name to
+//      the sub-route whose chunk declared it (a Next action only resolves on the route that registers it).
 //
 // MONEY is Stripe cents everywhere → centsToMajor. The account/org id is auto-captured from the dashboard URL.
 //
@@ -26,8 +26,8 @@ const HTTP_CODES = ['200', '4xx', '5xx']
 const INPUT_TYPES = ['image', 'text']
 const WINDOW_DAYS = 30
 
-// The billing sub-routes whose JS chunks declare every billing server action (Summary + invoices + credits +
-// payment). We scan their chunks for action hashes; the POSTs all target the base /billing route.
+// The billing sub-routes whose JS chunks declare the billing server actions (Summary + invoices + credits +
+// payment). We scan their chunks for action hashes, and POST each action back to the sub-route that declared it.
 const BILLING_PATHS = ['/billing', '/billing/payment', '/billing/credits']
 
 // ── types (the data dictionary) ──────────────────────────────────────────────────────
@@ -45,6 +45,7 @@ export interface RawCerebrasInvoice {
   currency?: string
   number?: string
   hosted_invoice_url?: string | null
+  invoice_pdf?: string | null // direct PDF (the download source); hosted_invoice_url is the Stripe-hosted page
 }
 export interface RawLineItem {
   amount?: number // cents
@@ -76,6 +77,7 @@ export interface CerebrasInvoice {
   status: string
   amount: number
   hostedUrl?: string | null
+  pdfUrl?: string | null
 }
 export interface CerebrasCreditGrant {
   name: string
@@ -168,7 +170,7 @@ export interface CerebrasUsage {
 // Next.js server-action ids rotate per deploy, so they can't be hardcoded. The client chunks register each
 // action via `createServerReference("<40-hex-hash>", callServer, undefined, findSourceMapURL, "<actionName>")`
 // — the name is stable, the hash is the current id. We fetch the billing pages, follow their chunk <script>s,
-// and build a name→hash map, then POST the action by name to the base /billing route.
+// and build a name→{hash, route} map, then POST each action to the sub-route that declared it.
 
 const CHUNK_RE = /\/_next\/static\/chunks\/[\w./%-]+?\.js/g
 const SERVER_REF_RE = /createServerReference\)\(\s*"([0-9a-f]{40,})"[^)]*?,\s*"([A-Za-z0-9_$]+)"\s*\)/g
@@ -179,54 +181,40 @@ const MAX_CHUNKS = 48
 
 const billingUrl = (org: string, path = '/billing'): string => `${ORIGIN}/platform/${org}${path}`
 
-// A server-action POST runs in the context of the route it's posted to (referer + router-state-tree). Most
-// billing actions take their target (org/customer) as an explicit arg and run anywhere; `getCustomerBillingId`
-// is the exception — it resolves the customer from route context and returns null off the project route, so it
-// must be called on a project's get-started page.
+// A Next server action only resolves on a route whose bundle REGISTERS it: posting an action id to a route that
+// doesn't own it makes Next re-render that page instead of running the action, so the flight carries the page
+// tree (no result) rather than the action's return value — a silent empty. So each action is POSTed to the
+// billing sub-route whose chunk declared it (`getCustomerBillingId` on /billing, `listCustomerInvoices` on
+// /billing/payment, `listCreditGrantHistory` on /billing/credits, …), captured alongside its hash at discovery.
 interface ActionRoute {
   url: string
   tree: string
 }
 
+// A discovered action: its rotating per-deploy id (`hash`) and the billing sub-route that registers it (`path`).
+interface ActionEntry {
+  hash: string
+  path: string
+}
+
 // The terminal segment of a router-state-tree (`__PAGE__`); trailing markers are cosmetic cache hints.
 const leaf = { children: ['__PAGE__', {}, null, null, 0] }
 
-const billingRoute = (org: string): ActionRoute => ({
-  url: billingUrl(org),
-  tree: encodeURIComponent(
-    JSON.stringify([
-      '',
-      {
-        children: ['platform', { children: [['organizationId', org, 'd', null], { children: ['billing', leaf] }] }]
-      }
-    ])
-  )
-})
+// The router-state-tree + url for a billing sub-route (`/billing`, `/billing/payment`, `/billing/credits`),
+// nesting each path segment under platform/<org> down to the page leaf.
+const billingRouteFor = (org: string, path: string): ActionRoute => {
+  const branch = path
+    .replace(/^\//, '')
+    .split('/')
+    .reduceRight<unknown>((child, seg) => ({ children: [seg, child] }), leaf)
 
-const getStartedRoute = (org: string, projectId: string): ActionRoute => ({
-  url: `${ORIGIN}/platform/${org}/project/${projectId}/get-started`,
-  tree: encodeURIComponent(
-    JSON.stringify([
-      '',
-      {
-        children: [
-          'platform',
-          {
-            children: [
-              ['organizationId', org, 'd', null],
-              {
-                children: [
-                  'project',
-                  { children: [['projectId', projectId, 'd', null], { children: ['get-started', leaf] }] }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    ])
-  )
-})
+  return {
+    url: billingUrl(org, path),
+    tree: encodeURIComponent(
+      JSON.stringify(['', { children: ['platform', { children: [['organizationId', org, 'd', null], branch] }] }])
+    )
+  }
+}
 
 // A per-deploy fingerprint: the billing layout chunk's content hash (rotates on every deploy), else the Next
 // buildId. Used to reuse a discovered action map across refreshes until the deployment changes.
@@ -235,17 +223,17 @@ const deployFingerprint = (html: string): string =>
   html.match(/"buildId":"([^"]+)"/)?.[1] ??
   ''
 
-// Resolve action name→hash, reusing the cached map while the deployment is unchanged so a refresh costs ONE
-// page GET (the fingerprint) and no chunk sweep. On a new deploy (or first run) it rediscovers + recaches.
-const loadActionMap = async (ctx: CollectContext, org: string, needed: string[]): Promise<Map<string, string>> => {
+// Resolve action name→{hash, path}, reusing the cached map while the deployment is unchanged so a refresh costs
+// ONE page GET (the fingerprint) and no chunk sweep. On a new deploy (or first run) it rediscovers + recaches.
+const loadActionMap = async (ctx: CollectContext, org: string, needed: string[]): Promise<Map<string, ActionEntry>> => {
   const fingerprint = deployFingerprint(await ctx.client.getText(billingUrl(org)).catch(() => ''))
-  const cached = ctx.creds.get('actions')
+  const cached = ctx.creds.get('actionRoutes')
 
   if (fingerprint && ctx.creds.get('actionsDeploy') === fingerprint && cached) {
     try {
-      const map = new Map<string, string>(Object.entries(JSON.parse(cached) as Record<string, string>))
+      const map = new Map<string, ActionEntry>(Object.entries(JSON.parse(cached) as Record<string, ActionEntry>))
 
-      if (needed.every((n) => map.has(n))) {
+      if (needed.every((n) => map.get(n)?.hash && map.get(n)?.path)) {
         return map
       }
     } catch {
@@ -258,16 +246,21 @@ const loadActionMap = async (ctx: CollectContext, org: string, needed: string[])
 
   if (fingerprint && needed.every((n) => map.has(n))) {
     ctx.creds.set('actionsDeploy', fingerprint)
-    ctx.creds.set('actions', JSON.stringify(Object.fromEntries(map)))
+    ctx.creds.set('actionRoutes', JSON.stringify(Object.fromEntries(map)))
   }
 
   return map
 }
 
-// Walk the billing pages' chunks, reading action name→hash off each createServerReference call. Stops as soon
-// as every requested name is resolved (the cheap common case), capped at MAX_CHUNKS overall.
-const discoverActions = async (ctx: CollectContext, org: string, needed: string[]): Promise<Map<string, string>> => {
-  const map = new Map<string, string>()
+// Walk the billing pages' chunks, reading action name→{hash, path} off each createServerReference call, tagging
+// each with the sub-route being scanned (the route that registers it). Stops as soon as every requested name is
+// resolved (the cheap common case), capped at MAX_CHUNKS overall.
+const discoverActions = async (
+  ctx: CollectContext,
+  org: string,
+  needed: string[]
+): Promise<Map<string, ActionEntry>> => {
+  const map = new Map<string, ActionEntry>()
   const done = (): boolean => needed.every((n) => map.has(n))
   const scanned = new Set<string>()
   let budget = MAX_CHUNKS
@@ -294,7 +287,7 @@ const discoverActions = async (ctx: CollectContext, org: string, needed: string[
 
       for (const m of js.matchAll(SERVER_REF_RE)) {
         if (needed.includes(m[2]) && !map.has(m[2])) {
-          map.set(m[2], m[1])
+          map.set(m[2], { hash: m[1], path })
         }
       }
     }
@@ -410,16 +403,19 @@ export const parseFlightResult = <T>(text: string): T | null => {
 
 const callAction = async <T>(
   ctx: CollectContext<CerebrasConfig>,
-  route: ActionRoute,
-  actions: Map<string, string>,
+  org: string,
+  actions: Map<string, ActionEntry>,
   name: string,
   args: unknown[]
 ): Promise<T | null> => {
-  const hash = actions.get(name)
+  const entry = actions.get(name)
 
-  if (!hash) {
+  if (!entry) {
     return null
   }
+
+  const { hash } = entry
+  const route = billingRouteFor(org, entry.path)
 
   const res = await ctx.client
     .request<string>({
@@ -482,7 +478,8 @@ export const buildCerebrasBilling = (
       number: inv.number,
       status: inv.status ?? 'unknown',
       amount: centsToMajor(inv.total ?? inv.amount_due),
-      hostedUrl: inv.hosted_invoice_url || undefined
+      hostedUrl: inv.hosted_invoice_url || undefined,
+      pdfUrl: inv.invoice_pdf || undefined
     }))
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
 
@@ -572,6 +569,7 @@ interface InvoiceRow {
   amount: number
   status: string
   hostedUrl: string | null
+  pdfUrl: string | null
   name: string
 }
 
@@ -638,6 +636,7 @@ export const buildCerebrasBillingTab = (billing: CerebrasBilling): CapabilityRes
       { key: 'amount', label: 'Amount', role: 'money', currency: ccy },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'hostedUrl', label: 'View', role: 'url' },
+      { key: 'pdfUrl', role: 'url', hidden: true },
       { key: 'name', role: 'label', hidden: true }
     ],
     rows: billing.invoices.map((i) => ({
@@ -646,9 +645,11 @@ export const buildCerebrasBillingTab = (billing: CerebrasBilling): CapabilityRes
       amount: i.amount,
       status: i.status,
       hostedUrl: i.hostedUrl ?? null,
+      // Prefer the direct PDF for the download; the Stripe-hosted page also serves the PDF, so it's the fallback.
+      pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
       name: `Invoice ${i.number || i.date || 'unknown'}`
     }))
-  }).fileTable({ title: 'Invoices', name: 'name', source: { url: 'hostedUrl' }, ext: 'pdf', category: 'Invoices' })
+  }).fileTable({ title: 'Invoices', name: 'name', source: { url: 'pdfUrl' }, ext: 'pdf', category: 'Invoices' })
 
   return capabilityResult({
     sections: [
@@ -661,14 +662,12 @@ export const buildCerebrasBillingTab = (billing: CerebrasBilling): CapabilityRes
   })
 }
 
-// `getCustomerBillingId` only returns the Stripe customer id when posted from a project's get-started route
-// (it resolves the customer from route context, not its arg — the billing route yields null). Resolve a project
-// id via GraphQL, call it there, and cache the result: the customer id is stable per org, so later refreshes
-// skip both the project lookup and the action.
+// The org's Stripe customer id, from the `getCustomerBillingId([org])` action, cached: it's stable per org, so
+// later refreshes skip the call.
 const resolveCustomerId = async (
   ctx: CollectContext<CerebrasConfig>,
   org: string,
-  actions: Map<string, string>
+  actions: Map<string, ActionEntry>
 ): Promise<string | undefined> => {
   const cached = ctx.creds.get('customerId')
 
@@ -676,20 +675,7 @@ const resolveCustomerId = async (
     return cached
   }
 
-  const projects = await ctx.client
-    .graphql<GqlEnvelope<{ ListProjects?: Array<{ id?: string }> }>>(GQL, LIST_PROJECTS, { organizationId: org })
-    .catch(() => null)
-  const projectId = projects?.data?.ListProjects?.find((p) => p.id)?.id
-
-  if (!projectId) {
-    ctx.log('cerebras: no project found to resolve the billing customer id')
-
-    return undefined
-  }
-
-  const customerId = await callAction<string>(ctx, getStartedRoute(org, projectId), actions, 'getCustomerBillingId', [
-    org
-  ])
+  const customerId = await callAction<string>(ctx, org, actions, 'getCustomerBillingId', [org])
 
   if (customerId) {
     ctx.creds.set('customerId', customerId)
@@ -712,11 +698,9 @@ const fetchCerebrasBilling = async (ctx: CollectContext<CerebrasConfig>): Promis
     'listCustomerInvoices',
     'listCreditGrantHistory'
   ])
-  const billing = billingRoute(org)
-
   const [customerId, lineItems] = await Promise.all([
     resolveCustomerId(ctx, org, actions),
-    callAction<{ data?: RawLineItem[] }>(ctx, billing, actions, 'getCurrentMonthLineItems', [org])
+    callAction<{ data?: RawLineItem[] }>(ctx, org, actions, 'getCurrentMonthLineItems', [org])
   ])
 
   if (!customerId) {
@@ -726,11 +710,20 @@ const fetchCerebrasBilling = async (ctx: CollectContext<CerebrasConfig>): Promis
   }
 
   const [balance, customer, invoices, grants] = await Promise.all([
-    callAction<{ data?: RawCreditBalance }>(ctx, billing, actions, 'getCreditBalanceSummary', [customerId]),
-    callAction<RawCustomer>(ctx, billing, actions, 'getThresholds', [customerId]),
-    callAction<{ data?: RawCerebrasInvoice[] }>(ctx, billing, actions, 'listCustomerInvoices', [customerId]),
-    callAction<{ data?: RawCreditGrant[] }>(ctx, billing, actions, 'listCreditGrantHistory', [customerId])
+    callAction<{ data?: RawCreditBalance }>(ctx, org, actions, 'getCreditBalanceSummary', [customerId]),
+    callAction<RawCustomer>(ctx, org, actions, 'getThresholds', [customerId]),
+    callAction<{ data?: RawCerebrasInvoice[] }>(ctx, org, actions, 'listCustomerInvoices', [customerId]),
+    callAction<{ data?: RawCreditGrant[] }>(ctx, org, actions, 'listCreditGrantHistory', [customerId])
   ])
+
+  // A concise trace of what resolved, so a blank tab is diagnosable from the logs rather than silent.
+  ctx.log('cerebras: billing fetched', {
+    invoices: invoices?.data?.length ?? 0,
+    grants: grants?.data?.length ?? 0,
+    lineItems: lineItems?.data?.length ?? 0,
+    hasBalance: Boolean(balance?.data),
+    hasCustomer: Boolean(customer)
+  })
 
   return {
     invoices: invoices?.data ?? null,
@@ -1039,7 +1032,7 @@ export const cerebrasPlugin = definePlugin({
     name: 'Cerebras',
     vendor: 'Cerebras',
     category: 'ai',
-    color: '#f55036',
+    color: '#ff6b00',
     description: 'Cerebras Cloud — billing & credits, API request volume, per-model rate-limit quotas, keys, members.',
     homepage: 'https://cloud.cerebras.ai',
     dashboardUrl: 'https://cloud.cerebras.ai/platform'

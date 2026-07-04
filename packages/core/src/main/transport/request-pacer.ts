@@ -9,6 +9,14 @@ const MAX_GAP_MS = 500
 
 let enabled = true
 
+// Static assets are immutable CDN files (JS/CSS chunks, source maps, fonts, images) meant to load fast — they
+// aren't the provider's API, so pacing them buys no courtesy while serializing a chunk sweep (e.g. reverse-
+// engineering a Next.js site's rotating server-action hashes off `/_next/static/chunks/*.js`) into dozens of
+// gap-spaced GETs. They bypass the pacer; only real API/data requests are gap-spaced.
+const STATIC_ASSET_RE = /\.(?:js|mjs|cjs|css|map|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|webp|avif|ico)(?:$|\?)/i
+
+export const isStaticAsset = (url: string): boolean => url.includes('/_next/static/') || STATIC_ASSET_RE.test(url)
+
 // Set from the persisted app setting at startup and whenever it changes.
 export const configureRequestPacing = (on: boolean): void => {
   enabled = on

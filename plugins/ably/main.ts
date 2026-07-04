@@ -405,7 +405,7 @@ export const ablyPlugin = definePlugin({
     name: 'Ably',
     vendor: 'Ably',
     category: 'devtools',
-    color: '#ff5416',
+    color: '#ce3a1c',
     description: 'Ably realtime account — invoice history, current plan, and per-metric usage.',
     homepage: 'https://ably.com',
     dashboardUrl: 'https://ably.com/accounts'

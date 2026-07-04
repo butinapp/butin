@@ -34,7 +34,8 @@ export const sampleCerebrasBilling = (g: SampleGen, config: SampleConfig): Cereb
         total: g.amountCents(60_000, 90_000),
         currency: 'usd',
         number: `CB-${m.yearMonth}`,
-        hosted_invoice_url: g.url('invoices', g.id('cb'))
+        hosted_invoice_url: g.url('invoices', g.id('cb')),
+        invoice_pdf: g.url('invoices', `${g.id('cb')}.pdf`)
       }
     }),
     upcoming: [

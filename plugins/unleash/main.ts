@@ -477,7 +477,7 @@ export const unleashPlugin = definePlugin({
     name: 'Unleash',
     vendor: 'Unleash',
     category: 'devtools',
-    color: '#1a4049',
+    color: '#817afe',
     description: 'Unleash hosted dashboard — billing history, recurring fee + subscription, and API-token inventory.',
     homepage: 'https://www.getunleash.io',
     dashboardUrl: `${BASE}`,

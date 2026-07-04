@@ -284,7 +284,7 @@ export const serperPlugin = definePlugin({
     name: 'Serper',
     vendor: 'Serper',
     category: 'devtools',
-    color: '#4d3df7',
+    color: '#8ac7f0',
     description: 'Serper search-API billing, usage, keys, and receipt PDFs.',
     homepage: 'https://serper.dev',
     dashboardUrl: 'https://serper.dev/dashboard'

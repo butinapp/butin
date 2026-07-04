@@ -456,7 +456,7 @@ export const screenshotapiPlugin = definePlugin({
     name: 'Screenshot API',
     vendor: 'Screenshot API',
     category: 'devtools',
-    color: '#10b981',
+    color: '#5b2ef7',
     description: 'Screenshot API subscription billing + screenshot usage.',
     homepage: 'https://screenshotapi.net',
     dashboardUrl: 'https://app.screenshotapi.net'

@@ -625,7 +625,7 @@ export const infisicalPlugin = definePlugin({
     name: 'Infisical',
     vendor: 'Infisical',
     category: 'devtools',
-    color: '#ebeef7',
+    color: '#ffc700',
     description: 'Infisical billing, subscription, and resource usage.',
     homepage: 'https://infisical.com',
     dashboardUrl: 'https://app.infisical.com'

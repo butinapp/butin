@@ -150,6 +150,11 @@ test('buildAnthropicBillingTab: account record + downloadable invoice table', ()
   const invoices = result.datasets.find((d) => d.id === 'invoices')
 
   expect(invoices?.shape === 'table' && invoices.rows.length).toBe(3)
+  // Keyed by a stable per-invoice id so the ledger accumulates invoices past the fetched window; ids are unique.
+  expect(invoices?.shape === 'table' && invoices.key).toBe('id')
+  const ids = invoices?.shape === 'table' ? invoices.rows.map((r) => r.id) : []
+
+  expect(new Set(ids).size).toBe(3)
   const tableView = result.views?.find((v) => v.type === 'table')
 
   expect(tableView && 'files' in tableView && tableView.files?.ext).toBe('pdf')

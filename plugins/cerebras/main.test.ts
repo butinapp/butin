@@ -107,7 +107,16 @@ describe('buildCerebrasSummaryResult', () => {
 describe('buildCerebrasBillingTab', () => {
   it('builds account/credits records, line items, grants, and a downloadable invoice table', () => {
     const billing = buildCerebrasBilling(
-      [{ created: 1_748_736_000, total: 50_001, status: 'paid', number: 'A-1', hosted_invoice_url: 'https://pay/1' }],
+      [
+        {
+          created: 1_748_736_000,
+          total: 50_001,
+          status: 'paid',
+          number: 'A-1',
+          hosted_invoice_url: 'https://pay/1',
+          invoice_pdf: 'https://pay/1.pdf'
+        }
+      ],
       [{ amount: 4093, description: 'gpt-oss-120b-output' }],
       { available: 2_823, ledger: 88_864 },
       { balance: 0, currency: 'usd', email: 'ar@example.com', delinquent: false },
@@ -119,9 +128,28 @@ describe('buildCerebrasBillingTab', () => {
     expect(r.datasets.find((d) => d.id === 'invoices')).toBeDefined()
     expect(r.datasets.find((d) => d.id === 'grants')).toBeDefined()
     expect(r.datasets.find((d) => d.id === 'lineItems')).toBeDefined()
-    // The invoice table carries a files descriptor so "Save everything" can download the PDFs.
-    expect(r.views?.some((v) => v.type === 'table' && 'files' in v)).toBe(true)
+    // The invoice table carries a files descriptor (download source = the direct PDF) so "Save everything" grabs it.
+    const invoiceView = r.views?.find((v) => v.type === 'table' && 'files' in v)
+
+    expect(invoiceView && 'files' in invoiceView && invoiceView.files?.source).toMatchObject({ url: 'pdfUrl' })
+    const invoicesDs = r.datasets.find((d) => d.id === 'invoices')
+    const invoiceRow = invoicesDs && 'rows' in invoicesDs ? (invoicesDs.rows[0] as { pdfUrl?: string }) : undefined
+
+    expect(invoiceRow?.pdfUrl).toBe('https://pay/1.pdf')
     expect(r.summaries ?? []).toEqual([]) // detail tab emits no rollup summary
+  })
+
+  it('falls back to the hosted-invoice URL for the PDF download when no direct invoice_pdf is present', () => {
+    const billing = buildCerebrasBilling(
+      [{ created: 1_748_736_000, total: 50_001, status: 'paid', number: 'A-1', hosted_invoice_url: 'https://pay/1' }],
+      null,
+      null,
+      null
+    )
+    const ds = buildCerebrasBillingTab(billing).datasets.find((d) => d.id === 'invoices')
+    const row = ds && 'rows' in ds ? (ds.rows[0] as { pdfUrl?: string }) : undefined
+
+    expect(row?.pdfUrl).toBe('https://pay/1')
   })
 })
 

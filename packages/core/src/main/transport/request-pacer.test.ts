@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 
-import { __resetRequestPacing, configureRequestPacing, paceRequest } from './request-pacer.js'
+import { __resetRequestPacing, configureRequestPacing, isStaticAsset, paceRequest } from './request-pacer.js'
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -87,6 +87,20 @@ test('onWait reports the incurred delay when paced, and is skipped when disabled
   await b
 
   expect(skipped).toEqual([])
+})
+
+test('isStaticAsset: static CDN files bypass pacing, API/data URLs do not', () => {
+  // Next.js chunks + common asset extensions (with or without a query string) are static.
+  expect(isStaticAsset('https://cloud.cerebras.ai/_next/static/chunks/7121-405a.js')).toBe(true)
+  expect(isStaticAsset('https://x.dev/app/layout-03a9.js')).toBe(true)
+  expect(isStaticAsset('https://x.dev/styles.css?v=2')).toBe(true)
+  expect(isStaticAsset('https://x.dev/font.woff2')).toBe(true)
+  expect(isStaticAsset('https://x.dev/logo.svg')).toBe(true)
+
+  // API / data endpoints stay paced — including a server-action POST to a route and a JSON data endpoint.
+  expect(isStaticAsset('https://cloud.cerebras.ai/platform/org_x/billing')).toBe(false)
+  expect(isStaticAsset('https://cloud.cerebras.ai/api/graphql')).toBe(false)
+  expect(isStaticAsset('https://x.dev/api/usage.json')).toBe(false)
 })
 
 test('enabled: different hosts pace independently (not serialized against each other)', async () => {

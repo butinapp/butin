@@ -306,7 +306,7 @@ export const services: Service[] = [
     connect: 'Sign-in',
     blurb: 'Credits, billing, usage, and API keys.',
     caps: ['Billing', 'Usage', 'API keys'],
-    color: '#4d3df7',
+    color: '#8ac7f0',
     homepage: 'https://serper.dev',
     group: 'dev'
   },

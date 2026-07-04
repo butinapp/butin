@@ -664,7 +664,7 @@ export const novuPlugin = definePlugin({
     name: 'Novu',
     vendor: 'Novu',
     category: 'devtools',
-    color: '#0f62fe',
+    color: '#ff006a',
     description:
       'Novu Cloud billing (plan + Stripe invoices), workflow-run usage with delivery analytics, and org members — from your own dashboard session.',
     homepage: 'https://novu.co',

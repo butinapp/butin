@@ -826,7 +826,7 @@ export const dnsimplePlugin = definePlugin({
     name: 'DNSimple',
     vendor: 'DNSimple',
     category: 'devtools',
-    color: '#3F88C5',
+    color: '#1a5ec6',
     description:
       'DNSimple account — billing (invoice history, current plan, estimated next charge), members, API access tokens, and the account profile with its domains (expiry, status).',
     homepage: 'https://dnsimple.com',

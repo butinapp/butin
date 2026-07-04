@@ -838,7 +838,7 @@ export const basetenPlugin = definePlugin({
     name: 'Baseten',
     vendor: 'Baseten',
     category: 'ai',
-    color: '#6c5ce7',
+    color: '#19e76e',
     description: 'Baseten dashboard billing, per-model usage, API keys, and members — from your own logged-in session.',
     homepage: 'https://www.baseten.co',
     dashboardUrl: 'https://app.baseten.co/settings/billing'

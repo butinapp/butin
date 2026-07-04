@@ -869,7 +869,7 @@ export const greptilePlugin = definePlugin({
     name: 'Greptile',
     vendor: 'Greptile',
     category: 'devtools',
-    color: '#0e7c5a',
+    color: '#28e99f',
     description: 'Greptile AI code-review — spend summary, billing detail, daily review usage, API keys, and members.',
     homepage: 'https://greptile.com',
     dashboardUrl: 'https://app.greptile.com'

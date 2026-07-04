@@ -402,6 +402,9 @@ export const buildAnthropicSummaryResult = (report: AnthropicBillingReport): Cap
 // email). The headline MTD + monthly chart live on Summary.
 
 interface BillingInvoiceRow {
+  // Hidden — the invoice's stable identity (kind + issue instant), keys the dataset so invoices accumulate in
+  // the ledger past the fetched page window and version their status (open → paid) over time.
+  id: string
   date: string | null
   kind: string | null
   amount: number
@@ -426,6 +429,7 @@ export const buildAnthropicBillingTab = (report: AnthropicBillingReport): Capabi
   const invoiceTable = table<BillingInvoiceRow>({
     id: 'invoices',
     columns: [
+      { key: 'id', role: 'identifier', hidden: true },
       { key: 'date', label: 'Date', role: 'timestamp' },
       { key: 'kind', label: 'Type', role: 'label' },
       { key: 'amount', label: 'Amount', role: 'money', currency },
@@ -434,13 +438,15 @@ export const buildAnthropicBillingTab = (report: AnthropicBillingReport): Capabi
       { key: 'name', role: 'label', hidden: true }
     ],
     rows: report.invoices.map((i) => ({
+      id: `${i.kind}:${i.effectiveTs}`,
       date: i.date || null,
       kind: i.kind === 'credits' ? 'Credits' : 'Usage',
       amount: i.amount,
       status: i.status,
       pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
       name: `Invoice ${i.date || 'unknown'}`
-    }))
+    })),
+    key: 'id'
   })
 
   const accountRecord = record<BillingAccountRow>({

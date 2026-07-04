@@ -7,7 +7,7 @@ import type { AuthResolver } from '../plugin/auth-resolve.js'
 import { REQUEST_TIMEOUT_MS } from './constants.js'
 import { logPacedRequest, logRequest, logRequestError } from './log.js'
 import type { RequestCache } from './request-cache.js'
-import { paceRequest } from './request-pacer.js'
+import { isStaticAsset, paceRequest } from './request-pacer.js'
 
 // The provider key a request paces against — its host, so a plugin's secondary backends pace independently.
 const pacingKey = (url: string): string => {
@@ -201,8 +201,9 @@ export const createElectronClient = (
     // means a dedup hit returns instantly while a genuine network call is gap-spaced per host.
     const pacedFetch = (): Promise<ButinResponse> =>
       paceRequest(pacingKey(url), doFetch, (ms) => logPacedRequest(method, url, ms, logTag))
-    // pace:false runs the fetch un-spaced (the collector owns its own concurrency); everything else is paced.
-    const runFetch = opts.pace === false ? doFetch : pacedFetch
+    // pace:false runs un-spaced (the collector owns its own concurrency); static assets are never paced (see
+    // isStaticAsset); everything else is gap-spaced per host.
+    const runFetch = opts.pace === false || isStaticAsset(url) ? doFetch : pacedFetch
     const cacheable =
       cache && opts.cache !== false && opts.responseType !== 'arraybuffer' && (method === 'GET' || method === 'POST')
     const res = cacheable ? await cache.run(method, url, bodyString, opts.headers, runFetch) : await runFetch()

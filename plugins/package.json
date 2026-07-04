@@ -10,6 +10,8 @@
   "dependencies": {
     "@aws-sdk/client-cost-explorer": "^3.1066.0",
     "@aws-sdk/client-identitystore": "^3.1066.0",
+    "@aws-sdk/client-invoicing": "^3.1066.0",
+    "@aws-sdk/client-sts": "^3.1066.0",
     "@butinapp/sdk": "workspace:*",
     "cheerio": "catalog:",
     "zod": "catalog:"

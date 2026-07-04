@@ -685,7 +685,7 @@ export const depotPlugin = definePlugin({
     name: 'Depot',
     vendor: 'Depot',
     category: 'devtools',
-    color: '#9d5cff',
+    color: '#46a75a',
     description: 'Depot build-minutes & cache usage (live) plus Stripe-portal billing (best-effort).',
     homepage: 'https://depot.dev',
     dashboardUrl: 'https://depot.dev'

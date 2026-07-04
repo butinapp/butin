@@ -4,7 +4,7 @@
 
 import type { SampleConfig, SampleGen } from '@butinapp/sdk/testing'
 
-import type { AwsBillingRaw, CeResultByTime, IdentityUserLike } from './main.js'
+import type { AwsBillingRaw, CeResultByTime, IdentityUserLike, RawInvoiceSummary } from './main.js'
 
 // Service / account labels are structural (a stable cloud-cost taxonomy, not personal data).
 const SERVICES = [
@@ -52,6 +52,29 @@ export const sampleAwsBilling = (g: SampleGen, config: SampleConfig): AwsBilling
   })
 
   return { serviceResults, accountResults, accountNames }
+}
+
+// One consolidated invoice per past month (starting last month — the current partial month isn't invoiced yet),
+// newest first. Amounts are USD dollar STRINGS (the base-currency total); one CREDIT_MEMO exercises the type
+// badge. The AWS invoicing entity is a structural constant, not personal data.
+export const sampleAwsInvoices = (g: SampleGen, config: SampleConfig): RawInvoiceSummary[] => {
+  const n = Math.max(3, Math.min(config.documents, 12))
+
+  return g.repeat(n, (i) => {
+    const month = g.monthsAgo(i + 1)
+    const [year, mm] = month.yearMonth.split('-').map(Number)
+    const factor = 1 - i * 0.03
+
+    return {
+      InvoiceId: g.seqId('AWS', n - i),
+      InvoiceType: i === 1 ? 'CREDIT_MEMO' : 'INVOICE',
+      IssuedDate: `${month.yearMonth}-03`,
+      DueDate: `${month.yearMonth}-18`,
+      BillingPeriod: { Month: mm, Year: year },
+      Entity: { InvoicingEntity: 'Amazon Web Services, Inc.' },
+      BaseCurrencyAmount: { TotalAmount: (g.money(800, 4000) * factor).toFixed(2), CurrencyCode: 'USD' }
+    }
+  })
 }
 
 // IAM Identity Center users — most enabled, one disabled to exercise the suspended badge. The shared cast keeps

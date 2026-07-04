@@ -226,7 +226,7 @@ export const fireworksPlugin = definePlugin({
     name: 'Fireworks',
     vendor: 'Fireworks AI',
     category: 'devtools',
-    color: '#5019c5',
+    color: '#6720ff',
     description: 'Fireworks AI dashboard billing — invoice history + the Orb-hosted invoice links.',
     homepage: 'https://fireworks.ai',
     dashboardUrl: 'https://app.fireworks.ai/account/billing'
