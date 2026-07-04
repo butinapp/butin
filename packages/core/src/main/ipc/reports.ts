@@ -1,5 +1,6 @@
 import { readLedger } from '../store/ledger.js'
 import { buildOverview } from '../store/overview.js'
+import { buildPeople } from '../store/people.js'
 import { dailyByColumn, dailySpend } from '../store/project-ledger.js'
 import { readCurrent, reconstructResult } from '../store/store.js'
 
@@ -41,5 +42,7 @@ export const reportHandlers = {
     return dailyByColumn(log, columnKey, resetPeriod)
   },
 
-  overview: () => buildOverview()
+  overview: () => buildOverview(),
+
+  people: () => buildPeople()
 } satisfies IpcHandlers['reports']

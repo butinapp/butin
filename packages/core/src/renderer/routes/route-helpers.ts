@@ -24,6 +24,10 @@ export const activeFromPath = (pathname: string): SidebarActive => {
     return { kind: 'management' }
   }
 
+  if (parts[0] === 'people') {
+    return { kind: 'people' }
+  }
+
   if (parts[0] === 'developer') {
     return { kind: 'developer' }
   }

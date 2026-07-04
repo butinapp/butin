@@ -22,6 +22,9 @@ export interface ButinLabels {
   navManagement: string
   navOverview: string
   navDeveloper: string
+  navPeople: string
+  peopleSummary: (people: number, services: number) => string
+  peopleEmpty: string
   logsHeading: string
   navSettings: string
   devNavBrowser: string
@@ -493,6 +496,10 @@ export const en: ButinLabels = {
   navManagement: 'Management',
   navOverview: 'Overview',
   navDeveloper: 'Developer',
+  navPeople: 'People',
+  peopleSummary: (people, services) =>
+    `${people} ${people === 1 ? 'person' : 'people'} across ${services} ${services === 1 ? 'service' : 'services'}`,
+  peopleEmpty: 'No member data yet — services that report team members will show their people here after a refresh.',
   logsHeading: 'Logs',
   navSettings: 'Settings',
   devNavBrowser: 'Navigation browser',
@@ -947,6 +954,11 @@ export const fr: ButinLabels = {
   navManagement: 'Gestion',
   navOverview: 'Aperçu',
   navDeveloper: 'Développeur',
+  navPeople: 'Personnes',
+  peopleSummary: (people, services) =>
+    `${people} personne${people > 1 ? 's' : ''} sur ${services} service${services > 1 ? 's' : ''}`,
+  peopleEmpty:
+    'Aucune donnée de membres pour l’instant — les services qui rapportent des membres d’équipe apparaîtront ici après une actualisation.',
   logsHeading: 'Journaux',
   navSettings: 'Réglages',
   devNavBrowser: 'Navigateur',

@@ -127,6 +127,8 @@ const RootLayout = () => {
   const select = (target: SidebarTarget): void => {
     if (target.kind === 'service') {
       void navigate({ to: '/service/$serviceId', params: { serviceId: target.serviceId } })
+    } else if (target.kind === 'people') {
+      void navigate({ to: '/people' })
     } else if (target.kind === 'management') {
       void navigate({ to: '/management' })
     } else if (target.kind === 'developer') {
@@ -210,6 +212,7 @@ const RootLayout = () => {
             onSelect={select}
             onNavigate={onNavigate}
             onOpenSettings={() => openSettings()}
+            showPeople
             showDeveloper={settings?.devMode ?? false}
           />
         )}

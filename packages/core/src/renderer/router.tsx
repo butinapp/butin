@@ -4,11 +4,13 @@ import { createHashHistory, createRouter } from '@tanstack/react-router'
 import { developerRoute } from './routes/developer.js'
 import { managementRoute } from './routes/management.js'
 import { overviewRoute } from './routes/overview.js'
+import { peopleRoute } from './routes/people.js'
 import { rootRoute } from './routes/root.js'
 import { serviceIndexRoute, serviceTabRoute } from './routes/service.js'
 
 const routeTree = rootRoute.addChildren([
   overviewRoute,
+  peopleRoute,
   managementRoute,
   developerRoute,
   serviceIndexRoute,

@@ -7,7 +7,7 @@ import {
   type TableFilesBridge
 } from '@butinapp/ui/dashboard'
 import { useLabels } from '@butinapp/ui/i18n'
-import { type DataTableState, Skeleton } from '@butinapp/ui/primitives'
+import { Skeleton } from '@butinapp/ui/primitives'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import type { LocatedFile, PluginSummary } from '../../../shared/ipc.js'
 import { useDocFolder, useJobProgress } from '../../use-job-progress.js'
 import { usePluginState } from '../../use-plugin-state.js'
+import { useTablePrefs } from '../../use-table-prefs.js'
 
 import { useFailureUi } from './use-failure-ui.js'
 
@@ -40,34 +41,6 @@ const hasDownloadableTable = (data: unknown): boolean => {
       (v) => v != null && (v as { type?: string }).type === 'table' && Boolean((v as { files?: unknown }).files)
     )
   )
-}
-
-// Persist table prefs per capability, debounced, through the bridge. Reads the saved prefs once.
-const useTablePrefs = (pluginId: string, capabilityId: string) => {
-  const qc = useQueryClient()
-  const key = `${pluginId}.${capabilityId}`
-  const queryKey = ['tablePrefs', key]
-  // Coalesce to null: getTablePrefs resolves undefined when nothing is saved, and TanStack Query forbids a
-  // queryFn returning undefined ("Query data cannot be undefined").
-  const prefsQ = useQuery({
-    queryKey,
-    queryFn: async () => (await window.butin.settings.getTablePrefs(key)) ?? null
-  })
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const onStateChange = (next: DataTableState): void => {
-    // Keep the cache authoritative so remounting the tab seeds from the latest edit (not a stale read that
-    // would briefly show the pre-edit value); the debounced write then lands on disk.
-    qc.setQueryData(queryKey, next)
-
-    if (timer.current) {
-      clearTimeout(timer.current)
-    }
-
-    timer.current = setTimeout(() => void window.butin.settings.setTablePrefs(key, next), 400)
-  }
-
-  return { initialState: prefsQ.data ?? undefined, onStateChange }
 }
 
 // The component hands us a formatted blob; we save it via the native dialog.
@@ -163,7 +136,7 @@ export const CapabilityPanel = ({
     }
   }, [active, autoFetch, reportQ.isLoading, reportQ.data, run])
 
-  const prefs = useTablePrefs(pluginId, capability.id)
+  const prefs = useTablePrefs(`${pluginId}.${capability.id}`)
 
   const stored = reportQ.data
   const ran = run.data

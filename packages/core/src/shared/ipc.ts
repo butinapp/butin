@@ -20,7 +20,7 @@ import type {
   ServiceDetailDto
 } from './ipc/plugins.js'
 import type { ProfileSummaryDto, VaultStateDto } from './ipc/profiles.js'
-import type { OverviewTileDto, StoredReport } from './ipc/reports.js'
+import type { OverviewTileDto, PeopleDto, StoredReport } from './ipc/reports.js'
 import type { AppSettingsDto, FxConfigDto, TablePrefsDto } from './ipc/settings.js'
 
 // The DTOs live in per-domain files under ./ipc/; re-export them all so a consumer keeps importing any DTO
@@ -97,7 +97,8 @@ export const IPC = {
     dailySpend: 'plugin:daily-spend',
     rowDailySpend: 'plugin:row-daily-spend',
     ledger: 'plugin:ledger',
-    overview: 'plugin:overview'
+    overview: 'plugin:overview',
+    people: 'plugin:people'
   },
   files: {
     folderGet: 'folder:get',
@@ -282,6 +283,9 @@ export type ButinApi = {
     // null when nothing is recorded yet.
     ledger: (pluginId: string, capabilityId: string) => Promise<Ledger | null>
     overview: () => Promise<OverviewTileDto[]>
+    // The cross-service People rollup: every cached members roster merged by email into one renderable
+    // result. Reads cached reports only. null when no service has members data yet.
+    people: () => Promise<PeopleDto>
   }
   files: {
     // Resolve / pick / reveal one of a service's local folders. `folderPick` only targets the documents folder.

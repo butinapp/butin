@@ -93,8 +93,9 @@ type RowExpand<Row> = {
   toggle: (id: string) => void
 }
 
-// First entry is the default selection (see pageSize seeding below).
 const DEFAULT_PAGE_SIZES = [15, 25, 50, 100]
+// The page size a table opens at when nothing is saved (see pageSize seeding below).
+const DEFAULT_PAGE_SIZE = 25
 
 // Generic, headless, theme-portable table. TanStack owns sorting/column-order/visibility/pagination;
 // selection (external Set) and grouping (manual collapsible sections over the sorted rows) are layered
@@ -163,7 +164,9 @@ export const DataTable = <Row,>({
       sorting: (seed.sort ? [{ id: seed.sort.key, desc: seed.sort.dir === 'desc' }] : []) as SortingState,
       columnOrder: (seed.columnOrder ?? []) as ColumnOrderState,
       columnVisibility: (seed.columnVisibility ?? {}) as VisibilityState,
-      pageSize: seed.pageSize ?? pageSizes[0] ?? 15
+      pageSize:
+        seed.pageSize ??
+        (pageSizes.includes(DEFAULT_PAGE_SIZE) ? DEFAULT_PAGE_SIZE : (pageSizes[0] ?? DEFAULT_PAGE_SIZE))
     }),
     [seed, pageSizes]
   )

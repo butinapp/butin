@@ -1,4 +1,4 @@
-import type { MonthPoint, Summary } from '@butinapp/sdk/data'
+import type { CapabilityResult, MonthPoint, Summary } from '@butinapp/sdk/data'
 import type { DailyPoint } from '@butinapp/shapes'
 
 // One home tile: a plugin's identity, connection state, and primary metric (if any cached). Built from
@@ -32,3 +32,8 @@ export type OverviewTileDto = {
 }
 
 export type StoredReport = { lastRunAt: string; data: unknown } | null
+
+// The People page payload: every cached members roster merged by email into one renderable result
+// (people table + per-service access child), plus its headline counts. Built from cached reports only —
+// never runs a collector. null when no service has members data yet.
+export type PeopleDto = { result: CapabilityResult; people: number; services: number } | null

@@ -76,6 +76,18 @@ test('shows a Settings action only when onOpenSettings is given, firing it + onN
   expect(onNavigate).toHaveBeenCalledOnce()
 })
 
+test('shows People only when showPeople is set, emitting its target on click', async () => {
+  const { onSelect } = renderSidebar()
+
+  expect(screen.queryByRole('button', { name: 'People' })).not.toBeInTheDocument()
+
+  const withPeople = renderSidebar({ showPeople: true })
+
+  await userEvent.click(screen.getByRole('button', { name: 'People' }))
+  expect(withPeople.onSelect).toHaveBeenCalledWith({ kind: 'people' })
+  expect(onSelect).not.toHaveBeenCalled()
+})
+
 test('emits the matching target on click and runs onNavigate after', async () => {
   const onNavigate = vi.fn()
   const { onSelect } = renderSidebar({ onNavigate })

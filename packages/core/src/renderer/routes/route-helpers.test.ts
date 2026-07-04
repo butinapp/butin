@@ -23,6 +23,10 @@ describe('activeFromPath', () => {
     expect(activeFromPath('/management')).toEqual({ kind: 'management' })
   })
 
+  it('maps people', () => {
+    expect(activeFromPath('/people')).toEqual({ kind: 'people' })
+  })
+
   it('maps developer', () => {
     expect(activeFromPath('/developer')).toEqual({ kind: 'developer' })
   })

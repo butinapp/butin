@@ -1,4 +1,4 @@
-import { Database, LayoutGrid, Search, Settings, Wrench } from 'lucide-react'
+import { Database, LayoutGrid, Search, Settings, Users, Wrench } from 'lucide-react'
 import { useState } from 'react'
 
 import { useLabels } from '../../i18n/index.js'
@@ -29,6 +29,7 @@ export interface SidebarService {
 // drives the active highlight. One shape, one discriminant, so the two roles can never drift apart.
 export type SidebarTarget =
   | { kind: 'overview' }
+  | { kind: 'people' }
   | { kind: 'management' }
   | { kind: 'developer' }
   | { kind: 'service'; serviceId: string }
@@ -55,6 +56,7 @@ export const Sidebar = ({
   onNavigate,
   onOpenSettings,
   showManagement = true,
+  showPeople = false,
   showDeveloper = true
 }: {
   services: SidebarService[]
@@ -67,6 +69,9 @@ export const Sidebar = ({
   // The Management link is app chrome (connection health + actions). An offline embed (the viewer) has
   // nothing to manage, so it hides it.
   showManagement?: boolean
+  // The People page (cross-service access audit) is app chrome backed by IPC — hosts that have it opt in;
+  // an offline embed leaves it hidden.
+  showPeople?: boolean
   // The Developer link (Logs · Cookie Jar · Tools) is a dev-mode/power-user surface — the host gates it on
   // its dev-mode setting, and an offline embed (the viewer) hides it.
   showDeveloper?: boolean
@@ -140,7 +145,7 @@ export const Sidebar = ({
         )}
       </div>
 
-      {showManagement || showDeveloper || onOpenSettings ? (
+      {showManagement || showPeople || showDeveloper || onOpenSettings ? (
         <div className="space-y-0.5 border-t pt-2">
           <div className="text-muted-foreground px-2 pb-1 text-[10px] font-medium tracking-wider uppercase">
             {t.systemHeading}
@@ -149,6 +154,12 @@ export const Sidebar = ({
             <button className={rowClass(active.kind === 'management')} onClick={() => go({ kind: 'management' })}>
               <Database className="size-4 shrink-0" />
               {t.navManagement}
+            </button>
+          ) : null}
+          {showPeople ? (
+            <button className={rowClass(active.kind === 'people')} onClick={() => go({ kind: 'people' })}>
+              <Users className="size-4 shrink-0" />
+              {t.navPeople}
             </button>
           ) : null}
           {showDeveloper ? (
