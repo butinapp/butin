@@ -1,7 +1,20 @@
 {
   "name": "@butinapp/ui",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Butin's embeddable, theme-portable design system + the generic data-view renderer (DashboardRenderer, Overview, app shell). Pure, prop-driven, no Electron. Ships theme.css; a Tailwind host generates the utilities.",
+  "homepage": "https://butin.app",
+  "bugs": "https://github.com/butinapp/butin/issues",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/butinapp/butin.git",
+    "directory": "packages/ui"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
@@ -11,7 +24,36 @@
     "./i18n": "./src/i18n/index.ts",
     "./theme.css": "./src/theme.css"
   },
+  "publishConfig": {
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./primitives": {
+        "types": "./dist/primitives.d.ts",
+        "import": "./dist/primitives.js"
+      },
+      "./dashboard": {
+        "types": "./dist/dashboard.d.ts",
+        "import": "./dist/dashboard.js"
+      },
+      "./shell": {
+        "types": "./dist/shell.d.ts",
+        "import": "./dist/shell.js"
+      },
+      "./i18n": {
+        "types": "./dist/i18n/index.d.ts",
+        "import": "./dist/i18n/index.js"
+      },
+      "./theme.css": "./dist/theme.css"
+    },
+    "access": "public"
+  },
   "scripts": {
+    "build": "tsgo -p tsconfig.build.json && node scripts/copy-assets.mjs",
+    "prepack": "pnpm build",
     "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "vitest run"
   },

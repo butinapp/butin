@@ -1,0 +1,68 @@
+name: Publish npm
+
+# Publish the library graph (@butinapp/sdk → shapes → ui) to npm whenever the lockstep version — anchored on
+# packages/sdk/package.json — changes on master. The three move together; bump all three, commit, push. Only these
+# three packages are non-private, so `pnpm -r publish` targets exactly them, in dependency order. The check job
+# no-ops if the version is already on npm. A manual run is a dry run (build + pack, never publishes).
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - packages/sdk/package.json
+      - packages/shapes/package.json
+      - packages/ui/package.json
+  workflow_dispatch:
+
+concurrency:
+  group: publish-npm-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      skip: ${{ steps.ver.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: ver
+        run: |
+          VERSION=$(node -p "require('./packages/sdk/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if npm view "@butinapp/sdk@$VERSION" version >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    needs: check
+    # A manual run always proceeds as a dry run; a push publishes only when the version is new.
+    if: github.event_name == 'workflow_dispatch' || needs.check.outputs.skip == 'false'
+    runs-on: ubuntu-latest
+    # Publish behind a protected Environment: in repo settings add a required-reviewer rule and scope NPM_TOKEN
+    # to this environment, so every publish needs human approval and no other workflow can read the token.
+    # NPM_TOKEN should be a GRANULAR, @butinapp-scoped, publish-only, short-expiry token — not a classic
+    # automation token. Target state once the repo is public: OIDC trusted publishing (no stored token,
+    # short-lived credentials, provenance) — drop this token + secret then.
+    environment: npm-publish
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.15.0
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @butinapp/sdk --filter @butinapp/shapes --filter @butinapp/ui build
+      - name: Publish (dry run on manual dispatch)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          DRY=""
+          if [ "${{ github.event_name }}" != "push" ]; then DRY="--dry-run"; fi
+          pnpm -r publish --access public --no-git-checks $DRY

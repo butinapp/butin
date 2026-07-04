@@ -1,8 +1,22 @@
 {
   "name": "@butinapp/sdk",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "The Butin plugin-authoring contract: descriptor types, the data-view result contract, presets, and edge utilities.",
+  "homepage": "https://butin.app",
+  "bugs": "https://github.com/butinapp/butin/issues",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/butinapp/butin.git",
+    "directory": "packages/sdk"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
   "type": "module",
+  "sideEffects": false,
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
@@ -14,7 +28,47 @@
     "./libs": "./src/libs.ts",
     "./schema": "./src/schema.ts"
   },
+  "publishConfig": {
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./data": {
+        "types": "./dist/data/index.d.ts",
+        "import": "./dist/data/index.js"
+      },
+      "./presets": {
+        "types": "./dist/presets/index.d.ts",
+        "import": "./dist/presets/index.js"
+      },
+      "./integrations": {
+        "types": "./dist/integrations/index.d.ts",
+        "import": "./dist/integrations/index.js"
+      },
+      "./util": {
+        "types": "./dist/util/index.d.ts",
+        "import": "./dist/util/index.js"
+      },
+      "./testing": {
+        "types": "./dist/testing/index.d.ts",
+        "import": "./dist/testing/index.js"
+      },
+      "./libs": {
+        "types": "./dist/libs.d.ts",
+        "import": "./dist/libs.js"
+      },
+      "./schema": {
+        "types": "./dist/schema.d.ts",
+        "import": "./dist/schema.js"
+      }
+    },
+    "access": "public"
+  },
   "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "prepack": "tsgo -p tsconfig.build.json",
     "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "vitest run"
   },

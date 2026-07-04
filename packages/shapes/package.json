@@ -1,14 +1,44 @@
 {
   "name": "@butinapp/shapes",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Butin's host-layer data shapes built on the @butinapp/sdk data-view contract: the cross-service Overview input, the persisted ledger, the presentation manifest, and the portable export-bundle wire format.",
+  "homepage": "https://butin.app",
+  "bugs": "https://github.com/butinapp/butin/issues",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/butinapp/butin.git",
+    "directory": "packages/shapes"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
   "type": "module",
+  "sideEffects": false,
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
     "./bundle": "./src/bundle.ts"
   },
+  "publishConfig": {
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./bundle": {
+        "types": "./dist/bundle.d.ts",
+        "import": "./dist/bundle.js"
+      }
+    },
+    "access": "public"
+  },
   "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "prepack": "tsgo -p tsconfig.build.json",
     "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "vitest run"
   },
