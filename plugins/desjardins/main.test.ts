@@ -1,3 +1,4 @@
+import type { CollectContext } from '@butinapp/sdk'
 import {
   resolveCurrencies,
   validateCapabilityResult,
@@ -11,6 +12,7 @@ import {
   type DesjComptesResponse,
   desjardinsPlugin,
   encodeSignedForBody,
+  fetchAllStatements,
   parseCards,
   parseHoldings,
   parseStatements,
@@ -286,6 +288,52 @@ test('buildStatementsTable dedupes the same statement returned by two adjacent y
 
   expect(rows).toHaveLength(3)
   expect(rows.filter((r) => r.date === '2026-05-28')).toHaveLength(1)
+})
+
+test('fetchAllStatements honours ctx.since — stops the back-scan below the watermark year and stamps statementId', async () => {
+  const requestedYears: number[] = []
+  const client = {
+    post: async (_url: string, body: { dateDebut: string }) => {
+      const year = Number(body.dateDebut.slice(0, 4))
+
+      requestedYears.push(year)
+
+      // A non-empty result every year keeps the scan going purely off the since-watermark, not the
+      // consecutive-empty-years heuristic.
+      return {
+        sommaireRelevesListe: [
+          { numeroCompteJeton: '000000A000000000', dateReleve: `${year}-06-01`, typeReleve: 'Individuel' }
+        ]
+      }
+    }
+  }
+  const ctx = { client, since: '2024-01-01', log: () => undefined } as unknown as CollectContext
+
+  const statements = await fetchAllStatements(ctx, CARDS)
+
+  expect(Math.min(...requestedYears)).toBe(2024)
+  expect(requestedYears).not.toContain(2023)
+  expect(statements.every((s) => s.statementId === `${s.numeroCompteJeton}|${s.dateReleve}|${s.typeReleve}`)).toBe(true)
+})
+
+test('fetchAllStatements walks every year back to CC_MIN_YEAR when ctx.since is undefined', async () => {
+  let calls = 0
+  const client = {
+    // Empty every year — the scan runs purely off CC_MIN_YEAR / the empty-years heuristic (disabled here by
+    // returning empty every time up to a bounded call count, since a real run would stop after 3 empties).
+    post: async () => {
+      calls++
+
+      return { sommaireRelevesListe: [] }
+    }
+  }
+  const ctx = { client, since: undefined, log: () => undefined } as unknown as CollectContext
+
+  await fetchAllStatements(ctx, CARDS)
+
+  // Stops after CC_MAX_EMPTY_YEARS (3) consecutive empty years, not immediately — proves no since-watermark
+  // short-circuited the walk.
+  expect(calls).toBe(3)
 })
 
 test('buildStatementsTable skips statements whose card (signed token) is unknown', () => {

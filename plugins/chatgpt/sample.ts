@@ -5,31 +5,46 @@
 // matching the wire; the build normalizes cents→major. `created` is epoch SECONDS.
 
 import type { SampleConfig, SampleGen } from '@butinapp/sdk/testing'
+import { epochSecDay } from '@butinapp/sdk/util'
 
-import type { RawChatgptBilling, RawChatgptUsage, RawWorkspaceBundle, WorkspaceMember } from './main.js'
+import type {
+  FlatChatgptInvoice,
+  RawChatgptBilling,
+  RawChatgptUsage,
+  RawWorkspaceBundle,
+  WorkspaceMember
+} from './main.js'
 
 // A recurring seat-cycle charge each month so the Summary monthly chart and the Billing invoice history both
-// populate; the most recent charge is what currentMtd reports.
-const sampleInvoices = (g: SampleGen, count: number): NonNullable<RawWorkspaceBundle['invoices']['data']> =>
-  g.repeat(count, (i) => ({
-    id: g.id('in'),
-    number: g.seqId('EX-', count - i),
-    created: g.monthsAgo(i).startEpochSec,
-    total: g.amountCents(900, 1_400), // cents
-    currency: 'usd',
-    status: 'paid',
-    billing_reason: 'subscription_cycle',
-    hosted_invoice_url: g.url('inv', g.id('h')),
-    invoice_pdf: `https://example.invalid/inv/${g.id('p')}.pdf`
-  }))
+// populate; the most recent charge is what currentMtd reports. Invoices are top-level and carry the owning
+// `accountId` + their ISO day (as the live fetch stamps them), so the incremental union keys off Stripe id.
+const sampleInvoices = (g: SampleGen, accountId: string, count: number): FlatChatgptInvoice[] =>
+  g.repeat(count, (i) => {
+    const created = g.monthsAgo(i).startEpochSec
+
+    return {
+      id: g.id('in'),
+      number: g.seqId('EX-', count - i),
+      created,
+      total: g.amountCents(900, 1_400), // cents
+      currency: 'usd',
+      status: 'paid',
+      billing_reason: 'subscription_cycle',
+      hosted_invoice_url: g.url('inv', g.id('h')),
+      invoice_pdf: `https://example.invalid/inv/${g.id('p')}.pdf`,
+      accountId,
+      createdIso: epochSecDay(created) ?? ''
+    }
+  })
 
 export const sampleChatgptBilling = (g: SampleGen, config: SampleConfig): RawChatgptBilling => {
   const company = g.company()
   const seatsEntitled = g.int(40, 100)
   const seatsInUse = g.int(20, seatsEntitled)
   const addr = g.address()
+  const accountId = g.id('acc')
   const workspace: RawWorkspaceBundle = {
-    accountId: g.id('acc'),
+    accountId,
     name: `${company} Workspace`,
     planType: 'team',
     subscription: {
@@ -74,11 +89,14 @@ export const sampleChatgptBilling = (g: SampleGen, config: SampleConfig): RawCha
           grant_type: 'auto_recharge_credit'
         }
       ]
-    },
-    invoices: { data: sampleInvoices(g, Math.min(config.documents, 36)) }
+    }
   }
 
-  return { bundles: [workspace], capturedAt: g.pastDate(0) }
+  return {
+    bundles: [workspace],
+    invoices: sampleInvoices(g, accountId, Math.min(config.documents, 36)),
+    capturedAt: g.pastDate(0)
+  }
 }
 
 // The full workspace seat roster — Members renders it directly; Usage joins the Codex leaderboard onto it by id.

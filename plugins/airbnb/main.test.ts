@@ -1,3 +1,4 @@
+import { type CollectContext } from '@butinapp/sdk'
 import { resolveCurrencies, validateCapabilityResult } from '@butinapp/sdk/data'
 import { round2 } from '@butinapp/sdk/util'
 import { expect, test } from 'vitest'
@@ -8,6 +9,7 @@ import {
   buildAirbnbTaxDocuments,
   buildAirbnbTransactions,
   extractUserId,
+  fetchAirbnbTransactions,
   type RawAirbnbSummary,
   type RawProductTransaction,
   type RawTaxDocument
@@ -92,6 +94,64 @@ test('buildAirbnbTransactions builds a keyed table sorted by check-in', () => {
     amount: 552.9,
     nights: 2
   })
+})
+
+test('fetchAirbnbTransactions fully re-walks upcoming rows but stops the paid walk at ctx.since', async () => {
+  const cookie = '_user_attributes=%7B%22id%22%3A100000001%2C%22id_str%22%3A%22100000001%22%7D'
+  const row = (token: string, startDate: string): RawProductTransaction => ({ token, startDate })
+  const upcoming = [row('u1', '2026-08-01')]
+  const paidPage1 = Array.from({ length: 50 }, (_, i) => row(`p1-${i}`, '2026-06-20'))
+  const paidPage2 = Array.from({ length: 50 }, (_, i) => row(`p2-${i}`, '2026-05-01'))
+  const paidPage3 = [row('p3', '2026-01-01')]
+  let paidPage3Requested = false
+
+  const client = {
+    get: async (url: string) => {
+      const vars = JSON.parse(new URL(url).searchParams.get('variables')!) as {
+        input: {
+          metaOptions: { paginationToken: string | null }
+          productTransactionFilters: { reconciled: boolean }
+        }
+      }
+      const { reconciled } = vars.input.productTransactionFilters
+      const token = vars.input.metaOptions.paginationToken
+      const page = (productTransactions: RawProductTransaction[], paginationToken: string | null) => ({
+        data: { payout_transaction_history: { fetchProductTransactions: { productTransactions, paginationToken } } }
+      })
+
+      if (!reconciled) {
+        return page(upcoming, null)
+      }
+
+      if (token === null) {
+        return page(paidPage1, 'page2')
+      }
+
+      if (token === 'page2') {
+        return page(paidPage2, 'page3')
+      }
+
+      paidPage3Requested = true
+
+      return page(paidPage3, null)
+    }
+  }
+  const ctx = {
+    client,
+    creds: { get: () => cookie },
+    since: '2026-06-01',
+    log: () => undefined
+  } as unknown as CollectContext
+
+  const rows = await fetchAirbnbTransactions(ctx)
+
+  // the paid walk stops after the whole-below-since page 2, never requesting page 3
+  expect(paidPage3Requested).toBe(false)
+  expect(rows.filter((r) => r.id.startsWith('p1'))).toHaveLength(50)
+  expect(rows.filter((r) => r.id.startsWith('p2'))).toHaveLength(50)
+  // upcoming is fully fetched regardless of since
+  expect(rows.some((r) => r.id === 'u1')).toBe(true)
+  expect(rows.every((r) => r.id === (r.token ?? r.allocationToken ?? ''))).toBe(true)
 })
 
 test('buildAirbnbTaxDocuments lists documents newest-year first', () => {

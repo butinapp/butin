@@ -85,7 +85,10 @@ export const githubEnterprisePlugin = definePlugin({
       label: 'Billing',
       fetch: loadGithubBilling,
       build: buildGithubBilling,
-      sample: sampleGithubBilling
+      sample: sampleGithubBilling,
+      // Payment history is the only thing worth walking incrementally here — the other billing surfaces
+      // (usage, license, contacts) are cheap point-in-time reads with no history to page through.
+      incremental: { listKey: 'payments', id: 'id', timestamp: 'timestamp', window: { days: 45 } }
     }),
     defineCapability({
       id: 'usage',

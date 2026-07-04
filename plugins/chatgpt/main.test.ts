@@ -1,4 +1,6 @@
+import type { CollectContext } from '@butinapp/sdk'
 import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
+import { epochSecDay } from '@butinapp/sdk/util'
 import { describe, expect, it, test } from 'vitest'
 
 import {
@@ -11,7 +13,10 @@ import {
   chatgptPlugin,
   CODEX_CREDIT_USD,
   codexCreditsToUsd,
+  type FlatChatgptInvoice,
+  type RawChatgptBilling,
   type RawCodexBundle,
+  type RawInvoice,
   type RawWorkspaceBundle,
   type WorkspaceMember
 } from './main.js'
@@ -71,38 +76,44 @@ const bundle: RawWorkspaceBundle = {
         grant_type: 'auto_recharge_credit'
       }
     ]
-  },
-  invoices: {
-    data: [
-      {
-        id: 'in_2',
-        number: 'EX-0050',
-        created: 1780939906, // 2026-06-08
-        total: 105029, // cents → $1050.29
-        currency: 'usd',
-        status: 'paid',
-        billing_reason: 'manual',
-        hosted_invoice_url: 'https://invoice.example.com/x',
-        invoice_pdf: 'https://invoice.example.com/x/pdf'
-      },
-      {
-        id: 'in_1',
-        number: 'EX-0049',
-        created: 1778347906, // 2026-05-09
-        total: 50000, // cents → $500
-        currency: 'usd',
-        status: 'paid',
-        billing_reason: 'subscription_cycle'
-      }
-    ]
   }
 }
+
+// The invoice history is now a top-level id-keyed list stamped with the owning accountId + ISO day (as the live
+// fetch hoists it). buildWorkspaceBilling regroups by accountId, so the render is identical to the old per-
+// bundle shape.
+const invoices: FlatChatgptInvoice[] = [
+  {
+    id: 'in_2',
+    accountId: 'acc-1',
+    createdIso: '2026-06-08',
+    number: 'EX-0050',
+    created: 1780939906, // 2026-06-08
+    total: 105029, // cents → $1050.29
+    currency: 'usd',
+    status: 'paid',
+    billing_reason: 'manual',
+    hosted_invoice_url: 'https://invoice.example.com/x',
+    invoice_pdf: 'https://invoice.example.com/x/pdf'
+  },
+  {
+    id: 'in_1',
+    accountId: 'acc-1',
+    createdIso: '2026-05-09',
+    number: 'EX-0049',
+    created: 1778347906, // 2026-05-09
+    total: 50000, // cents → $500
+    currency: 'usd',
+    status: 'paid',
+    billing_reason: 'subscription_cycle'
+  }
+]
 
 const CAPTURED = '2026-06-09T18:00:00.000Z'
 
 describe('buildWorkspaceBilling', () => {
   it('normalizes the subscription incl. seat-type split', () => {
-    const w = buildWorkspaceBilling([bundle], CAPTURED).workspaces[0]!
+    const w = buildWorkspaceBilling([bundle], invoices, CAPTURED).workspaces[0]!
 
     expect(w.name).toBe('Acme Workspace')
     expect(w.subscription.seatsInUse).toBe(67)
@@ -113,7 +124,7 @@ describe('buildWorkspaceBilling', () => {
   })
 
   it('normalizes the credit balance from the first grant (dollar strings, not cents)', () => {
-    const c = buildWorkspaceBilling([bundle], CAPTURED).workspaces[0]!.credit
+    const c = buildWorkspaceBilling([bundle], invoices, CAPTURED).workspaces[0]!.credit
 
     expect(c).not.toBeNull()
     expect(c!.balance).toBeCloseTo(11944.69, 2)
@@ -123,7 +134,7 @@ describe('buildWorkspaceBilling', () => {
   })
 
   it('converts invoice totals from cents to dollars, newest first', () => {
-    const inv = buildWorkspaceBilling([bundle], CAPTURED).workspaces[0]!.invoices
+    const inv = buildWorkspaceBilling([bundle], invoices, CAPTURED).workspaces[0]!.invoices
 
     expect(inv).toHaveLength(2)
     expect(inv[0]).toMatchObject({ number: 'EX-0050', amount: 1050.29, status: 'paid', date: '2026-06-08' })
@@ -131,7 +142,7 @@ describe('buildWorkspaceBilling', () => {
   })
 
   it('picks the default payment method (not just the first) and formats the billing contact', () => {
-    const w = buildWorkspaceBilling([bundle], CAPTURED).workspaces[0]!
+    const w = buildWorkspaceBilling([bundle], invoices, CAPTURED).workspaces[0]!
 
     expect(w.paymentMethod).toEqual({ brand: 'mastercard', last4: '2728', expMonth: 5, expYear: 2028 })
     expect(w.billingContact?.name).toBe('Acme Technologies, Inc.')
@@ -140,28 +151,43 @@ describe('buildWorkspaceBilling', () => {
 
   it('reports MTD as the sum of the current (captured) month invoices only', () => {
     // Captured 2026-06: only the 2026-06-08 invoice ($1050.29) counts; the 2026-05 one ($500) is prior.
-    expect(buildWorkspaceBilling([bundle], CAPTURED).currentMtd).toBeCloseTo(1050.29, 2)
+    expect(buildWorkspaceBilling([bundle], invoices, CAPTURED).currentMtd).toBeCloseTo(1050.29, 2)
   })
 
   it('zeroes void/uncollectible invoices for spend but keeps them in the list', () => {
-    const withVoid: RawWorkspaceBundle = {
-      ...bundle,
-      invoices: {
-        data: [
-          { id: 'in_v', number: 'EX-0051', created: 1781109811, total: 42013, currency: 'usd', status: 'void' },
-          {
-            id: 'in_u',
-            number: 'EX-0052',
-            created: 1781200000,
-            total: 10000,
-            currency: 'usd',
-            status: 'uncollectible'
-          },
-          { id: 'in_p', number: 'EX-0053', created: 1781300000, total: 50000, currency: 'usd', status: 'paid' }
-        ]
+    const voidInvoices: FlatChatgptInvoice[] = [
+      {
+        id: 'in_v',
+        accountId: 'acc-1',
+        createdIso: '2026-06-10',
+        number: 'EX-0051',
+        created: 1781109811,
+        total: 42013,
+        currency: 'usd',
+        status: 'void'
+      },
+      {
+        id: 'in_u',
+        accountId: 'acc-1',
+        createdIso: '2026-06-11',
+        number: 'EX-0052',
+        created: 1781200000,
+        total: 10000,
+        currency: 'usd',
+        status: 'uncollectible'
+      },
+      {
+        id: 'in_p',
+        accountId: 'acc-1',
+        createdIso: '2026-06-12',
+        number: 'EX-0053',
+        created: 1781300000,
+        total: 50000,
+        currency: 'usd',
+        status: 'paid'
       }
-    }
-    const inv = buildWorkspaceBilling([withVoid], CAPTURED).workspaces[0]!.invoices
+    ]
+    const inv = buildWorkspaceBilling([bundle], voidInvoices, CAPTURED).workspaces[0]!.invoices
 
     expect(inv).toHaveLength(3)
     const byNumber = new Map(inv.map((i) => [i.number, i]))
@@ -172,35 +198,42 @@ describe('buildWorkspaceBilling', () => {
   })
 
   it('keeps negative proration adjustments at face value', () => {
-    const withCredit: RawWorkspaceBundle = {
-      ...bundle,
-      invoices: {
-        data: [
-          {
-            id: 'in_c',
-            created: 1781109811,
-            total: -24969,
-            currency: 'usd',
-            status: 'paid',
-            billing_reason: 'subscription_update'
-          }
-        ]
+    const creditInvoices: FlatChatgptInvoice[] = [
+      {
+        id: 'in_c',
+        accountId: 'acc-1',
+        createdIso: '2026-06-10',
+        created: 1781109811,
+        total: -24969,
+        currency: 'usd',
+        status: 'paid',
+        billing_reason: 'subscription_update'
       }
-    }
+    ]
 
-    expect(buildWorkspaceBilling([withCredit], CAPTURED).workspaces[0]!.invoices[0]!.amount).toBeCloseTo(-249.69, 2)
+    expect(buildWorkspaceBilling([bundle], creditInvoices, CAPTURED).workspaces[0]!.invoices[0]!.amount).toBeCloseTo(
+      -249.69,
+      2
+    )
   })
 
   it('aggregates MTD + invoices across multiple workspaces', () => {
-    const second: RawWorkspaceBundle = {
-      ...bundle,
-      accountId: 'acc-2',
-      name: 'Second WS',
-      invoices: {
-        data: [{ id: 'in_w2', number: 'EX-0060', created: 1780939906, total: 20000, currency: 'usd', status: 'paid' }]
+    const second: RawWorkspaceBundle = { ...bundle, accountId: 'acc-2', name: 'Second WS' }
+    // The flat list spans both accounts; each bundle picks up only its own invoices by accountId.
+    const combined: FlatChatgptInvoice[] = [
+      ...invoices,
+      {
+        id: 'in_w2',
+        accountId: 'acc-2',
+        createdIso: '2026-06-08',
+        number: 'EX-0060',
+        created: 1780939906,
+        total: 20000,
+        currency: 'usd',
+        status: 'paid'
       }
-    }
-    const r = buildWorkspaceBilling([bundle, second], CAPTURED)
+    ]
+    const r = buildWorkspaceBilling([bundle, second], combined, CAPTURED)
 
     expect(r.workspaces).toHaveLength(2)
     // acc-1 June invoice $1050.29 + acc-2 June invoice $200.
@@ -214,10 +247,9 @@ describe('buildWorkspaceBilling', () => {
       planType: 'team',
       subscription: { plan_type: 'team', seats_in_use: 1, seats_entitled: 1 },
       seatTypeCounts: {},
-      remainingBalance: {},
-      invoices: {}
+      remainingBalance: {}
     }
-    const w = buildWorkspaceBilling([minimal], CAPTURED).workspaces[0]!
+    const w = buildWorkspaceBilling([minimal], [], CAPTURED).workspaces[0]!
 
     expect(w.credit).toBeNull()
     expect(w.paymentMethod).toBeNull()
@@ -227,10 +259,8 @@ describe('buildWorkspaceBilling', () => {
   })
 
   it('reports 0 MTD when nothing was charged this month', () => {
-    const r = buildWorkspaceBilling(
-      [{ ...bundle, invoices: { data: [bundle.invoices.data![1]!] } }], // only the May invoice
-      CAPTURED
-    )
+    // Only the May invoice — prior to the captured June month.
+    const r = buildWorkspaceBilling([bundle], [invoices[1]!], CAPTURED)
 
     expect(r.currentMtd).toBe(0)
   })
@@ -238,7 +268,7 @@ describe('buildWorkspaceBilling', () => {
 
 describe('buildChatgptSummaryResult', () => {
   it('is a LEAN summary: spend.mtd + headline stat cards + monthly spark, no detail tables', () => {
-    const result = buildChatgptSummaryResult(buildWorkspaceBilling([bundle], CAPTURED))
+    const result = buildChatgptSummaryResult(buildWorkspaceBilling([bundle], invoices, CAPTURED))
 
     expect(validateCapabilityResult(result)).toEqual([])
     expect(result.summaries?.[0]?.section).toBe('spend')
@@ -263,10 +293,9 @@ describe('buildChatgptSummaryResult', () => {
       planType: 'team',
       subscription: { plan_type: 'team', seats_in_use: 0, seats_entitled: 0 },
       seatTypeCounts: {},
-      remainingBalance: {},
-      invoices: {}
+      remainingBalance: {}
     }
-    const result = buildChatgptSummaryResult(buildWorkspaceBilling([empty], CAPTURED))
+    const result = buildChatgptSummaryResult(buildWorkspaceBilling([empty], [], CAPTURED))
 
     expect(validateCapabilityResult(result)).toEqual([])
     expect(result.summaries?.[0]).toMatchObject({ section: 'spend', value: 0 })
@@ -275,7 +304,7 @@ describe('buildChatgptSummaryResult', () => {
 
 describe('buildChatgptBillingTab', () => {
   it('is the DETAIL tab: account keyvalue + downloadable invoices fileTable, no spend.mtd summary', () => {
-    const result = buildChatgptBillingTab(buildWorkspaceBilling([bundle], CAPTURED))
+    const result = buildChatgptBillingTab(buildWorkspaceBilling([bundle], invoices, CAPTURED))
 
     expect(validateCapabilityResult(result)).toEqual([])
     // The detail tab carries NO rollup summary (the headline + chart live on Summary).
@@ -308,10 +337,9 @@ describe('buildChatgptBillingTab', () => {
       planType: 'team',
       subscription: { plan_type: 'team', seats_in_use: 0, seats_entitled: 0 },
       seatTypeCounts: {},
-      remainingBalance: {},
-      invoices: {}
+      remainingBalance: {}
     }
-    const result = buildChatgptBillingTab(buildWorkspaceBilling([empty], CAPTURED))
+    const result = buildChatgptBillingTab(buildWorkspaceBilling([empty], [], CAPTURED))
 
     expect(validateCapabilityResult(result)).toEqual([])
     expect(result.datasets.find((d) => d.id === 'accountInfo')).toBeUndefined()
@@ -460,6 +488,73 @@ describe('buildChatgptMembersResult', () => {
 
     expect(validateCapabilityResult(result)).toEqual([])
     expect((result.datasets.find((d) => d.id === 'members') as { rows: unknown[] }).rows).toEqual([])
+  })
+})
+
+// ── incremental billing fetch ─────────────────────────────────────────────────────────
+
+const billingCapability = () => chatgptPlugin.capabilities.find((c) => c.id === 'billing')!
+
+describe('billing incremental fetch', () => {
+  it('declares the top-level flat invoice list as its incremental key', () => {
+    expect(billingCapability().incremental).toMatchObject({ listKey: 'invoices', id: 'id', timestamp: 'createdIso' })
+    // summary shares the fetch but is NOT incremental — it always renders the full history.
+    expect(chatgptPlugin.capabilities.find((c) => c.id === 'summary')!.incremental).toBeUndefined()
+  })
+
+  it('stops the invoice cursor walk once a page is entirely older than ctx.since, and stamps accountId/createdIso', async () => {
+    // Newest-first pages: page 0 is inside the since window, page 1 is entirely older (→ stop), page 2 must
+    // never be fetched.
+    const pages: RawInvoice[][] = [
+      [
+        { id: 'in_new1', created: 1780939906, total: 100 }, // 2026-06-08
+        { id: 'in_new2', created: 1781000000, total: 100 } // 2026-06-09
+      ],
+      [
+        { id: 'in_old1', created: 1775000000, total: 100 }, // 2026-04
+        { id: 'in_old2', created: 1774000000, total: 100 } // 2026-04
+      ],
+      [{ id: 'in_never', created: 1770000000, total: 100 }] // must NOT be reached
+    ]
+    let invoicePage = 0
+    const client = {
+      get: async (url: string) => {
+        if (url.includes('/backend-api/accounts/check')) {
+          return {
+            accounts: {
+              w1: { account: { account_id: 'acc-1', name: 'WS', structure: 'workspace', plan_type: 'team' } }
+            }
+          }
+        }
+
+        if (url.includes('/backend-api/invoices')) {
+          const data = pages[invoicePage] ?? []
+
+          invoicePage += 1
+
+          // has_more stays true so only the since watermark stops the walk (not a natural end-of-cursor).
+          return { data, has_more: true }
+        }
+
+        return {}
+      }
+    }
+    const ctx = { client, since: '2026-05-01' } as unknown as CollectContext
+
+    const raw = (await billingCapability().incremental!.fetch(ctx)) as RawChatgptBilling
+
+    // Page 0 (in window) + page 1 (the older page that triggered the stop) were fetched; page 2 was not.
+    expect(invoicePage).toBe(2)
+    expect(raw.invoices.map((i) => i.id)).toEqual(['in_new1', 'in_new2', 'in_old1', 'in_old2'])
+
+    // Every hoisted invoice is stamped with its workspace + ISO day (= epochSecDay(created)).
+    for (const inv of raw.invoices) {
+      expect(inv.accountId).toBe('acc-1')
+      expect(inv.createdIso).toBe(epochSecDay(inv.created))
+    }
+
+    // The bundle no longer carries invoices — they live only on the top-level list.
+    expect(raw.bundles[0]).not.toHaveProperty('invoices')
   })
 })
 

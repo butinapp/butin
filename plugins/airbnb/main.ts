@@ -295,11 +295,15 @@ const fetchProductTransactionPage = async (
   return data?.payout_transaction_history?.fetchProductTransactions ?? null
 }
 
-const fetchAirbnbTransactions = async (ctx: CollectContext): Promise<RawProductTransaction[]> => {
+export const fetchAirbnbTransactions = async (
+  ctx: CollectContext
+): Promise<(RawProductTransaction & { id: string })[]> => {
   const userId = requireUserId(ctx)
-  const all: RawProductTransaction[] = []
+  const all: (RawProductTransaction & { id: string })[] = []
 
-  // reconciled:false = upcoming (scheduled) payouts, reconciled:true = the paid history — same endpoint.
+  // reconciled:false = upcoming (scheduled) payouts, reconciled:true = the paid history — same endpoint. Upcoming
+  // rows are future-dated and few, so they're always walked in full, ignoring ctx.since; core's watermark is
+  // min(newest kept, now-window), so it never clamps past the paid rows the walk below is stopping on.
   for (const reconciled of [false, true]) {
     let token: string | null = null
 
@@ -307,8 +311,13 @@ const fetchAirbnbTransactions = async (ctx: CollectContext): Promise<RawProductT
       const page = await fetchProductTransactionPage(ctx, userId, reconciled, token)
       const rows = page?.productTransactions ?? []
 
-      all.push(...rows)
+      all.push(...rows.map((r) => ({ ...r, id: r.token ?? r.allocationToken ?? '' })))
       token = page?.paginationToken ?? null
+
+      // Paid history only: once a whole page has aged below the watermark, older pages are already stored.
+      if (reconciled && ctx.since && rows.length > 0 && rows.every((r) => (r.startDate ?? '') < ctx.since!)) {
+        break
+      }
 
       if (rows.length < TRANSACTIONS_PAGE || !token) {
         break
@@ -319,8 +328,10 @@ const fetchAirbnbTransactions = async (ctx: CollectContext): Promise<RawProductT
   return all
 }
 
-// Pure transform — fixture-tested. Keyed by the allocation token so accumulation merges across fetches.
-export const buildAirbnbTransactions = (raw: RawProductTransaction[]): CapabilityResult => {
+// Pure transform — fixture-tested. Keyed by the allocation token so accumulation merges across fetches. The
+// param type carries the synthetic `id` fetchAirbnbTransactions stamps on each row (unused here) so it matches
+// the incremental raw shape the capability declares.
+export const buildAirbnbTransactions = (raw: (RawProductTransaction & { id?: string })[]): CapabilityResult => {
   const rows = raw
     .map((t) => ({
       date: t.startDate ?? null,
@@ -436,12 +447,15 @@ export const airbnbPlugin = definePlugin({
       build: buildAirbnbSummary,
       sample: sampleAirbnbSummary
     }),
-    defineCapability({
+    defineCapability<(RawProductTransaction & { id?: string })[]>({
       id: 'transactions',
       label: 'Transactions',
       fetch: fetchAirbnbTransactions,
       build: buildAirbnbTransactions,
-      sample: sampleAirbnbTransactions
+      sample: sampleAirbnbTransactions,
+      // The paid-history walk stops at ctx.since (see fetchAirbnbTransactions); upcoming rows are future-dated
+      // and always re-fetched in full regardless of the watermark.
+      incremental: { id: 'id', timestamp: 'startDate', window: { days: 30 } }
     }),
     defineCapability({
       id: 'taxDocuments',

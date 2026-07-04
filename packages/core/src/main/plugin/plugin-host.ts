@@ -40,12 +40,17 @@ const fetchIncremental = async (
 
   ctx.since = computeSince(prior, inc.timestamp, windowDays, new Date().toISOString())
 
-  const fetched = await wrapClearOnAuthError(plugin, ctx.creds, () => inc.fetch(ctx))()
-  const rows = mergeRawRows(prior, fetched, inc.id)
+  const raw = await wrapClearOnAuthError(plugin, ctx.creds, () => inc.fetch(ctx))()
+  // Bundle form: `raw` is `{ [listKey]: rows, ...other fields }` — union just the named sub-list.
+  const fetchedRows = inc.listKey
+    ? (((raw as Record<string, unknown>)[inc.listKey] as Record<string, unknown>[] | undefined) ?? [])
+    : (raw as Record<string, unknown>[])
+  const rows = mergeRawRows(prior, fetchedRows, inc.id)
 
   await writeRawUnion(pluginId, capabilityId, { key: inc.id, rows })
 
-  return inc.build(rows)
+  // Bundle form: rebuild the bundle with the full-history union in place of the fetched sub-list before build.
+  return inc.build(inc.listKey ? { ...(raw as object), [inc.listKey]: rows } : rows)
 }
 
 // Run one capability: build creds + authed client, fetch (incremental union/rebuild when the capability opts in,

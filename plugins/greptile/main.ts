@@ -201,6 +201,15 @@ export interface GreptileBilling {
 
 /** A period joined to the invoice fetched for it (null when no invoice / fetch failed). */
 export interface PeriodWithInvoice {
+  // Stable union key for incremental fetch: the Stripe invoiceId, or the CONSTANT `'open'` for the invoice-less
+  // current period. There is only ever one open period, so its id must stay constant across refreshes — at
+  // month rollover it finalizes under its own `invoiceId` and the new current period reuses the `'open'` slot,
+  // rather than orphaning a stale `open:<oldStartTime>` row the service never re-emits. Stripe invoice ids are
+  // always `in_...`, so `'open'` can't collide with one.
+  id: string
+  // Top-level copy of `period.startTime`, so core's incremental watermark can read it without reaching into
+  // the nested `period`. `buildGreptileBilling` still destructures `{ period, invoice }` and ignores this.
+  startTime?: string
   period: RawBillingPeriod
   invoice: RawUpcomingInvoice | null
 }
@@ -509,9 +518,12 @@ export interface GreptileBillingRaw {
   flex: RawFlexUsageStatus | null
 }
 
-// Summary + Billing share these four billing endpoints; both `fetch` calls hit fetchGreptileBilling, and the
-// core query cache dedupes the underlying reads.
-const fetchGreptileBilling = async (ctx: CollectContext<GreptileConfig>): Promise<GreptileBillingRaw> => {
+// Summary always wants every period (its monthly-paid trend spans all history); Billing opts into incremental
+// fetch (see the `billing` capability decl below), so its `ctx.since` is set on every run but the first —
+// `relevant` then keeps only the open period plus periods at/after the watermark, and core's stored union
+// retains the finalized periods this run omits. Returning an omitted period here (even with `invoice: null`)
+// would instead overwrite its stored invoice on merge, so filtering it OUT of the result is what preserves it.
+export const fetchGreptileBilling = async (ctx: CollectContext<GreptileConfig>): Promise<GreptileBillingRaw> => {
   const [periods, sub, costs, flex] = await Promise.all([
     trpcQuery<RawBillingPeriod[]>(ctx, 'billing.getCodeReviewBillingPeriods', tenantInput(ctx)),
     trpcQuery<RawSubscriptionInfo>(ctx, 'billing.getSubscriptionInfo', tenantInput(ctx)),
@@ -519,19 +531,23 @@ const fetchGreptileBilling = async (ctx: CollectContext<GreptileConfig>): Promis
     trpcQuery<RawFlexUsageStatus>(ctx, 'billing.getFlexUsageStatus', tenantInput(ctx))
   ])
 
+  const relevant = (periods ?? []).filter((p) => !p?.invoiceId || !ctx.since || (p.startTime ?? '') >= ctx.since)
+
   // Fetch each finalized month's invoice; tolerate per-invoice failures (one 4xx on a historical invoice
   // shouldn't blank the whole tab).
   const joined = await Promise.all(
-    (periods ?? []).map(async (period): Promise<PeriodWithInvoice> => {
+    relevant.map(async (period): Promise<PeriodWithInvoice> => {
+      const id = period.invoiceId ?? 'open'
+
       if (!period?.invoiceId) {
-        return { period, invoice: null }
+        return { id, startTime: period.startTime, period, invoice: null }
       }
 
       const invoice = await trpcQuery<RawUpcomingInvoice>(ctx, 'billing.getUpcomingInvoice', {
         json: { tenantExternalId: tenantId(ctx), invoiceId: period.invoiceId }
       }).catch(() => null)
 
-      return { period, invoice }
+      return { id, startTime: period.startTime, period, invoice }
     })
   )
 
@@ -900,7 +916,10 @@ export const greptilePlugin = definePlugin({
       label: 'Billing',
       fetch: fetchGreptileBilling,
       build: (raw) => buildGreptileBillingTab(buildGreptileBillingFromRaw(raw)),
-      sample: sampleGreptileBilling
+      sample: sampleGreptileBilling,
+      // No `window` — core applies its default trailing horizon, which is harmless here: finalized invoices are
+      // immutable, so any re-fetched period just dedupes onto the same stored row.
+      incremental: { listKey: 'periods', id: 'id', timestamp: 'startTime' }
     }),
     defineCapability({
       id: 'usage',

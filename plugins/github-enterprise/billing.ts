@@ -1,7 +1,7 @@
 import { type CollectContext } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing } from '@butinapp/sdk/presets'
-import { currentMonthKey, parseDollarAmount, round2 } from '@butinapp/sdk/util'
+import { currentMonthKey, isoDay, parseDollarAmount, round2 } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import { type Dashboard, GITHUB_ORIGIN, makeDashboard } from './dashboard.js'
@@ -602,29 +602,34 @@ export const buildGithubBilling = (args: BuildBillingArgs): CapabilityResult => 
 
 // Walk the paginated payment-history HTML and return every transaction row (capped at MAX_PAGES).
 // Page 1 is un-caught — a dead session 401s here and propagates so core can clear the cookie and
-// re-prompt Magic Login; the remaining pages are best-effort.
+// re-prompt Magic Login; the remaining pages are best-effort. Rows are newest-first within a page AND
+// across pages, so once a fetched page's rows are ALL at/older than `since`, every later page is too —
+// the walk stops there (that page is still kept; the union merge dedupes it against what's stored).
+// `since` undefined (first run / forced refetch) never counts as stale, so the walk covers every page.
+// Sequential by construction — the early-stop only works page by page, so this can't run pages concurrently.
 export const fetchAllPayments = async (
-  dash: Dashboard
+  dash: Dashboard,
+  since?: string
 ): Promise<{ payments: GitHubPayment[]; totalPages: number; pagesFetched: number }> => {
   const paymentHistoryPath = `${dash.billingBase}/payment_history`
   const firstHtml = await dash.getHtml(paymentHistoryPath)
   const totalPages = parseTotalPages(firstHtml)
   const payments = parsePaymentHistory(firstHtml)
-  const pagesFetched = Math.min(totalPages, MAX_PAGES)
+  const maxPage = Math.min(totalPages, MAX_PAGES)
 
-  if (pagesFetched > 1) {
-    const rest = await Promise.all(
-      Array.from({ length: pagesFetched - 1 }, (_, i) =>
-        dash
-          .getHtml(paymentHistoryPath, { page: i + 2 })
-          .then(parsePaymentHistory)
-          .catch(() => [] as GitHubPayment[])
-      )
-    )
+  const isStale = (rows: GitHubPayment[]): boolean =>
+    since != null && rows.length > 0 && rows.every((p) => (isoDay(p.timestamp) ?? '') <= since)
 
-    for (const page of rest) {
-      payments.push(...page)
-    }
+  let lastPage = payments
+  let pagesFetched = 1
+
+  for (let page = 2; page <= maxPage && !isStale(lastPage); page++) {
+    lastPage = await dash
+      .getHtml(paymentHistoryPath, { page })
+      .then(parsePaymentHistory)
+      .catch(() => [] as GitHubPayment[])
+    payments.push(...lastPage)
+    pagesFetched++
   }
 
   return { payments, totalPages, pagesFetched }
@@ -635,11 +640,17 @@ export const fetchAllPayments = async (
 // collects, with a short TTL so a near-simultaneous burst — or a refresh-all — dedupes while a deliberate
 // Refresh seconds later still re-fetches. Page 1 of payment history is load-bearing (a dead session 401s
 // there and clears the cookie); the rest are best-effort.
+//
+// The cache is keyed by `ctx.since` (not a constant), because Billing's incremental run and Summary's plain
+// collect want DIFFERENT payment scopes: Billing walks only the pages past its watermark, Summary always
+// needs the full history for its monthly-paid trend. Sharing one slot would let whichever capability runs
+// first (refresh-all runs Billing before Summary) hand its scoped payments to the other.
 const FETCH_TTL_MS = 5_000
 const billingCache = new Map<string, { at: number; promise: Promise<BuildBillingArgs> }>()
 
 export const loadGithubBilling = (ctx: CollectContext): Promise<BuildBillingArgs> => {
-  const hit = billingCache.get('github')
+  const cacheKey = ctx.since ?? 'full'
+  const hit = billingCache.get(cacheKey)
 
   if (hit && Date.now() - hit.at < FETCH_TTL_MS) {
     return hit.promise
@@ -649,7 +660,7 @@ export const loadGithubBilling = (ctx: CollectContext): Promise<BuildBillingArgs
     const dash = makeDashboard(ctx)
     const [year, month] = currentMonthKey().split('-').map(Number)
 
-    const { payments, totalPages, pagesFetched } = await fetchAllPayments(dash)
+    const { payments, totalPages, pagesFetched } = await fetchAllPayments(dash, ctx.since)
 
     const [usageTotal, discounts, licensingHtml, paymentInfoHtml, contactsHtml] = await Promise.all([
       dash.getJson<RawUsageTotal>(`${dash.billingBase}/usage/total`).catch(() => ({}) as RawUsageTotal),
@@ -674,10 +685,10 @@ export const loadGithubBilling = (ctx: CollectContext): Promise<BuildBillingArgs
   })()
   const entry = { at: Date.now(), promise }
 
-  billingCache.set('github', entry)
+  billingCache.set(cacheKey, entry)
   void promise.catch(() => {
-    if (billingCache.get('github') === entry) {
-      billingCache.delete('github')
+    if (billingCache.get(cacheKey) === entry) {
+      billingCache.delete(cacheKey)
     }
   })
 

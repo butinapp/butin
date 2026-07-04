@@ -303,6 +303,9 @@ export interface DesjStatement {
   dateReleve?: string
   typeReleve?: string
   uuidReleve?: string
+  // Stable dedup/union identity synthesized by fetchAllStatements (jeton|dateReleve|typeReleve) — uuidReleve is
+  // regenerated per call, so it can't serve as the incremental capability's row id.
+  statementId?: string
 }
 
 export const parseCards = (res: unknown): DesjCard[] => asArray<DesjCard>(res)
@@ -412,18 +415,33 @@ export const relevesBodyForYear = (year: number, cards: DesjCard[]): Record<stri
 
 // AccèsD only serves card statements a few years back (for the recorded cards: to 2021) and windows by
 // year, so we scan backwards from the current year. We stop after CC_MAX_EMPTY_YEARS consecutive empty
-// years past the newest data (the account-opening / retention floor) or at CC_MIN_YEAR — and LOG every
-// year's count (and any fetch error + the year it died on) so a future run can see exactly how far back
-// data went instead of re-probing blindly. CC_MIN_YEAR is a generous absolute floor (AccèsD predates it).
+// years past the newest data (the account-opening / retention floor), at CC_MIN_YEAR, or — for an
+// incremental refresh — once the year drops below `ctx.since`'s year (that history is already in the kept
+// union). LOG every year's count (and any fetch error + the year it died on) so a future run can see
+// exactly how far back data went instead of re-probing blindly. CC_MIN_YEAR is a generous absolute floor
+// (AccèsD predates it).
 const CC_MIN_YEAR = 2000
 const CC_MAX_EMPTY_YEARS = 3
 
-const fetchAllStatements = async (ctx: CollectContext, cards: DesjCard[]): Promise<DesjStatement[]> => {
+// jeton|dateReleve|typeReleve is the statement's stable identity — uuidReleve is regenerated per call. The
+// `typeReleve` segment defaults the same way `buildStatementsTable`'s own dedup key does, so a statement missing
+// `typeReleve` gets the SAME identity here as it does there.
+const withStatementId = (s: DesjStatement): DesjStatement => ({
+  ...s,
+  statementId: `${s.numeroCompteJeton ?? ''}|${s.dateReleve ?? ''}|${s.typeReleve ?? 'Individuel'}`
+})
+
+export const fetchAllStatements = async (ctx: CollectContext, cards: DesjCard[]): Promise<DesjStatement[]> => {
   const all: DesjStatement[] = []
   const currentYear = new Date().getUTCFullYear()
   let consecutiveEmpty = 0
 
   for (let year = currentYear; year >= CC_MIN_YEAR; year--) {
+    // ctx.since is undefined on a first run / forced full refetch, so every year is walked then.
+    if (ctx.since && year < Number(ctx.since.slice(0, 4))) {
+      break
+    }
+
     let list: DesjStatement[]
 
     try {
@@ -438,7 +456,7 @@ const fetchAllStatements = async (ctx: CollectContext, cards: DesjCard[]): Promi
     ctx.log(`statements ${year}: ${list.length}`)
 
     if (list.length > 0) {
-      all.push(...list)
+      all.push(...list.map(withStatementId))
       consecutiveEmpty = 0
     } else if (++consecutiveEmpty >= CC_MAX_EMPTY_YEARS) {
       ctx.log(`statements: ${CC_MAX_EMPTY_YEARS} empty years in a row ending at ${year} — stopping back-scan`)
@@ -556,7 +574,11 @@ export const desjardinsPlugin = definePlugin({
       label: 'Relevés de carte',
       fetch: fetchStatements,
       build: (raw) => buildStatementsTable(raw.cards, raw.statements),
-      sample: sampleDesjardinsStatements
+      sample: sampleDesjardinsStatements,
+      // Incremental: a refresh re-walks only the recent window + any newer years (fetchAllStatements honours
+      // ctx.since); the kept union retains the full history, and build runs over all of it. 45d covers a
+      // statement AccèsD posts a little late for the prior period.
+      incremental: { listKey: 'statements', id: 'statementId', timestamp: 'dateReleve', window: { days: 45 } }
     }),
     // Bank-account (debit) monthly statements via the legacy coreleADReleve flow — a downloadable table that
     // lists every available month and fetches each PDF on demand (see debit-statements.ts). The fetch half

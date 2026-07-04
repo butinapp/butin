@@ -83,3 +83,80 @@ describe('defineCapability', () => {
     expect(cap.fetchFile).toBe(fetchFile)
   })
 })
+
+// A build for a bare row-list raw.
+type InvoiceRow = { id: string; createdIso: string }
+const buildInvoices = (rows: InvoiceRow[]): CapabilityResult =>
+  capabilityResult({
+    sections: [record({ id: 'r', fields: [{ key: 'n', role: 'count', label: 'N' }], value: { n: rows.length } }).stat()]
+  })
+
+// A build for a composite bundle raw (a row list under `invoices` plus an unrelated scalar field).
+type BillingBundle = { invoices: InvoiceRow[]; plan: string }
+const buildBilling = (raw: BillingBundle): CapabilityResult =>
+  capabilityResult({
+    sections: [
+      record({ id: 'r', fields: [{ key: 'n', role: 'count', label: 'N' }], value: { n: raw.invoices.length } }).stat()
+    ]
+  })
+
+describe('defineCapability incremental', () => {
+  it('array form still types + runs; listKey is undefined', async () => {
+    const cap = defineCapability({
+      id: 'invoices',
+      label: 'Invoices',
+      fetch: async () => [{ id: '1', createdIso: '2026-01-01' }],
+      build: buildInvoices,
+      sample: () => [{ id: '1', createdIso: '2026-01-01' }],
+      incremental: { id: 'id', timestamp: 'createdIso', window: { days: 30 } }
+    })
+
+    expect(cap.incremental?.id).toBe('id')
+    expect(cap.incremental?.timestamp).toBe('createdIso')
+    expect(cap.incremental?.window).toEqual({ days: 30 })
+    expect(cap.incremental?.listKey).toBeUndefined()
+
+    const raw = await cap.incremental!.fetch({} as never)
+
+    expect(cap.incremental!.build(raw)).toEqual(buildInvoices(raw as InvoiceRow[]))
+  })
+
+  it('bundle form types + carries listKey', async () => {
+    const cap = defineCapability<BillingBundle>({
+      id: 'billing',
+      label: 'Billing',
+      fetch: async () => ({ invoices: [{ id: '1', createdIso: '2026-01-01' }], plan: 'pro' }),
+      build: buildBilling,
+      sample: (_gen) => ({ invoices: [], plan: 'pro' }),
+      incremental: { listKey: 'invoices', id: 'id', timestamp: 'createdIso' }
+    })
+
+    expect(cap.incremental?.listKey).toBe('invoices')
+    expect(cap.incremental?.id).toBe('id')
+    expect(cap.incremental?.timestamp).toBe('createdIso')
+  })
+
+  it('rejects a listKey that does not name an array field', () => {
+    defineCapability<BillingBundle>({
+      id: 'billing',
+      label: 'Billing',
+      fetch: async () => ({ invoices: [], plan: 'pro' }),
+      build: buildBilling,
+      sample: (_gen) => ({ invoices: [], plan: 'pro' }),
+      // @ts-expect-error 'plan' is not an array field of BillingBundle, so it can't be a listKey
+      incremental: { listKey: 'plan', id: 'id', timestamp: 'createdIso' }
+    })
+  })
+
+  it('rejects an id that does not name a field of the listed row', () => {
+    defineCapability<BillingBundle>({
+      id: 'billing',
+      label: 'Billing',
+      fetch: async () => ({ invoices: [], plan: 'pro' }),
+      build: buildBilling,
+      sample: (_gen) => ({ invoices: [], plan: 'pro' }),
+      // @ts-expect-error 'notAField' is not a field of an invoice row
+      incremental: { listKey: 'invoices', id: 'notAField', timestamp: 'createdIso' }
+    })
+  })
+})

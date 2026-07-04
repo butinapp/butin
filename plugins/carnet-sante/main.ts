@@ -379,11 +379,16 @@ export interface RawLabList {
 }
 
 // Prelevements answers per-year queries (nothing for the current rolling year if the labs are older), so
-// fan out one request per calendar year and flatten.
+// fan out one request per calendar year and flatten. Incremental: skip years entirely older than the
+// watermark — their labs are already stored (core's kept union retains them). `ctx.since` is undefined on a
+// first run / forced full refetch, so every year is fetched then.
 const fetchLabs = async (ctx: CollectContext): Promise<RawLabList> => {
   const citizenId = await fetchCitizenId(ctx)
   const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: LABS_HISTORY_YEARS }, (_, i) => currentYear - i)
+  const minYear = ctx.since ? Number(ctx.since.slice(0, 4)) : undefined
+  const years = Array.from({ length: LABS_HISTORY_YEARS }, (_, i) => currentYear - i).filter(
+    (y) => minYear === undefined || y >= minYear
+  )
   const perYear = await Promise.all(
     years.map((y) =>
       ctx.client.get<unknown>(
@@ -651,7 +656,10 @@ export const carnetSantePlugin = definePlugin({
       fetch: fetchLabs,
       build: (raw) => buildLabsResult(raw.list, raw.citizenId),
       sample: sampleCarnetLabs,
-      fetchFile: fetchLabFile
+      fetchFile: fetchLabFile,
+      // No `window` — core applies its default trailing horizon, which harmlessly re-checks the current year for
+      // late-entered results; a posted lab result itself never changes, so any re-fetched row just dedupes.
+      incremental: { listKey: 'list', id: 'id', timestamp: 'datePrelevement' }
     }),
     defineCapability({
       id: 'imaging',

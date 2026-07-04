@@ -1,3 +1,4 @@
+import type { CollectContext } from '@butinapp/sdk'
 import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
 import { createSampleGen, resolveSampleConfig } from '@butinapp/sdk/testing'
 import { describe, expect, it, test } from 'vitest'
@@ -404,6 +405,57 @@ describe('downloadable labs + imaging tables', () => {
       itemId: 'LAB1',
       citizenId: 'cit-9'
     })
+  })
+})
+
+describe('labs incremental fetch', () => {
+  const citizenFixture = { IdCitoyen: '99999' }
+
+  // Every RAMQ Prelevements URL carries `.../Prelevements?DateDebut=<year>-01-01&...` — pull the year back out
+  // to assert which calendar years were actually requested.
+  const yearOf = (url: string): number => Number(url.match(/DateDebut=(\d{4})-01-01/)?.[1])
+
+  const labsCapability = () => carnetSantePlugin.capabilities.find((c) => c.id === 'labs')!
+
+  it('declares the incremental spec keyed by the raw item id + datePrelevement', () => {
+    expect(labsCapability().incremental).toMatchObject({ listKey: 'list', id: 'id', timestamp: 'datePrelevement' })
+  })
+
+  it('fans out only years at/after ctx.since, leaving earlier years already-stored', async () => {
+    const requestedUrls: string[] = []
+    const client = {
+      get: async (url: string) => {
+        requestedUrls.push(url)
+
+        return url.includes('/Citoyens') ? citizenFixture : []
+      }
+    }
+    const ctx = { client, since: '2024-06-01', log: () => undefined } as unknown as CollectContext
+
+    await labsCapability().incremental!.fetch(ctx)
+
+    const years = requestedUrls.filter((u) => u.includes('/Prelevements?')).map(yearOf)
+    const currentYear = new Date().getFullYear()
+
+    expect(Math.min(...years)).toBe(2024)
+    expect(years).not.toContain(2023)
+    expect(years).toHaveLength(currentYear - 2024 + 1)
+  })
+
+  it('fetches every LABS_HISTORY_YEARS year when ctx.since is undefined (first run / forced refetch)', async () => {
+    const requestedUrls: string[] = []
+    const client = {
+      get: async (url: string) => {
+        requestedUrls.push(url)
+
+        return url.includes('/Citoyens') ? citizenFixture : []
+      }
+    }
+    const ctx = { client, since: undefined, log: () => undefined } as unknown as CollectContext
+
+    await labsCapability().incremental!.fetch(ctx)
+
+    expect(requestedUrls.filter((u) => u.includes('/Prelevements?'))).toHaveLength(7)
   })
 })
 

@@ -1,3 +1,4 @@
+import type { CollectContext } from '@butinapp/sdk'
 import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
 import { expect, test } from 'vitest'
 
@@ -11,10 +12,13 @@ import {
   buildGreptileSummaryResult,
   buildGreptileUsage,
   buildGreptileUsageResult,
+  fetchGreptileBilling,
   fetchGreptileOrgs,
   greptilePlugin,
   parseStripeHostedInvoice,
-  type PeriodWithInvoice
+  type GreptileConfig,
+  type PeriodWithInvoice,
+  type RawBillingPeriod
 } from './main.js'
 
 const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
@@ -90,10 +94,14 @@ test('fetchGreptileOrgs reads user.organizations and degrades to [] on missing p
 
 const SYNTH_PERIODS: PeriodWithInvoice[] = [
   {
+    id: 'open',
+    startTime: '2026-05-05T00:00:00Z',
     period: { startTime: '2026-05-05T00:00:00Z', endTime: '2026-06-05T00:00:00Z', label: 'May–Jun', invoiceId: null },
     invoice: null
   },
   {
+    id: 'in_001',
+    startTime: '2026-04-05T00:00:00Z',
     period: {
       startTime: '2026-04-05T00:00:00Z',
       endTime: '2026-05-05T00:00:00Z',
@@ -232,6 +240,112 @@ test('Billing detail: subscription record + url-column invoice table, NO spend.m
 
   expect(validateCapabilityResult(empty)).toEqual([])
   expect(empty.datasets.some((d) => d.id === 'invoices')).toBe(false)
+})
+
+// ── billing: incremental fetch (ctx.since skips re-fetching stored finalized periods) ──
+
+// A minimal `ctx.client.get` that decodes the batched tRPC URL back into `{ proc, json }` and answers by proc
+// name, so the test can assert exactly which `invoiceId`s `fetchGreptileBilling` asked `getUpcomingInvoice` for.
+const makeGreptileCtx = (
+  periods: RawBillingPeriod[],
+  since?: string
+): { ctx: CollectContext<GreptileConfig>; invoiceCalls: string[] } => {
+  const invoiceCalls: string[] = []
+  const client = {
+    get: async <T>(url: string): Promise<T> => {
+      const proc = url.split('/api/trpc/')[1]?.split('?')[0]
+      const input = JSON.parse(decodeURIComponent(url.split('input=')[1] ?? '')) as {
+        '0': { json: Record<string, unknown> }
+      }
+
+      if (proc === 'billing.getCodeReviewBillingPeriods') {
+        return [{ result: { data: { json: periods } } }] as unknown as T
+      }
+
+      if (proc === 'billing.getUpcomingInvoice') {
+        invoiceCalls.push(input['0'].json.invoiceId as string)
+
+        return [{ result: { data: { json: { total: 1000, status: 'paid' } } } }] as unknown as T
+      }
+
+      // getSubscriptionInfo / getCurrentPeriodCosts / getFlexUsageStatus — irrelevant to this test
+      return [{ result: { data: { json: {} } } }] as unknown as T
+    }
+  }
+
+  return {
+    ctx: { client, since, config: { tenantExternalId: 'tnt-1' } } as unknown as CollectContext<GreptileConfig>,
+    invoiceCalls
+  }
+}
+
+const RAW_PERIODS: RawBillingPeriod[] = [
+  { startTime: '2026-06-05T00:00:00Z', endTime: '2026-07-05T00:00:00Z', label: 'Jun–Jul', invoiceId: null }, // open
+  { startTime: '2026-05-05T00:00:00Z', endTime: '2026-06-05T00:00:00Z', label: 'May–Jun', invoiceId: 'in_recent' },
+  { startTime: '2026-01-05T00:00:00Z', endTime: '2026-02-05T00:00:00Z', label: 'Jan–Feb', invoiceId: 'in_old' }
+]
+
+test('fetchGreptileBilling honours ctx.since: skips invoices for stored finalized periods, keeps the open one', async () => {
+  const { ctx, invoiceCalls } = makeGreptileCtx(RAW_PERIODS, '2026-04-01')
+  const raw = await fetchGreptileBilling(ctx)
+
+  // the old finalized period (Jan–Feb) is never re-fetched — its stored invoice is preserved by the union
+  expect(invoiceCalls).toEqual(['in_recent'])
+  // omitted from the result entirely (not returned with invoice: null, which would overwrite the stored invoice)
+  expect(raw.periods.map((p) => p.id)).toEqual(['open', 'in_recent'])
+  expect(raw.periods.every((p) => typeof p.startTime === 'string')).toBe(true)
+})
+
+test('control: fetchGreptileBilling with no since fetches and returns every period', async () => {
+  const { ctx, invoiceCalls } = makeGreptileCtx(RAW_PERIODS)
+  const raw = await fetchGreptileBilling(ctx)
+
+  expect(invoiceCalls.sort()).toEqual(['in_old', 'in_recent'])
+  expect(raw.periods.map((p) => p.id)).toEqual(['open', 'in_recent', 'in_old'])
+})
+
+// The invoice-less current period's union id must be a CONSTANT ('open'), not `open:<startTime>` — else, when it
+// finalizes at month rollover (same startTime, now carrying an invoiceId), the service never re-emits the old
+// `open:<startTime>` key, core's union RETAINS it forever, and it renders as a phantom second "Current period" row.
+test('the open period unions onto a CONSTANT id so it reuses its slot across a month rollover', async () => {
+  const OPEN_START = '2026-06-05T00:00:00Z'
+  const NEXT_START = '2026-07-05T00:00:00Z'
+
+  // Before rollover: only the current, invoice-less period exists.
+  const { ctx: ctxBefore } = makeGreptileCtx([
+    { startTime: OPEN_START, endTime: NEXT_START, label: 'Jun–Jul', invoiceId: null }
+  ])
+  const before = await fetchGreptileBilling(ctxBefore)
+
+  expect(before.periods.map((p) => p.id)).toEqual(['open'])
+
+  // After rollover: that same period now carries an invoiceId (finalized), and a NEW invoice-less period opens.
+  const { ctx: ctxAfter } = makeGreptileCtx([
+    { startTime: NEXT_START, endTime: '2026-08-05T00:00:00Z', label: 'Jul–Aug', invoiceId: null },
+    { startTime: OPEN_START, endTime: NEXT_START, label: 'Jun–Jul', invoiceId: 'in_jun' }
+  ])
+  const after = await fetchGreptileBilling(ctxAfter)
+
+  expect(after.periods.map((p) => p.id)).toEqual(['open', 'in_jun'])
+
+  // Merging the two fetches by id (as core's raw union does) must settle at exactly 2 rows: the finalized period
+  // under its own invoiceId, and the NEW current period reusing the 'open' slot — no orphaned stale 'open' row.
+  const union = new Map(before.periods.map((p) => [p.id, p] as const))
+
+  for (const p of after.periods) {
+    union.set(p.id, p)
+  }
+
+  expect(union.size).toBe(2)
+  expect(union.get('open')?.startTime).toBe(NEXT_START)
+  expect(union.get('in_jun')?.startTime).toBe(OPEN_START)
+})
+
+test('billing capability declares incremental fetch keyed on the top-level periods list', () => {
+  const cap = greptilePlugin.capabilities.find((c) => c.id === 'billing')
+
+  expect(cap?.incremental).toMatchObject({ listKey: 'periods', id: 'id', timestamp: 'startTime' })
+  expect(greptilePlugin.capabilities.find((c) => c.id === 'summary')?.incremental).toBeUndefined()
 })
 
 // ── billing: Stripe payment-method parse (live-only walk; pure parse fixture-tested) ───

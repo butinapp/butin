@@ -7,12 +7,14 @@ import {
   buildGithubSummary,
   extractCardExpiry,
   extractGheLicensing,
+  fetchAllPayments,
   parseContacts,
   parseDollarAmount,
   parsePaymentHistory,
   parseTotalPages,
   sumIncludedUsage
 } from './billing.js'
+import type { Dashboard } from './dashboard.js'
 import { githubEnterprisePlugin } from './main.js'
 
 const validateCapabilityResult = (r: CapabilityResult): string[] => rawValidateCR(resolveCurrencies(r, 'USD'))
@@ -142,6 +144,71 @@ describe('parsePaymentHistory', () => {
 
   it('ignores non-transaction markup', () => {
     expect(parsePaymentHistory('<ul><li class="Box-row"><div>header</div></li></ul>')).toEqual([])
+  })
+})
+
+// A single payment-history row, newest-first like a real page. `timestamp` drives the since-watermark check.
+const paymentRow = (id: string, timestamp: string): string => `
+  <li class="Box-row">
+    <div class="col-2 float-left date"><time title="${timestamp}" class="no-wrap">${timestamp.slice(0, 10)}</time></div>
+    <div class="col-2 float-left id"><code><span id="short-transaction-id-${id}">${id}</span></code></div>
+    <div class="col-3 float-left method">MasterCard ending in 5587</div>
+    <div class="col-2 float-left amount"> $10.00 </div>
+    <div class="col-1 float-left status"><span class="Label Label--success">Success</span></div>
+  </li>`
+
+// Page 1's pagination nav is the only one `parseTotalPages` reads — later pages don't need one.
+const paymentPage = (rowsHtml: string, totalPages: number): string =>
+  `<ul>${rowsHtml}</ul><nav class="paginate-container"><div class="pagination">
+    <em class="current" data-total-pages="${totalPages}">1</em></div></nav>`
+
+describe('fetchAllPayments', () => {
+  it('stops the sequential walk once a fetched page is entirely at/older than since', async () => {
+    const requested: number[] = []
+    const dash = {
+      billingBase: '/enterprises/acme-co/billing',
+      getHtml: async (_path: string, params?: Record<string, string | number>) => {
+        const page = (params?.page as number | undefined) ?? 1
+
+        requested.push(page)
+
+        if (page === 1) {
+          return paymentPage(paymentRow('P1', '2026-06-20 10:00:00'), 3) // newest, past the watermark
+        }
+
+        if (page === 2) {
+          return paymentPage(paymentRow('P2', '2026-05-01 10:00:00'), 3) // entirely at/older than since
+        }
+
+        return paymentPage(paymentRow('P3', '2026-01-01 10:00:00'), 3) // must never be requested
+      }
+    } as unknown as Dashboard
+
+    const result = await fetchAllPayments(dash, '2026-06-01')
+
+    expect(requested).toEqual([1, 2]) // page 3 never requested
+    expect(result.payments.map((p) => p.id)).toEqual(['P1', 'P2'])
+    expect(result).toMatchObject({ totalPages: 3, pagesFetched: 2 })
+  })
+
+  it('control: with no since, walks every page up to totalPages', async () => {
+    const requested: number[] = []
+    const dash = {
+      billingBase: '/enterprises/acme-co/billing',
+      getHtml: async (_path: string, params?: Record<string, string | number>) => {
+        const page = (params?.page as number | undefined) ?? 1
+
+        requested.push(page)
+
+        return paymentPage(paymentRow(`P${page}`, '2026-01-01 10:00:00'), 3)
+      }
+    } as unknown as Dashboard
+
+    const result = await fetchAllPayments(dash)
+
+    expect(requested).toEqual([1, 2, 3])
+    expect(result.payments.map((p) => p.id)).toEqual(['P1', 'P2', 'P3'])
+    expect(result).toMatchObject({ totalPages: 3, pagesFetched: 3 })
   })
 })
 

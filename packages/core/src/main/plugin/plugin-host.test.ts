@@ -100,6 +100,33 @@ const { fakePlugin } = vi.hoisted(() => ({
         }
       },
       {
+        // A bundle-form incremental capability: `fetch` returns `{ invoices: [...], plan }` rather than a bare
+        // row list, and `listKey` names the sub-list to union.
+        id: 'invoicing',
+        label: 'Invoicing',
+        collect: async () => ({ datasets: [] }),
+        incremental: {
+          id: 'id',
+          timestamp: 'createdIso',
+          listKey: 'invoices',
+          fetch: async () => ({ invoices: [{ id: 'b', createdIso: '2026-02-01' }], plan: 'pro' }),
+          build: vi.fn((raw: { invoices: Record<string, unknown>[]; plan: string }) => ({
+            datasets: [
+              {
+                id: 'invoices',
+                shape: 'table',
+                key: 'id',
+                columns: [
+                  { key: 'id', label: 'ID', role: 'identifier' },
+                  { key: 'createdIso', label: 'Created', role: 'timestamp' }
+                ],
+                rows: raw.invoices
+              }
+            ]
+          }))
+        }
+      },
+      {
         // Returns a result that violates the contract (key names no column or row field) — exercises the gate.
         id: 'broken',
         label: 'Broken',
@@ -135,7 +162,7 @@ vi.mock('./plugins.js', () => ({
 const { runCapability, listConfigOptions, getCachedConfigOptions } = await import('./plugin-host.js')
 const { readCurrent, setDataRoot } = await import('../store/store.js')
 const { readLedger } = await import('../store/ledger.js')
-const { readRawUnion } = await import('../store/raw-union.js')
+const { readRawUnion, writeRawUnion } = await import('../store/raw-union.js')
 const { setConfigRoot } = await import('../store/credentials.js')
 const { getRecentLogs, clearLogs } = await import('../log.js')
 
@@ -211,6 +238,28 @@ test('an incremental capability keeps prior rows and rebuilds over the full unio
       .rows.map((r) => r.orderId)
       .sort()
   ).toEqual(['A', 'B', 'C'])
+})
+
+test('a bundle-form incremental capability (listKey) unions the named sub-list and rebuilds the bundle', async () => {
+  await writeRawUnion('fake', 'invoicing', { key: 'id', rows: [{ id: 'a', createdIso: '2026-01-01' }] })
+
+  const build = fakePlugin.capabilities.find((c) => c.id === 'invoicing')!.incremental!.build as ReturnType<
+    typeof vi.fn
+  >
+
+  await runCapability('fake', 'invoicing')
+
+  expect(build).toHaveBeenCalledWith({
+    invoices: [
+      { id: 'a', createdIso: '2026-01-01' },
+      { id: 'b', createdIso: '2026-02-01' }
+    ],
+    plan: 'pro'
+  })
+  expect((await readRawUnion('fake', 'invoicing'))?.rows).toEqual([
+    { id: 'a', createdIso: '2026-01-01' },
+    { id: 'b', createdIso: '2026-02-01' }
+  ])
 })
 
 test('a forced refetch rebuilds the union from scratch', async () => {

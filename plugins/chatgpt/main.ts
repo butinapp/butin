@@ -109,6 +109,13 @@ export interface RawInvoices {
   data?: RawInvoice[]
   has_more?: boolean // Stripe-style cursor flag
 }
+// A Stripe invoice hoisted to the top level with the workspace it belongs to (`accountId`) and its ISO-day
+// (`createdIso`) stamped on — the flat, id-keyed history core unions incrementally, then the build regroups by
+// `accountId`. Stripe's `id` is globally unique across accounts, so it's a safe union key.
+export interface FlatChatgptInvoice extends RawInvoice {
+  accountId: string
+  createdIso: string // YYYY-MM-DD (= epochSecDay(created))
+}
 export interface RawPaymentMethod {
   id?: string
   type?: string
@@ -130,14 +137,18 @@ export interface RawBillingInfo {
   } | null
 }
 
-// The billing fetch's raw shape: every workspace's assembled bundle + the capture timestamp (so the pure
-// build is deterministic — MTD and the monthly trend key off it). Summary + Billing share this raw.
+// The billing fetch's raw shape: every workspace's assembled bundle + the flat top-level invoice history + the
+// capture timestamp (so the pure build is deterministic — MTD and the monthly trend key off it). The invoices
+// live at the top level (not per bundle) so `billing` can union them incrementally by Stripe id. Summary +
+// Billing share this raw.
 export interface RawChatgptBilling {
   bundles: RawWorkspaceBundle[]
+  invoices: FlatChatgptInvoice[]
   capturedAt: string
 }
 
-// One workspace's billing bundle (assembled in collect()).
+// One workspace's billing bundle (assembled in collect()) — subscription/seat/balance detail. Its invoices are
+// hoisted to RawChatgptBilling.invoices, keyed back by accountId.
 export interface RawWorkspaceBundle {
   accountId: string
   name: string
@@ -147,7 +158,6 @@ export interface RawWorkspaceBundle {
   remainingBalance: RawRemainingBalance
   paymentMethods?: RawPaymentMethods
   billingInfo?: RawBillingInfo
-  invoices: RawInvoices
 }
 
 export interface InvoiceRow {
@@ -324,7 +334,11 @@ export const buildBillingContact = (raw: RawBillingInfo | undefined): BillingCon
 // Raw per-workspace bundles → the normalized billing report. Invoice `total` is Stripe cents → centsToMajor; the
 // credit grant amounts are already USD-dollar strings → Number(). MTD = what was actually charged this calendar
 // month across workspaces (seat-cycle bill + prepaid top-ups).
-export const buildWorkspaceBilling = (bundles: RawWorkspaceBundle[], capturedAt: string): WorkspaceBillingReport => {
+export const buildWorkspaceBilling = (
+  bundles: RawWorkspaceBundle[],
+  invoices: FlatChatgptInvoice[],
+  capturedAt: string
+): WorkspaceBillingReport => {
   const workspaces: WorkspaceBilling[] = bundles.map((b) => {
     const sub = b.subscription
     const grant = b.remainingBalance.expiring_balance_details?.[0]
@@ -337,7 +351,8 @@ export const buildWorkspaceBilling = (bundles: RawWorkspaceBundle[], capturedAt:
         }
       : null
 
-    const invoices: InvoiceRow[] = (b.invoices.data ?? [])
+    const invoiceRows: InvoiceRow[] = invoices
+      .filter((i) => i.accountId === b.accountId)
       .map((inv) => ({
         id: inv.id ?? '',
         number: inv.number ?? null,
@@ -368,7 +383,7 @@ export const buildWorkspaceBilling = (bundles: RawWorkspaceBundle[], capturedAt:
       credit,
       paymentMethod: pickDefaultPaymentMethod(b.paymentMethods),
       billingContact: buildBillingContact(b.billingInfo),
-      invoices
+      invoices: invoiceRows
     }
   })
 
@@ -688,8 +703,9 @@ const fetchWorkspaces = async (
 
 // Walk the Stripe-cursor invoice list for one account until `has_more` is false (credit top-ups create many
 // `manual` invoices/month, so one page barely covers ~2 months — the full history needs every page). Bounded
-// by MAX_INVOICE_PAGES as a runaway backstop.
-const fetchAllInvoices = async (ctx: CollectContext, accountId: string): Promise<RawInvoice[]> => {
+// by MAX_INVOICE_PAGES as a runaway backstop. The cursor is newest-first, so with a `since` watermark the walk
+// stops once a whole page is older than it — the incremental billing run only re-fetches the recent tail.
+const fetchAllInvoices = async (ctx: CollectContext, accountId: string, since?: string): Promise<RawInvoice[]> => {
   const all: RawInvoice[] = []
   let startingAfter: string | undefined
 
@@ -705,6 +721,11 @@ const fetchAllInvoices = async (ctx: CollectContext, accountId: string): Promise
 
     all.push(...data)
     const lastId = data.at(-1)?.id
+
+    // Every row on this page predates the watermark → so does every later (older) page; stop here.
+    if (since && data.length > 0 && data.every((inv) => (epochSecDay(inv.created) ?? '') < since)) {
+      break
+    }
 
     if (!res?.has_more || data.length === 0 || !lastId) {
       break
@@ -724,16 +745,20 @@ const fetchChatgptBilling = async (ctx: CollectContext): Promise<RawChatgptBilli
   const get = <T>(path: string) => ctx.client.get<T>(`${ORIGIN}${path}`)
 
   const bundles: RawWorkspaceBundle[] = []
+  const invoices: FlatChatgptInvoice[] = []
 
   for (const ws of workspaces) {
-    const [subscription, seatTypeCounts, remainingBalance, paymentMethods, billingInfo, invoices] = await Promise.all([
-      get<RawSubscription>(`/backend-api/subscriptions?account_id=${ws.accountId}`).catch(() => ({})),
-      get<RawSeatTypeCounts>(`/backend-api/accounts/${ws.accountId}/users/seat_type_counts`).catch(() => ({})),
-      get<RawRemainingBalance>(`/backend-api/accounts/${ws.accountId}/remaining_balance`).catch(() => ({})),
-      get<RawPaymentMethods>(`/backend-api/payments/payment_methods?account_id=${ws.accountId}`).catch(() => ({})),
-      get<RawBillingInfo>(`/backend-api/payments/billing_info?account_id=${ws.accountId}`).catch(() => ({})),
-      fetchAllInvoices(ctx, ws.accountId).catch(() => [] as RawInvoice[])
-    ])
+    const [subscription, seatTypeCounts, remainingBalance, paymentMethods, billingInfo, wsInvoices] = await Promise.all(
+      [
+        get<RawSubscription>(`/backend-api/subscriptions?account_id=${ws.accountId}`).catch(() => ({})),
+        get<RawSeatTypeCounts>(`/backend-api/accounts/${ws.accountId}/users/seat_type_counts`).catch(() => ({})),
+        get<RawRemainingBalance>(`/backend-api/accounts/${ws.accountId}/remaining_balance`).catch(() => ({})),
+        get<RawPaymentMethods>(`/backend-api/payments/payment_methods?account_id=${ws.accountId}`).catch(() => ({})),
+        get<RawBillingInfo>(`/backend-api/payments/billing_info?account_id=${ws.accountId}`).catch(() => ({})),
+        // ctx.since (set only on the incremental billing run) stops the cursor walk at the recent tail.
+        fetchAllInvoices(ctx, ws.accountId, ctx.since).catch(() => [] as RawInvoice[])
+      ]
+    )
 
     bundles.push({
       accountId: ws.accountId,
@@ -743,12 +768,15 @@ const fetchChatgptBilling = async (ctx: CollectContext): Promise<RawChatgptBilli
       seatTypeCounts,
       remainingBalance,
       paymentMethods,
-      billingInfo,
-      invoices: { data: invoices }
+      billingInfo
     })
+
+    for (const inv of wsInvoices) {
+      invoices.push({ ...inv, accountId: ws.accountId, createdIso: epochSecDay(inv.created) ?? '' })
+    }
   }
 
-  return { bundles, capturedAt: new Date().toISOString() }
+  return { bundles, invoices, capturedAt: new Date().toISOString() }
 }
 
 // The workspace seat roster across all workspaces (Usage + Members share it; the query cache dedupes). Walks
@@ -790,10 +818,10 @@ const fetchWorkspaceMembers = async (ctx: CollectContext): Promise<WorkspaceMemb
 // Summary + Billing builds (RAW → CapabilityResult). buildWorkspaceBilling is the deterministic normalizer;
 // each tab then draws its slice (Summary = the spend.mtd headline; Billing = the account + invoice detail).
 export const buildChatgptSummary = (raw: RawChatgptBilling): CapabilityResult =>
-  buildChatgptSummaryResult(buildWorkspaceBilling(raw.bundles, raw.capturedAt))
+  buildChatgptSummaryResult(buildWorkspaceBilling(raw.bundles, raw.invoices, raw.capturedAt))
 
 export const buildChatgptBilling = (raw: RawChatgptBilling): CapabilityResult =>
-  buildChatgptBillingTab(buildWorkspaceBilling(raw.bundles, raw.capturedAt))
+  buildChatgptBillingTab(buildWorkspaceBilling(raw.bundles, raw.invoices, raw.capturedAt))
 
 // Usage build (RAW → CapabilityResult): join the leaderboard to the roster, then compose the result.
 export const buildChatgptUsage = (raw: RawChatgptUsage): CapabilityResult => {
@@ -900,7 +928,12 @@ export const chatgptPlugin = definePlugin({
       label: 'Billing',
       fetch: fetchChatgptBilling,
       build: buildChatgptBilling,
-      sample: sampleChatgptBilling
+      sample: sampleChatgptBilling,
+      // The invoice history is the only billing surface worth walking incrementally (the subscription/seat/
+      // balance reads are cheap point-in-time). Core unions the top-level `invoices` by Stripe `id` and sets
+      // ctx.since; the fetch re-fetches only the recent tail. Summary is NOT incremental — it shares the fetch
+      // but always renders the full history (core's per-URL request cache dedupes the overlap).
+      incremental: { listKey: 'invoices', id: 'id', timestamp: 'createdIso', window: { days: 45 } }
     }),
     defineCapability({
       id: 'usage',

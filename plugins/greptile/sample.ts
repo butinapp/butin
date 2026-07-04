@@ -18,7 +18,12 @@ export const sampleGreptileBilling = (g: SampleGen, config: SampleConfig): Grept
     const end = `${g.monthsAgo(i).yearMonth}-01T00:00:00.000Z`
 
     if (i === 0) {
-      return { period: { startTime: start, endTime: end, label: 'Current period', invoiceId: null }, invoice: null }
+      return {
+        id: `open:${start}`,
+        startTime: start,
+        period: { startTime: start, endTime: end, label: 'Current period', invoiceId: null },
+        invoice: null
+      }
     }
 
     const invoiceId = g.id('in')
@@ -26,6 +31,8 @@ export const sampleGreptileBilling = (g: SampleGen, config: SampleConfig): Grept
     const overage = g.amountCents(50, 150)
 
     return {
+      id: invoiceId,
+      startTime: start,
       period: { startTime: start, endTime: end, label: 'Billing period', invoiceId },
       invoice: {
         periodStart: start,

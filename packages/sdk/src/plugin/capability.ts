@@ -45,15 +45,19 @@ export type CollectContext<TConfig = Record<string, unknown>> = {
 export type IncrementalSpec = {
   id: string
   timestamp: string
+  // Names the bundle field holding the row list, for a `fetch` that returns a composite bundle (e.g. rows +
+  // an account-level field) rather than a bare array. Absent when the raw IS the list.
+  listKey?: string
   window?: { days: number }
 }
 
-// The runtime incremental hooks the host needs: the row-list `fetch` and the full-union `build`, kept SEPARATE
-// (the standard `collect` collapses them). Carried on the Capability so the host can run the union/rebuild flow
-// instead of a full collect. Rows are opaque records keyed by `id`.
+// The runtime incremental hooks the host needs: the raw-fetching `fetch` and the full-union `build`, kept
+// SEPARATE (the standard `collect` collapses them). Carried on the Capability so the host can run the
+// union/rebuild flow instead of a full collect. `fetch` may return a bare row list or, with `listKey` set, a
+// bundle the host unwraps before merging; `build` always runs over the rebuilt raw (list or bundle).
 export type IncrementalCapability = IncrementalSpec & {
-  fetch: (ctx: CollectContext) => Promise<Record<string, unknown>[]>
-  build: (rows: Record<string, unknown>[]) => CapabilityResult
+  fetch: (ctx: CollectContext) => Promise<unknown>
+  build: (raw: unknown) => CapabilityResult
 }
 
 export type Capability<TConfig = Record<string, unknown>> = {
@@ -84,6 +88,23 @@ export type Capability<TConfig = Record<string, unknown>> = {
 // names uninhabitable on a raw that isn't a list (incremental fetch only makes sense over a row list).
 type RowOf<TRaw> = TRaw extends readonly (infer R)[] ? R : never
 
+// Keys of a bundle whose value is a row array — the candidates for an incremental `listKey`.
+type ListKeys<T> = { [K in keyof T]: T[K] extends readonly unknown[] ? K : never }[keyof T]
+type FieldOf<A> = keyof RowOf<A> & string
+
+// The `incremental` declaration: array-raw form (raw IS the list) OR bundle form (`listKey` names the list
+// field on a composite raw — e.g. `{ invoices: [...], plan: 'pro' }`).
+type IncrementalDecl<TRaw> = TRaw extends readonly unknown[]
+  ? { id: FieldOf<TRaw>; timestamp: FieldOf<TRaw>; window?: { days: number } }
+  : {
+      [K in ListKeys<TRaw>]: {
+        listKey: K
+        id: FieldOf<TRaw[K]>
+        timestamp: FieldOf<TRaw[K]>
+        window?: { days: number }
+      }
+    }[ListKeys<TRaw>]
+
 export const defineCapability = <TRaw, TConfig = Record<string, unknown>>(spec: {
   id: string
   label: string
@@ -91,29 +112,32 @@ export const defineCapability = <TRaw, TConfig = Record<string, unknown>>(spec: 
   build: (raw: TRaw) => CapabilityResult
   sample: SampleGenerator<TRaw>
   fetchFile?: (ctx: CollectContext<TConfig>, row: Record<string, unknown>) => Promise<DocumentBytes>
-  // Opt into incremental fetch — only for a `fetch` that returns a row LIST. `id`/`timestamp` name fields of
-  // that row. `fetch` must then honour `ctx.since` (paginate newest-first, stop past it); `build` already runs
-  // over the full row set, so it needs no change.
-  incremental?: {
-    id: keyof RowOf<TRaw> & string
-    timestamp: keyof RowOf<TRaw> & string
-    window?: { days: number }
-  }
-}): Capability<TConfig> => ({
-  id: spec.id,
-  label: spec.label,
-  collect: async (ctx) => spec.build(await spec.fetch(ctx)),
-  sample: (opts) => spec.build(spec.sample(createSampleGen(opts?.seed ?? spec.id), resolveSampleConfig(opts?.config))),
-  ...(spec.fetchFile ? { fetchFile: spec.fetchFile } : {}),
-  ...(spec.incremental
-    ? {
-        incremental: {
-          id: spec.incremental.id,
-          timestamp: spec.incremental.timestamp,
-          ...(spec.incremental.window ? { window: spec.incremental.window } : {}),
-          fetch: spec.fetch as unknown as IncrementalCapability['fetch'],
-          build: spec.build as unknown as IncrementalCapability['build']
+  // Opt into incremental fetch. Array-raw: `id`/`timestamp` name fields of the row. Bundle-raw: `listKey` names
+  // the bundle field holding the row list, and `id`/`timestamp` name fields of ITS elements. `fetch` must then
+  // honour `ctx.since` (paginate newest-first, stop past it); `build` already runs over the full raw, so it
+  // needs no change.
+  incremental?: IncrementalDecl<TRaw>
+}): Capability<TConfig> => {
+  const inc = spec.incremental as { id: string; timestamp: string; listKey?: string; window?: { days: number } }
+
+  return {
+    id: spec.id,
+    label: spec.label,
+    collect: async (ctx) => spec.build(await spec.fetch(ctx)),
+    sample: (opts) =>
+      spec.build(spec.sample(createSampleGen(opts?.seed ?? spec.id), resolveSampleConfig(opts?.config))),
+    ...(spec.fetchFile ? { fetchFile: spec.fetchFile } : {}),
+    ...(spec.incremental
+      ? {
+          incremental: {
+            id: inc.id,
+            timestamp: inc.timestamp,
+            ...(inc.listKey ? { listKey: inc.listKey } : {}),
+            ...(inc.window ? { window: inc.window } : {}),
+            fetch: spec.fetch as unknown as IncrementalCapability['fetch'],
+            build: spec.build as unknown as IncrementalCapability['build']
+          }
         }
-      }
-    : {})
-})
+      : {})
+  }
+}
