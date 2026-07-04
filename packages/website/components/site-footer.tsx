@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 import { BrandMark, Wordmark } from './brand'
 
-const GITHUB = 'https://github.com/allardy/butin'
+import { GITHUB } from '@/lib/links'
 
 const columns: { title: string; links: { href: string; label: string; external?: boolean }[] }[] = [
   {
@@ -26,10 +26,9 @@ const columns: { title: string; links: { href: string; label: string; external?:
   {
     title: 'Open source',
     links: [
-      { href: GITHUB, label: 'GitHub', external: true },
+      { href: GITHUB, label: 'Star on GitHub', external: true },
       { href: `${GITHUB}/blob/master/LICENSE`, label: 'MIT License', external: true },
-      { href: `${GITHUB}/issues`, label: 'Issues', external: true },
-      { href: 'https://github.com/sponsors/allardy', label: 'Sponsor', external: true }
+      { href: `${GITHUB}/issues`, label: 'Issues', external: true }
     ]
   }
 ]

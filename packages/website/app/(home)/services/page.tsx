@@ -12,14 +12,20 @@ export const metadata: Metadata = {
 
 const groups: { id: Service['group']; title: string; blurb: string }[] = [
   {
+    id: 'ai',
+    title: 'AI & inference',
+    blurb: 'Every model provider you pay per-token for — spend, usage, and keys in one view.'
+  },
+  {
     id: 'dev',
     title: 'Developer & cloud tools',
-    blurb: 'The stack an indie dev actually pays for — AI, cloud, monitoring, infra.'
+    blurb: 'The stack an indie dev actually pays for — cloud, monitoring, infra, analytics.'
   },
   {
     id: 'beyond',
     title: 'Beyond dev tools',
-    blurb: 'No API? No export? No problem. The long tail Butin reaches that finance tools never could.'
+    blurb:
+      'No API? No export? No problem. The long tail Butin reaches that finance tools never could — health, telecom, utilities, and more.'
   }
 ]
 

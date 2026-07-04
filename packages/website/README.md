@@ -17,12 +17,12 @@ regenerates `.source` manually.
 
 ## Routes
 
-| Route       | File                                               | What                                                                              |
-| ----------- | -------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `/`         | `app/(home)/page.tsx`                              | Landing (hero · gap · mechanism · carnet proof · local-first · dev snippet · CTA) |
-| `/docs/*`   | `content/docs/*.mdx` + `app/docs/`                 | 10 MDX pages, sidebar via `content/docs/meta.json`                                |
-| `/services` | `app/(home)/services/page.tsx` + `lib/services.ts` | Catalog; brand-color letter monograms (no shipped logos)                          |
-| `/tour`     | `app/tour/page.tsx`                                | Full-bleed iframe of `public/onboarding.html` (the deck)                          |
+| Route       | File                                               | What                                                                                                                                                  |
+| ----------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`         | `app/(home)/page.tsx`                              | Landing (hero w/ product shot · gap · mechanism · showcase · carnet proof · local-first · dev snippet · CTA); real app screenshots in `public/shots/` |
+| `/docs/*`   | `content/docs/*.mdx` + `app/docs/`                 | 10 MDX pages, sidebar via `content/docs/meta.json`                                                                                                    |
+| `/services` | `app/(home)/services/page.tsx` + `lib/services.ts` | Catalog; brand-color letter monograms (no shipped logos)                                                                                              |
+| `/tour`     | `app/tour/page.tsx`                                | Full-bleed iframe of `public/onboarding.html` (the deck)                                                                                              |
 
 Chrome: `components/site-header.tsx` · `site-footer.tsx` · `brand.tsx` (mark + wordmark).
 Brand tokens + fonts in `app/global.css` and `app/layout.tsx`.
@@ -31,9 +31,12 @@ Brand tokens + fonts in `app/global.css` and `app/layout.tsx`.
 
 - **Canonical domain = butin.app**; `.io` → 301 to it; `.dev` reserved as future docs home.
 - **Docs single source of truth = the MDX here.** Edit the MDX under `content/docs/`.
-- **Catalog curation:** the catalog in `lib/services.ts` is seeded from the real `../../plugins/*` plugin
-  meta. Entries flagged `held: true` are not rendered (flip deliberately); status-only stubs are omitted.
-  Re-sync when plugins change.
+- **Catalog curation:** the catalog in `lib/services.ts` mirrors the real `../../plugins/*` plugin meta
+  (id, name, vendor, color, capability tabs), grouped `ai` / `dev` / `beyond`. Entries flagged `held: true`
+  are not rendered (flip deliberately). Re-sync when plugins change.
+- **Product screenshots:** `public/shots/*.png` are captured from the seeded demo (`pnpm seed-demo --home
+./.demo-home` → `pnpm build` → `node scripts/shots.mjs`), so they carry only synthetic data. Re-run
+  `scripts/shots.mjs` to refresh them after a UI change.
 
 ## Status — built (2026-06-14)
 

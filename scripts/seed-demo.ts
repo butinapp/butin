@@ -84,10 +84,10 @@ const loadPlugins = async (): Promise<ButinPlugin[]> => {
   const out: ButinPlugin[] = []
 
   for (const id of readdirSync(pluginsDir)) {
-    const main = join(pluginsDir, id, 'src', 'main.ts')
+    const main = join(pluginsDir, id, 'main.ts')
 
     // plugins/ is a package dir; skip its own files (node_modules, .turbo, package.json, …) — a plugin is a
-    // subdir with a src/main.ts.
+    // subdir with a main.ts.
     if (!existsSync(main)) {
       continue
     }

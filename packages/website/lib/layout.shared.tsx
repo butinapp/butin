@@ -1,6 +1,7 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared'
 
 import { BrandMark, Wordmark } from '@/components/brand'
+import { GITHUB } from '@/lib/links'
 
 // Shared Fumadocs chrome (the /docs nav). Brand mark + wordmark; links back to the marketing site.
 export function baseOptions(): BaseLayoutProps {
@@ -18,6 +19,6 @@ export function baseOptions(): BaseLayoutProps {
       { text: 'Services', url: '/services' },
       { text: 'Tour', url: '/tour' }
     ],
-    githubUrl: 'https://github.com/allardy/butin'
+    githubUrl: GITHUB
   }
 }

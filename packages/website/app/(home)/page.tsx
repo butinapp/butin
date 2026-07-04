@@ -1,16 +1,43 @@
 import Link from 'next/link'
 
 import { BrandMark } from '@/components/brand'
+import { GITHUB } from '@/lib/links'
+import { visibleServices } from '@/lib/services'
 
-const GITHUB = 'https://github.com/allardy/butin'
+const SERVICE_COUNT = visibleServices.length
 
-const services = ['Claude', 'Sentry', 'GitHub', 'Groq', 'Qdrant', 'Serper', 'AWS', 'Carnet Santé', 'Hydro Solution']
+// A cross-domain sample for the hero strip — dev tools next to a phone bill, a water heater, a health portal,
+// so "not just dev tools" lands at a glance.
+const stripServices = [
+  'Claude',
+  'AWS',
+  'Stripe',
+  'Vercel',
+  'Sentry',
+  'Videotron',
+  'Hydro-Solution',
+  'Carnet Santé',
+  'Airbnb'
+]
 
 const Kicker = ({ children }: { children: React.ReactNode }) => (
   <p className="inline-flex items-center gap-3 font-mono text-xs uppercase tracking-[0.28em] text-teal">
     <span className="h-px w-7 bg-gradient-to-r from-teal to-transparent" />
     {children}
   </p>
+)
+
+// A screenshot of the real app in a window frame — the product shots throughout the page share this chrome.
+const AppShot = ({ src, alt, label }: { src: string; alt: string; label: string }) => (
+  <figure className="overflow-hidden rounded-xl border border-line-strong bg-[#0c0e13] shadow-2xl">
+    <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
+      <span className="size-3 rounded-full bg-destructive/70" />
+      <span className="size-3 rounded-full bg-amber/70" />
+      <span className="size-3 rounded-full bg-success/70" />
+      <span className="ml-3 truncate font-mono text-xs text-muted">{label}</span>
+    </div>
+    <img src={src} alt={alt} width={2160} height={1350} className="w-full" loading="lazy" />
+  </figure>
 )
 
 // ---------------------------------------------------------------- Hero
@@ -20,13 +47,11 @@ const Hero = () => (
     <div className="bg-grid mask-fade pointer-events-none absolute inset-0 -z-10" />
     <div
       className="pointer-events-none absolute inset-0 -z-10"
-      style={{
-        background: 'radial-gradient(55% 45% at 50% -8%, rgba(98,212,200,0.10), transparent 60%)'
-      }}
+      style={{ background: 'radial-gradient(60% 40% at 50% -6%, rgba(98,212,200,0.12), transparent 60%)' }}
     />
-    <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-5 py-24 md:grid-cols-[1.35fr_1fr] md:py-32">
-      <div>
-        <div className="reveal" style={{ animationDelay: '0ms' }}>
+    <div className="mx-auto w-full max-w-6xl px-5 pt-24 md:pt-28">
+      <div className="mx-auto max-w-3xl text-center">
+        <div className="reveal flex justify-center" style={{ animationDelay: '0ms' }}>
           <Kicker>Local-first · MIT · no cloud</Kicker>
         </div>
         <h1
@@ -37,12 +62,18 @@ const Hero = () => (
           <br />
           <span className="text-teal-soft">One place.</span>
         </h1>
-        <p className="reveal mt-7 max-w-xl text-lg leading-relaxed text-muted" style={{ animationDelay: '160ms' }}>
-          Butin pulls billing, usage, and documents from every service you use into one local dashboard — readable
-          without logging in, every file downloaded, with the history the services themselves don&apos;t keep. Your own
-          login, fetched headless, kept on your disk.
+        <p
+          className="reveal mx-auto mt-7 max-w-2xl text-balance text-lg leading-relaxed text-muted"
+          style={{ animationDelay: '160ms' }}
+        >
+          Every account you have — cloud bills, subscriptions, your phone and utilities, even your health record — lives
+          behind its own login. Butin gathers them all into one dashboard on your own machine, readable without logging
+          in. Your session, fetched headless, kept on your disk.
         </p>
-        <div className="reveal mt-9 flex flex-wrap items-center gap-4" style={{ animationDelay: '240ms' }}>
+        <div
+          className="reveal mt-9 flex flex-wrap items-center justify-center gap-4"
+          style={{ animationDelay: '240ms' }}
+        >
           <a
             href={`${GITHUB}/releases`}
             target="_blank"
@@ -59,7 +90,7 @@ const Hero = () => (
           </Link>
         </div>
         <div
-          className="reveal mt-10 flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs uppercase tracking-wider text-muted"
+          className="reveal mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-xs uppercase tracking-wider text-muted"
           style={{ animationDelay: '320ms' }}
         >
           <span className="flex items-center gap-2">
@@ -74,27 +105,34 @@ const Hero = () => (
         </div>
       </div>
 
-      <div className="reveal relative mx-auto w-full max-w-sm text-teal" style={{ animationDelay: '200ms' }}>
+      <div className="reveal relative mx-auto mt-16 max-w-5xl" style={{ animationDelay: '380ms' }}>
         <div
-          className="brand-glow absolute inset-[8%] -z-10 rounded-full blur-2xl"
-          style={{ background: 'radial-gradient(circle, rgba(98,212,200,0.20), transparent 62%)' }}
+          className="pointer-events-none absolute -inset-x-10 -top-8 bottom-0 -z-10 blur-3xl"
+          style={{ background: 'radial-gradient(60% 50% at 50% 0%, rgba(98,212,200,0.14), transparent 70%)' }}
         />
-        <BrandMark className="w-full" title="Butin" />
+        <AppShot
+          src="/shots/overview.png"
+          alt="Butin's Overview — cross-service spending totals, a combined monthly-spend chart, what changed, and a by-service table."
+          label="butin — Overview"
+        />
       </div>
     </div>
 
     {/* services strip */}
-    <div className="border-t border-line">
+    <div className="mt-20 border-t border-line">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-6 sm:flex-row sm:items-center">
         <span className="font-mono text-xs uppercase tracking-wider text-muted/70">
           Works on the services that wall your data off
         </span>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:ml-auto">
-          {services.map((s) => (
+          {stripServices.map((s) => (
             <span key={s} className="font-mono text-sm text-ink/55">
               {s}
             </span>
           ))}
+          <Link href="/services" className="font-mono text-sm text-teal-soft/80 transition-colors hover:text-teal-soft">
+            +{SERVICE_COUNT - stripServices.length} more →
+          </Link>
         </div>
       </div>
     </div>
@@ -115,11 +153,11 @@ const Gap = () => {
           className="mt-5 text-4xl font-bold tracking-tight md:text-5xl"
           style={{ fontFamily: 'var(--font-display)' }}
         >
-          Your accounts are scattered across <span className="text-teal-soft">forty dashboards.</span>
+          Your accounts live in <span className="text-teal-soft">forty dashboards.</span>
         </h2>
         <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted">
-          Spend, usage, members, invoices, records — spread across 10–40 services, half with no export and no API at
-          all. The real picture only shows up on the invoice, or never. A spreadsheet is the state of the art.
+          Spend, usage, invoices, records — spread across dozens of services, no two alike. Half have no export and no
+          API at all. The real picture only shows up on the invoice, or never. A spreadsheet is the state of the art.
         </p>
         <div className="mt-8 flex items-baseline gap-4">
           <span className="font-mono text-5xl font-bold tracking-tight md:text-6xl">
@@ -128,7 +166,7 @@ const Gap = () => {
             <span className="text-amber">40</span>
           </span>
           <span className="max-w-[22ch] text-sm leading-snug text-muted">
-            services you can actually see at once, today
+            of your accounts you can actually see at once, today
           </span>
         </div>
       </div>
@@ -226,44 +264,91 @@ const HowItWorks = () => (
   </section>
 )
 
-// ---------------------------------------------------------------- Proof
+// ---------------------------------------------------------------- See it
 
-const Proof = () => (
+const Showcase = () => (
   <section className="mx-auto w-full max-w-6xl px-5 py-24">
-    <Kicker>Proof, not promises</Kicker>
+    <Kicker>See it</Kicker>
     <h2
       className="mt-5 max-w-2xl text-4xl font-bold tracking-tight md:text-5xl"
       style={{ fontFamily: 'var(--font-display)' }}
     >
-      A whole health record, <span className="text-teal-soft">exported off one login.</span>
+      One dashboard for <span className="text-teal-soft">everything you pay for.</span>
     </h2>
     <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
-      The sharpest proof isn&apos;t a billing chart. The <span className="font-mono text-ink">carnet-sante</span> plugin
-      logs into a government health portal — manual sign-in, MFA and all — then exports the entire record: profile,
-      medications, appointments, labs, imaging, the folder-access journal. Clean Markdown, JSON, and PDFs, on your disk.
-      No API. No cloud. There isn&apos;t one to use.
+      The Overview rolls every service into one place — total spend, a combined monthly chart, what moved this month.
+      Open any service for the full detail: billing, usage, members, invoices — each drawn by one generic renderer, so a
+      phone bill and a cloud invoice read the same way.
     </p>
 
-    <div className="mt-12 grid gap-5 md:grid-cols-3">
-      {[
-        {
-          k: 'No API required',
-          d: 'If a browser can see it, a plugin can fetch it. Butin covers the long tail of services that never shipped an API — or hide it behind a paywall.'
-        },
-        {
-          k: 'The whole record',
-          d: 'Not just billing. Usage, members, invoices, documents, full record exports — whatever the service renders, normalized into one shape.'
-        },
-        {
-          k: 'Eight services, one model',
-          d: 'Claude, Sentry, GitHub, Groq, Qdrant, Serper, AWS, a utility account, a health portal — every auth shape, behind one plugin contract.'
-        }
-      ].map((c) => (
-        <div key={c.k} className="rounded-2xl border border-line bg-surface p-7">
-          <h3 className="text-lg font-semibold tracking-tight">{c.k}</h3>
-          <p className="mt-3 text-[15px] leading-relaxed text-muted">{c.d}</p>
-        </div>
-      ))}
+    <div className="mt-12 grid gap-6 lg:grid-cols-2">
+      <div>
+        <AppShot
+          src="/shots/service-claude.png"
+          alt="A Claude service page in Butin — Summary, Billing, Usage, and Members tabs with spend stat cards and a monthly-spend chart."
+          label="butin — Claude"
+        />
+        <p className="mt-4 text-sm leading-relaxed text-muted">
+          <span className="text-ink">Every service, the same shape.</span> Tabs for billing, usage, and members —
+          normalized from whatever the service actually renders under the hood.
+        </p>
+      </div>
+      <div>
+        <AppShot
+          src="/shots/service-videotron.png"
+          alt="A Videotron telecom account in Butin — internet and mobile bills with a monthly-spend chart, in Canadian dollars."
+          label="butin — Videotron"
+        />
+        <p className="mt-4 text-sm leading-relaxed text-muted">
+          <span className="text-ink">Not just dev tools.</span>&nbsp;A phone bill, a water-heater rental, a bank
+          statement — the same billing view, in the account&apos;s own currency, with the history the service
+          doesn&apos;t keep.
+        </p>
+      </div>
+    </div>
+  </section>
+)
+
+// ---------------------------------------------------------------- Proof
+
+const Proof = () => (
+  <section className="relative border-y border-line bg-surface/30">
+    <div className="mx-auto w-full max-w-6xl px-5 py-24">
+      <Kicker>Proof, not promises</Kicker>
+      <h2
+        className="mt-5 max-w-2xl text-4xl font-bold tracking-tight md:text-5xl"
+        style={{ fontFamily: 'var(--font-display)' }}
+      >
+        A whole health record, <span className="text-teal-soft">exported off one login.</span>
+      </h2>
+      <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
+        The sharpest proof isn&apos;t a billing chart. The <span className="font-mono text-ink">carnet-sante</span>{' '}
+        plugin logs into a government health portal — manual sign-in, MFA and all — then exports the entire record:
+        profile, medications, appointments, labs, imaging, the folder-access journal. Clean Markdown, JSON, and PDFs, on
+        your disk. No API. No cloud. There isn&apos;t one to use.
+      </p>
+
+      <div className="mt-12 grid gap-5 md:grid-cols-3">
+        {[
+          {
+            k: 'No API required',
+            d: 'If a browser can see it, a plugin can fetch it. Butin covers the long tail of services that never shipped an API — or hide it behind a paywall.'
+          },
+          {
+            k: 'The whole record',
+            d: 'Not just billing. Usage, members, invoices, documents, full record exports — whatever the service renders, normalized into one shape.'
+          },
+          {
+            k: `${SERVICE_COUNT}+ services, one model`,
+            d: 'AI billing, a cloud invoice, a phone bill, a bank statement, a government health portal — every auth shape, behind one plugin contract.'
+          }
+        ].map((c) => (
+          <div key={c.k} className="rounded-2xl border border-line bg-bg p-7">
+            <h3 className="text-lg font-semibold tracking-tight">{c.k}</h3>
+            <p className="mt-3 text-[15px] leading-relaxed text-muted">{c.d}</p>
+          </div>
+        ))}
+      </div>
     </div>
   </section>
 )
@@ -278,7 +363,7 @@ const pillars = [
 ]
 
 const LocalFirst = () => (
-  <section className="relative border-y border-line bg-surface/30">
+  <section className="relative border-b border-line">
     <div className="mx-auto w-full max-w-6xl px-5 py-24">
       <div className="grid gap-12 md:grid-cols-[0.9fr_1.1fr] md:items-center">
         <div>
@@ -319,8 +404,8 @@ const ForDevelopers = () => (
         A service is a <span className="text-teal-soft">small plugin.</span>
       </h2>
       <p className="mt-6 max-w-md text-lg leading-relaxed text-muted">
-        A plugin is mostly declarative: describe how to log in and what to fetch, return normalized data, and one
-        generic renderer draws the dashboard. Most plugins ship no UI at all.
+        {SERVICE_COUNT} services already ship, each a small, mostly-declarative plugin: describe how to log in and what
+        to fetch, return normalized data, and one generic renderer draws the dashboard. Most plugins ship no UI at all.
       </p>
       <div className="mt-8 flex flex-wrap gap-4">
         <Link
@@ -345,7 +430,7 @@ const ForDevelopers = () => (
         <span className="size-3 rounded-full bg-destructive/70" />
         <span className="size-3 rounded-full bg-amber/70" />
         <span className="size-3 rounded-full bg-success/70" />
-        <span className="ml-3 font-mono text-xs text-muted">plugins/stripe/src/main.ts</span>
+        <span className="ml-3 font-mono text-xs text-muted">plugins/stripe/main.ts</span>
       </div>
       <pre className="overflow-x-auto p-5 font-mono text-[13px] leading-relaxed">
         <code>
@@ -360,8 +445,8 @@ const ForDevelopers = () => (
           {'      '}collect: <span className="text-teal-soft">async</span> ({'{'} client {'}'}) {'=>'}
           {'\n'}
           {'        '}
-          <span className="text-teal-soft">billingResult</span>({'{'} <span className="text-muted">/* … */</span> {'}'}){' '}
-          {'}'}
+          <span className="text-teal-soft">billing.result</span>({'{'} <span className="text-muted">/* … */</span> {'}'}
+          ) {'}'}
           {'\n'} ]{'\n'}
           {'})'}
         </code>
@@ -373,12 +458,10 @@ const ForDevelopers = () => (
 // ---------------------------------------------------------------- Final CTA
 
 const FinalCTA = () => (
-  <section className="relative overflow-hidden border-t border-line">
+  <section className="relative overflow-hidden">
     <div
       className="pointer-events-none absolute inset-0 -z-10"
-      style={{
-        background: 'radial-gradient(60% 80% at 50% 120%, rgba(98,212,200,0.12), transparent 60%)'
-      }}
+      style={{ background: 'radial-gradient(60% 80% at 50% 120%, rgba(98,212,200,0.12), transparent 60%)' }}
     />
     <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-8 px-5 py-28 text-center">
       <div className="relative text-teal">
@@ -421,6 +504,7 @@ export default function HomePage() {
       <Hero />
       <Gap />
       <HowItWorks />
+      <Showcase />
       <Proof />
       <LocalFirst />
       <ForDevelopers />

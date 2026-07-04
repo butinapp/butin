@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 import { BrandMark, Wordmark } from './brand'
 
-const GITHUB = 'https://github.com/allardy/butin'
+import { GITHUB } from '@/lib/links'
 
 const nav = [
   { href: '/docs', label: 'Docs' },
