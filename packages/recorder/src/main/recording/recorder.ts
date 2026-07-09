@@ -19,6 +19,7 @@ import {
   writeStorageSnapshot,
   writeWebSocketFile
 } from './storage.js'
+import { shouldStreamResponse } from './streaming.js'
 import {
   SCHEMA_VERSION,
   type CaptureContext,
@@ -722,10 +723,12 @@ export class Recorder {
       p.type = params.type
     }
 
-    // For server-sent events / streaming responses, getResponseBody won't
-    // resolve until the stream ends (which may be never). Switch to streamed
-    // capture so we accumulate chunks via dataReceived instead.
-    if (/event-stream/i.test(p.mimeType ?? '') || p.type === 'EventSource') {
+    // A long-lived / unbounded body (SSE, a Firestore Listen WebChannel, gRPC-web, a chunked NDJSON feed) can
+    // never be read with a single getResponseBody at loadingFinished — the stream may outlive the recording, so
+    // loadingFinished never fires and the record is dropped at stop. Switch those to streamResourceContent so we
+    // accumulate dataReceived chunks and can flush whatever arrived. The tell is no Content-Length on a data
+    // fetch (unknown-length / chunked); see shouldStreamResponse.
+    if (shouldStreamResponse(p.type, p.mimeType ?? '', p.respHeaders ?? {})) {
       p.streamed = true
       void this.startStreaming(wcId, sessionId, params.requestId, p)
     }
@@ -884,7 +887,30 @@ export class Recorder {
     let bodyNote: string | undefined
 
     if (p.streamed) {
-      const buf = Buffer.concat(p.streamChunks)
+      let buf = Buffer.concat(p.streamChunks)
+
+      // The stream produced no bytes — either streamResourceContent isn't supported here, or a finite response
+      // (routed to streaming because it advertised no Content-Length) finished before streaming engaged. Fall
+      // back to a one-shot read so a retrievable body isn't lost. Skip when the run stopped mid-stream: the
+      // request is still in flight and getResponseBody would only reject.
+      if (buf.length === 0 && !partialStream) {
+        try {
+          const a = this.attachments.get(p.wcId)
+
+          if (a) {
+            const res = await this.send(
+              a.wc,
+              'Network.getResponseBody',
+              { requestId: key.split('|').pop() },
+              p.sessionId
+            )
+
+            buf = Buffer.from(res?.body ?? '', res?.base64Encoded ? 'base64' : 'utf8')
+          }
+        } catch {
+          // in-flight or already gone — leave the body empty
+        }
+      }
 
       if (isTextLike(p.mimeType ?? '')) {
         body = buf.toString('utf8')
