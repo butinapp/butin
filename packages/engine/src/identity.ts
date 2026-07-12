@@ -108,7 +108,11 @@ export const applyBrowserIdentity = (ses: Session, opts: { rewriteHeaders?: bool
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = { ...details.requestHeaders, ...SEC_CH_UA_HEADERS }
 
-    delete headers['X-Requested-With']
+    // Pass `X-Requested-With` through untouched. The renderer is its only source (Chromium never adds it),
+    // so it's present exactly when page JS set it on an XHR (jQuery/ajaxSafePost) — the same request a real
+    // Chrome running that page would send. Stripping it desyncs from real Chrome and breaks servers that gate
+    // AJAX endpoints on it: Power Pages `/_services/*` + `/_api/cloudflow` 500 without it (routed to a
+    // non-AJAX error path), and classic ASP.NET/Rails CSRF checks reject the request.
     headers['Accept-Language'] = headers['Accept-Language'] ?? 'en-US,en;q=0.9'
     callback({ requestHeaders: headers })
   })

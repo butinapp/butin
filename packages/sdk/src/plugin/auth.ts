@@ -43,7 +43,11 @@ export type AuthStrategy =
   | (AuthBase & { kind: 'api-key'; resolve?: AuthResolveHook })
   // cookie-csrf — cookie + a CSRF header. `resolve` is OPTIONAL: some services scrape the nonce inside
   // collect() (GitHub fetch-nonce) rather than in a resolve hook; others parse it from a cookie value
-  // (HubSpot) or a pasted manual field (ngrok) in resolve().
+  // (HubSpot) or a pasted manual field (ngrok) in resolve(). GOTCHA: a resolve() hook REPLACES core's default
+  // cookie attachment — so it MUST return the stored session cookie itself (`cookie: creds.get('cookie')`)
+  // alongside the CSRF header, or the requests go out with no session and 401/redirect to login. (Only the
+  // BARE base client resolve() scrapes against still carries the cookie, so a nonce/token fetch inside
+  // resolve() misleadingly succeeds.) See HubSpot's resolveHubspotAuth.
   | (AuthBase & { kind: 'cookie-csrf'; resolve?: AuthResolveHook })
   // minted-jwt — exchange a durable session cookie for a short-lived JWT per fetch (Clerk/Stytch: Novu,
   // Groq, Upstash). resolve REQUIRED.

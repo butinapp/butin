@@ -33,7 +33,12 @@ Every service is one point in this space; each axis is **declarative** on the de
 - **Auth** — `auth.kind`: `cookie` · `bearer-token` (core defaults, no code) · `cookie-csrf` ·
   `minted-jwt` · `rotating-refresh` · `api-key` · `spa-bearer` · `external` (all but the first two need a
   `resolve()` hook, except `spa-bearer`/`external` which core/`collect()` handle). See `packages/sdk/src/auth.ts`
-  for exactly what each kind does and which fields it needs.
+  for exactly what each kind does and which fields it needs. **GOTCHA — a `resolve()` hook REPLACES core's
+  default cookie attachment.** For `cookie-csrf` (cookie IS the session) the hook MUST return the stored cookie
+  itself — `{ cookie: ctx.creds.get('cookie'), headers: { <csrf> } }` — or every request goes out session-less
+  and 401s / redirects to login. A nonce/token GET _inside_ resolve() still works (it uses the bare,
+  cookie-attached base client), so this fails silently only on the real capability requests. Copy HubSpot's
+  `resolveHubspotAuth`. (`minted-jwt`/`bearer-token` correctly omit the cookie — the Bearer is the credential.)
 - **Render shape** — handled imperatively inside each `collect()` (JSON / GraphQL / tRPC+superjson /
   Remix-RSC / HTML scrape / gRPC-web). The contract standardizes the authed client IN and the normalized
   result OUT, not how you parse.
