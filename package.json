@@ -23,6 +23,7 @@
     "check:typecheck": "turbo run typecheck",
     "fix": " pnpm fix:lint && pnpm fix:format",
     "new-plugin": "node scripts/new-plugin.mjs",
+    "bump-libs": "node scripts/bump-libs.mjs",
     "drive": "node scripts/drive.mjs",
     "smoke": "node scripts/smoke.mjs",
     "seed-demo": "tsx scripts/seed-demo.ts",

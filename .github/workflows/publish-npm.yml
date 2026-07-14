@@ -1,9 +1,10 @@
 name: Publish npm
 
 # Publish the library graph (@butinapp/sdk → shapes → ui) to npm whenever the lockstep version — anchored on
-# packages/sdk/package.json — changes on master. The three move together; bump all three, commit, push. Only these
-# three packages are non-private, so `pnpm -r publish` targets exactly them, in dependency order. The check job
-# no-ops if the version is already on npm. A manual run is a dry run (build + pack, never publishes).
+# packages/sdk/package.json — changes on master. The three move together: bump them with `pnpm bump-libs
+# <version|patch|minor|major>` (never hand-edit one — leaving sdk behind makes the check below skip and nothing
+# publishes), commit, push. Only these three packages are non-private, so `pnpm -r publish` targets exactly them,
+# in dependency order. The check job no-ops if the version is already on npm. A manual run is a dry run.
 on:
   push:
     branches:

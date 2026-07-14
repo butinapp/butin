@@ -384,6 +384,7 @@ pnpm new-plugin <id> [--name "..."] [--vendor "..."]   # scaffold plugins/<id>/ 
 pnpm record              # launch the dev session recorder (packages/recorder; never shipped)
 pnpm drive [#/hash ...] # launch the BUILT app under Playwright, screenshot routes (autonomous; see below)
 pnpm seed-demo [--home ./.demo-home] [--days 30] [--window 180]   # deterministic demo data for every plugin → an isolated BUTIN_HOME
+pnpm bump-libs <version|patch|minor|major>   # bump the published graph (sdk + shapes + ui) in lockstep; commit + push to master to release
 ```
 
 Per package: `pnpm --filter @butinapp/core test`, `pnpm --filter @butinapp/sdk typecheck`, etc.
