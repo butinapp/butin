@@ -337,14 +337,22 @@ The UI is built so **pieces ship standalone and embed anywhere, dark or light**.
    `.butin.dark` / `.dark .butin`), so importing it into a host's Tailwind build never overwrites the host's own `:root` or its shadcn `--background`/`--chart-*`
    tokens — Butin's values apply only inside a `.butin` subtree. **Every Butin root must carry the class:** the app's `<html>` (`index.html`), and each embed wrapper
    (`@butinapp/viewer`'s `ButinViewer`/`ButinView` render it). A host embedding bare `@butinapp/ui` primitives for its OWN chrome puts `.butin` on an ancestor too. The
-   `@theme inline` mapping stays global but only emits utilities that reference `var(--token)` (late-bound to whichever scope resolves them) — no token value lands on
-   `:root`. The echarts `getComputedStyle` probe reads tokens off the nearest `.butin`.
-3. **`@butinapp/ui` ships no COMPILED CSS** (no preflight, no utilities) — a second Tailwind build on a host page would collide (duplicate preflight/`:root`,
-   clashing utilities). Instead the **host's single Tailwind build** (a) generates the package's utility classes by scanning its source and (b) imports the shared
-   tokens. `core/src/renderer/index.css` does both: `@import 'tailwindcss'; @import '@butinapp/ui/theme.css'; @source '../../../ui/src/**/*.{ts,tsx}'`. `theme.css`
-   is **source the host build consumes** (tokens + `@theme` + dark variant), not compiled output, so importing it twice is idempotent — nothing to collide. An
-   external host imports the same `@butinapp/ui/theme.css` and points `@source` at its own `node_modules/@butinapp/ui`. Charts (echarts canvas) can't ride the CSS
-   cascade — they must read token values via `getComputedStyle`.
+   token VALUES are scoped, but `theme.css`'s `@theme inline` mapping is GLOBAL — Tailwind's `@theme` always merges into the build's theme namespace, so a host that
+   co-builds `theme.css` has its own `--color-*` rewritten to `var(--token)` (see path (a) below for when that's safe). The echarts `getComputedStyle` probe reads
+   tokens off the nearest `.butin`.
+3. **Two embed paths — pick by whether the host has its own Tailwind theme:**
+   - **(a) Co-build (`theme.css` + `@source`)** — the host's single Tailwind build imports the shared tokens and scans the package source for utilities:
+     `@import 'tailwindcss'; @import '@butinapp/ui/theme.css'; @source '…/@butinapp/ui/src/**/*.{ts,tsx}'` (what `core/src/renderer/index.css` does). No compiled CSS
+     ships, so there's no duplicate-preflight collision — but because `@theme` is global (2b), this path **overwrites a host's own Tailwind theme** and is only safe for
+     a host with NO conflicting theme (the app; a greenfield host).
+   - **(b) Drop-in precompiled bundle (`@butinapp/ui/butin.css`)** — the DEFAULT for any external host. A build step (`scripts/build-css.mjs`) compiles Tailwind over the
+     component source + `theme.css`, then a PostCSS pass (`scripts/scope-css.mjs`) confines EVERY rule to `.butin`: preflight `:root`/`html`/`body` → `.butin`, the
+     universal reset → `.butin, .butin *`, utilities + `dark:` variants → descendant-scoped, and the already-`.butin` token blocks pass through. The host imports this
+     one stylesheet, runs no build, shares no tokens, and its `:root`/`*`/`@theme` are never touched — so it works in a Tailwind host (with its own theme), a non-Tailwind
+     host, or plain HTML. `dist/butin.css` is build output (gitignored); a compile-based test (`scripts/build-css.test.mjs`) guards that nothing leaks to the document and
+     `.butin` keeps the chart tokens.
+
+   Charts (echarts canvas) can't ride the CSS cascade — they read token values via `getComputedStyle` off the nearest `.butin`, which both paths populate.
 
 **Adding a UI primitive/feature:** put it in `@butinapp/ui` if it's presentational and could be embedded; keep it in `core/src/renderer` only if it's app chrome
 (uses IPC, `next-themes`, Electron). Import `cn` and primitives from `@butinapp/ui`, not a local copy.

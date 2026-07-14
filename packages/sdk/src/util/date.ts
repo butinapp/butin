@@ -58,6 +58,13 @@ export const currentMonthKey = (now = new Date()): string =>
 export const dayMinus = (day: string, days: number): string =>
   DateTime.fromISO(day, { zone: 'utc' }).minus({ days }).toISODate() ?? day
 
+// 'YYYY-MM-DD' for `months` calendar months before `day`. Luxon handles month-length edges (Mar 31 − 1 → Feb 28).
+// Bucketing arithmetic on a day string, so the reporting zone doesn't apply; invalid input returns `day` unchanged.
+// The go-to for arrears billing: an invoice issued in month M covers M − 1, so `monthMinus(issueDay, 1)` books it
+// into the month it actually covers regardless of which day of M it was issued.
+export const monthMinus = (day: string, months: number): string =>
+  DateTime.fromISO(day, { zone: 'utc' }).minus({ months }).toISODate() ?? day
+
 // UTC 'YYYY-MM-DD' for N days before now.
 export const utcDaysAgo = (days: number): string => new Date(Date.now() - days * MS_PER_DAY).toISOString().slice(0, 10)
 

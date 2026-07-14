@@ -8,6 +8,7 @@ import {
   getReportingZone,
   isoDay,
   monthKey,
+  monthMinus,
   monthStart,
   setReportingZone,
   utcDaysAgo
@@ -53,6 +54,14 @@ test('dayOf resolves an ISO datetime (Z or offset) to its day in the reporting z
 test('monthKey zero-pads a 1-based month', () => {
   expect(monthKey(2026, 6)).toBe('2026-06')
   expect(monthKey(2026, 11)).toBe('2026-11')
+})
+
+test('monthMinus steps back whole calendar months, regardless of the day', () => {
+  expect(monthMinus('2026-07-02', 1)).toBe('2026-06-02') // an arrears invoice issued Jul 02 → June
+  expect(monthMinus('2026-01-15', 1)).toBe('2025-12-15') // crosses the year boundary
+  expect(monthMinus('2026-03-31', 1)).toBe('2026-02-28') // clamps to the shorter month
+  expect(monthMinus('2026-07-02', 0)).toBe('2026-07-02')
+  expect(monthMinus('not-a-date', 1)).toBe('not-a-date') // invalid → unchanged
 })
 
 test('monthStart is the first of the given month in the reporting zone', () => {

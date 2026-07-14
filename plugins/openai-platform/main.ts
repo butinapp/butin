@@ -15,7 +15,7 @@ import {
   type MemberInput,
   type MembersInput
 } from '@butinapp/sdk/presets'
-import { centsToMajor, currentMonthKey, epochMsDay, epochSecDay, round2 } from '@butinapp/sdk/util'
+import { centsToMajor, currentMonthKey, epochMsDay, epochSecDay, monthMinus, round2 } from '@butinapp/sdk/util'
 
 import { sampleOpenaiBilling, sampleOpenaiKeys, sampleOpenaiMembers } from './sample.js'
 
@@ -336,8 +336,13 @@ export const buildOpenaiSummaryResult = (billingData: PlatformBilling, spend: Sp
     // The usage report's grand total for the current calendar month (invoiced month-to-date).
     mtdBasis: 'invoiced',
     plan: billingData.limits.planTitle ?? undefined,
+    // The monthly-spend chart + the cross-service Overview bucket by the period the spend was INCURRED, not the
+    // issue date. OpenAI issues each dashboard invoice a day or two into a month, billing the PREVIOUS month in
+    // arrears (created == period_start == period_end, all the issue instant). Book it into the month before the
+    // issue month so June's bill (issued Jul 2) buckets under June, and the current month (no invoice yet) reads
+    // the live MTD headline instead of a phantom bar equal to last month's.
     invoices: billingData.invoices.map((i) => ({
-      date: i.date,
+      date: i.date ? monthMinus(i.date, 1) : undefined,
       amount: i.amount,
       status: i.status,
       hostedUrl: i.hostedUrl,

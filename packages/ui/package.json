@@ -1,7 +1,7 @@
 {
   "name": "@butinapp/ui",
-  "version": "0.1.1",
-  "description": "Butin's embeddable, theme-portable design system + the generic data-view renderer (DashboardRenderer, Overview, app shell). Pure, prop-driven, no Electron. Ships theme.css; a Tailwind host generates the utilities.",
+  "version": "0.1.2",
+  "description": "Butin's embeddable, theme-portable design system + the generic data-view renderer (DashboardRenderer, Overview, app shell). Pure, prop-driven, no Electron. Ships a self-contained, .butin-scoped butin.css for drop-in embeds (zero host build), plus theme.css for a host that co-builds.",
   "homepage": "https://butin.app",
   "bugs": "https://github.com/butinapp/butin/issues",
   "license": "MIT",
@@ -22,7 +22,8 @@
     "./dashboard": "./src/dashboard.ts",
     "./shell": "./src/shell.ts",
     "./i18n": "./src/i18n/index.ts",
-    "./theme.css": "./src/theme.css"
+    "./theme.css": "./src/theme.css",
+    "./butin.css": "./dist/butin.css"
   },
   "publishConfig": {
     "types": "./dist/index.d.ts",
@@ -47,12 +48,13 @@
         "types": "./dist/i18n/index.d.ts",
         "import": "./dist/i18n/index.js"
       },
-      "./theme.css": "./dist/theme.css"
+      "./theme.css": "./dist/theme.css",
+      "./butin.css": "./dist/butin.css"
     },
     "access": "public"
   },
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json && node scripts/copy-assets.mjs",
+    "build": "tsgo -p tsconfig.build.json && node scripts/copy-assets.mjs && node scripts/build-css.mjs",
     "prepack": "pnpm build",
     "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "vitest run"
@@ -71,6 +73,7 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.1",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@testing-library/user-event": "catalog:",
@@ -78,7 +81,9 @@
     "@types/luxon": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "jsdom": "catalog:"
+    "jsdom": "catalog:",
+    "postcss": "^8.5.15",
+    "tailwindcss": "catalog:"
   },
   "peerDependencies": {
     "react": "catalog:",

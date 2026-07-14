@@ -1,6 +1,6 @@
 {
   "name": "@butinapp/shapes",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Butin's host-layer data shapes built on the @butinapp/sdk data-view contract: the cross-service Overview input, the persisted ledger, the presentation manifest, and the portable export-bundle wire format.",
   "homepage": "https://butin.app",
   "bugs": "https://github.com/butinapp/butin/issues",

@@ -1,0 +1,23 @@
+/* Build-only entry for the self-contained embed stylesheet (`dist/butin.css`), produced by
+   `scripts/build-css.mjs`: compile Tailwind over the component source + the brand tokens, then scope every
+   emitted rule under `.butin` (`scripts/scope-css.mjs`).
+
+   This is NOT consumed by the app — `@butinapp/core` runs its own Tailwind build off `theme.css` + `@source`.
+   It's the drop-in stylesheet an external host imports (`@butinapp/ui/butin.css`) so an embedded Butin surface
+   carries its own preflight + utilities + tokens without the host running any build. Because the scope pass
+   confines preflight to `.butin` and rewrites `:root`/`html`/`body` to `.butin`, nothing lands on the host's
+   `:root`, `*`, or `@theme` namespace. */
+
+@import 'tailwindcss';
+@import './theme.css';
+@source './**/*.{ts,tsx}';
+
+/* Default every element's border color + focus-ring color to the brand tokens — the app applies the same base
+   layer in `core/src/renderer/index.css`. Components use the bare `border` utility (width only) and rely on
+   this for the COLOR; without it an embedded element falls back to `currentColor` (dark/heavy borders in a
+   light host, faint in dark). The scope pass confines it to `.butin *`, so a host's own borders are untouched. */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+}

@@ -309,6 +309,30 @@ describe('buildOpenaiSummaryResult', () => {
     }
   })
 
+  it('buckets each arrears invoice under the month it covers, not its issue month', () => {
+    // OpenAI issues a day or two into a month billing the prior month: these are real issue instants — 2026-07-02
+    // (covers June) and 2026-06-01 (covers May). The monthly chart / Overview must show them under June / May,
+    // else the current month reads a phantom bar equal to last month's bill. A plain day-minus-1 wouldn't reach
+    // the prior month from Jul 02.
+    const arrears: RawOrgInvoices = {
+      orgId: 'org-arrears',
+      orgName: 'Arrears',
+      invoices: [
+        { id: 'jul', total: 7_757_168, created: 1_782_957_933, status: 'paid' }, // issued 2026-07-02 → covers June
+        { id: 'jun', total: 8_018_914, created: 1_780_348_753, status: 'paid' } // issued 2026-06-01 → covers May
+      ]
+    }
+    const billing = buildOpenaiBilling([arrears], LIMITS)
+    const spend = buildOpenaiSpend([PROD, INTERNAL], '2026-07-14T18:00:00.000Z', '2026-07')
+    const r = buildOpenaiSummaryResult(billing, spend)
+    const monthly = r.datasets.find((d) => d.id === 'monthly')
+    const months = monthly?.shape === 'table' ? monthly.rows.map((row) => row.month) : []
+
+    expect(months).toContain('2026-06') // the Jul-01 invoice lands in June
+    expect(months).toContain('2026-05') // the Jun-01 invoice lands in May
+    expect(months).not.toContain('2026-07') // the current month has no invoice bar — the headline MTD stands
+  })
+
   it('omits the spend summary when there is no current-month spend (past period)', () => {
     const billing = buildOpenaiBilling([SMALL_ORG], LIMITS)
     const spend = buildOpenaiSpend([PROD], '2026-06-09T18:00:00.000Z', '2026-05') // past month → currentMtd null

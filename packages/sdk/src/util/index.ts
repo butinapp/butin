@@ -19,6 +19,7 @@ export {
   monthKey,
   currentMonthKey,
   dayMinus,
+  monthMinus,
   utcDaysAgo,
   isoDaysAgo,
   monthStart,
