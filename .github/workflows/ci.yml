@@ -1,7 +1,11 @@
 name: CI
 
+# Branch work triggers CI only through its PR — a bare branch push doesn't. `push` is scoped to master so the
+# default branch (what releases cut from) still gets a post-merge check.
 on:
   push:
+    branches:
+      - master
   pull_request:
 
 # A newer push to the same branch/PR supersedes an in-flight run — don't burn minutes on stale commits.
