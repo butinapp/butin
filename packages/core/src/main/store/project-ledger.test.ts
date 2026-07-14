@@ -139,8 +139,9 @@ test('primarySeries falls back to the first series and is [] when none', () => {
 })
 
 // A spend chart (settled-invoice bars) + a spend summary whose spark binds it, and a ledger whose open-period
-// spend series captured June's peak ($720, over two June readings) then reset to July ($5). June + July have no
-// invoice bar yet (arrears lag).
+// spend series grew through June to $720, then reset for July — where a boundary reading captured the prior
+// period's $999 total before the real July accrual ($5) was observed. June + July have no invoice bar yet
+// (arrears lag). The July $999 spike is exactly the case max() gets wrong: the latest reading ($5) is July's.
 const monthly = (rows: { month: string; amount: number }[]): StoredDataset => ({
   id: 'monthly',
   shape: 'table',
@@ -165,17 +166,19 @@ const accrualLedger: Ledger = {
       points: [
         { capturedAt: '2026-06-20T12:00:00Z', value: 610 },
         { capturedAt: '2026-06-30T22:00:00Z', value: 720 },
+        { capturedAt: '2026-07-01T00:10:00Z', value: 999 }, // prior-period boundary spike — must be ignored
         { capturedAt: '2026-07-01T04:00:00Z', value: 5 }
       ]
     }
   ]
 }
 
-test('backfillAccrualBars fills months missing from the invoice chart with the captured monthly peak', () => {
+test('backfillAccrualBars fills months missing from the invoice chart with each month latest reading', () => {
   const ds = monthly([{ month: '2026-05', amount: 900 }])
   const [out] = backfillAccrualBars([ds], [spendSummary], sparkManifest, accrualLedger)
 
-  // May (invoiced) untouched; June filled with its peak reading (720, not 610); July with the post-reset 5.
+  // May (invoiced) untouched; June filled with its latest reading (720); July with the post-reset $5 — NOT the
+  // $999 boundary spike a max() would have picked.
   expect(out!.rows).toEqual([
     { month: '2026-05', amount: 900 },
     { month: '2026-06', amount: 720 },

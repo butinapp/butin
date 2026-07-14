@@ -69,27 +69,31 @@ export const seriesPoints = (led: Ledger, section: string): DailySource[] => {
   }))
 }
 
-// Per-month peak of the resetting open-period spend series: the highest reading captured in each month, keyed
-// 'YYYY-MM'. For a monthly-reset accrual, a month's peak is its near-final accrued total — the best estimate of
-// that month's bill before the provider posts the settled invoice.
-const monthlyAccrualPeaks = (led: Ledger): Map<string, number> => {
-  const out = new Map<string, number>()
+// The open-period spend reading representing each month, keyed 'YYYY-MM': the LATEST capture in the month. A
+// usage accrual resets every billing period, so the newest reading is the current period's running total — the
+// best estimate of the month's bill before the provider posts the settled invoice. (The max would be wrong: a
+// reading captured at a period boundary, or before a reset that falls mid-month when billing isn't
+// calendar-aligned, is a PRIOR period's near-final total that doesn't belong to this month.)
+const monthlyAccrualReadings = (led: Ledger): Map<string, number> => {
+  const out = new Map<string, { at: string; value: number }>()
 
   for (const p of seriesPoints(led, 'spend')) {
     const month = p.date.slice(0, 7)
     const prev = out.get(month)
 
-    out.set(month, prev === undefined ? p.value : Math.max(prev, p.value))
+    if (!prev || p.capturedAt > prev.at) {
+      out.set(month, { at: p.capturedAt, value: p.value })
+    }
   }
 
-  return out
+  return new Map([...out].map(([month, r]) => [month, r.value]))
 }
 
-// Fill a spend chart's missing month bars from the captured accrual peaks. A service billing in arrears builds
-// its monthly chart from settled invoices, so the just-closed + current months have no bar until the provider
-// posts the invoice — often weeks later. The open-period spend captured in the ledger already holds those
-// months' totals, so fill each month the invoice history is missing with its captured peak. Invoice bars stay
-// authoritative (a present month is never overwritten); only absent months are added. No-op unless the result
+// Fill a spend chart's missing month bars from the captured accrual readings. A service billing in arrears
+// builds its monthly chart from settled invoices, so the just-closed + current months have no bar until the
+// provider posts the invoice — often weeks later. The open-period spend captured in the ledger already holds
+// those months' totals, so fill each month the invoice history is missing with its latest captured reading.
+// Invoice bars stay authoritative (a present month is never overwritten); only absent months are added. No-op unless the result
 // carries a spend summary on an accrual basis (a live open-period figure) whose spark points at one of these
 // table datasets — a settled 'invoiced'/'lastInvoice' figure is a past bill, not this month's captured spend,
 // so projecting it onto a month with no invoice yet would synthesize a phantom bar.
@@ -106,9 +110,9 @@ export const backfillAccrualBars = (
     return datasets
   }
 
-  const peaks = monthlyAccrualPeaks(led)
+  const readings = monthlyAccrualReadings(led)
 
-  if (peaks.size === 0) {
+  if (readings.size === 0) {
     return datasets
   }
 
@@ -118,7 +122,7 @@ export const backfillAccrualBars = (
     }
 
     const present = new Set(ds.rows.map((r) => String(r[spark.x])))
-    const added = [...peaks]
+    const added = [...readings]
       .filter(([month]) => !present.has(month))
       .map(([month, value]) => ({ [spark.x]: month, [spark.y]: round2(value) }))
 

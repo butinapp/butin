@@ -10,6 +10,7 @@ import type { BadgeTone, Column, SemanticRole } from '../data/dataset.js'
 import type { CapabilityResult } from '../data/result.js'
 import type { MonthPoint } from '../data/series.js'
 import { resolveTableFiles, type TableFiles } from '../data/view.js'
+import { currentMonthKey } from '../util/date.js'
 import { round2 } from '../util/money.js'
 
 import { type CreditsInput, creditsRecord, type PaymentMethodInput, paymentMethodRecord } from './blocks.js'
@@ -57,9 +58,12 @@ const DEFAULT_INVOICE_FILES: FileTableSpec<InvoiceRow> = {
 
 // Bucket invoice amounts by calendar month (ascending) → the monthly-spend series both the Summary chart
 // and the cross-service Overview spark read. Rounded once per month to avoid IEEE-754 drift (0.1+0.2≠0.3).
-// Undated invoices can't bucket onto the monthly axis, so they're skipped.
+// Undated invoices can't bucket onto the monthly axis, so they're skipped. A FUTURE month is skipped too: a
+// charge dated ahead of today (an advance/renewal invoice billed at period start) is not spend incurred yet,
+// so it must never paint a bar past the current month.
 export const monthlySpend = (invoices: BillingInvoiceInput[]): MonthPoint[] => {
   const byMonth = new Map<string, number>()
+  const thisMonth = currentMonthKey()
 
   for (const inv of invoices) {
     if (!inv.date) {
@@ -67,6 +71,10 @@ export const monthlySpend = (invoices: BillingInvoiceInput[]): MonthPoint[] => {
     }
 
     const month = inv.date.slice(0, 7)
+
+    if (month > thisMonth) {
+      continue
+    }
 
     byMonth.set(month, (byMonth.get(month) ?? 0) + inv.amount)
   }

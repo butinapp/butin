@@ -133,6 +133,15 @@ test('monthlySpend buckets by YYYY-MM ascending, rounds per month, skips undated
   ])
 })
 
+test('monthlySpend skips a future-dated invoice (an advance/renewal charge is not spend incurred yet)', () => {
+  expect(
+    monthlySpend([
+      { date: '2026-04-15', amount: 25, status: 'paid' },
+      { date: '2099-01-11', amount: 1098, status: 'paid' } // an advance/renewal charge dated ahead of today
+    ])
+  ).toEqual([{ month: '2026-04', amount: 25 }])
+})
+
 // --- billingSummaryResult (the Summary tab preset) ---
 
 const summary = billingSummaryResult({
