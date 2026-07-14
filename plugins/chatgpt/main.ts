@@ -17,7 +17,7 @@ import { sampleChatgptBilling, sampleChatgptMembers, sampleChatgptUsage } from '
 //   2. Billing — the financial detail: the account record (plan, payment card, billing contact, credit grant)
 //      + the downloadable Stripe invoice history (cents→USD).
 //   3. Usage — the per-member Codex leaderboard (credits → USD at the invoice-derived $0.04/credit rate,
-//      tokens, lines of code, streak), each row badged with its workspace seat type, plus org totals.
+//      tokens, lines of code), each row badged with its workspace seat type, plus org totals.
 //   4. Members — the full workspace roster (everyone who holds a seat): name, email, seat type.
 // Summary + Billing share one billing fetch; Usage + Members share one workspace-roster fetch (the query
 // cache dedupes both).
@@ -217,10 +217,10 @@ export interface WorkspaceBillingReport {
 export interface RawLeaderboardRow {
   user_id: string
   display_name?: string | null
+  email?: string | null
   value?: number // tokens over the window
   credits_used?: number
   lines_of_code?: number
-  streak?: number
   rank?: number
 }
 export interface RawLeaderboard {
@@ -277,7 +277,6 @@ export interface CodexMember {
   credits: number
   codexUsd: number // credits × CODEX_CREDIT_USD
   linesOfCode: number
-  streak: number
 }
 export interface CodexReport {
   capturedAt: string
@@ -546,14 +545,13 @@ export const buildCodexReport = (
 
     return {
       userId: row.user_id,
-      email: seat?.email ?? null,
+      email: seat?.email ?? row.email ?? null,
       name: seat?.name ?? row.display_name ?? null,
       seatType: seat?.seatType ?? null,
       tokens: row.value ?? 0,
       credits,
       codexUsd: codexCreditsToUsd(credits),
-      linesOfCode: row.lines_of_code ?? 0,
-      streak: row.streak ?? 0
+      linesOfCode: row.lines_of_code ?? 0
     }
   })
 
@@ -573,7 +571,7 @@ export const buildCodexReport = (
 }
 
 // Compose the usage result: an org-total metric carrying the Codex $ (so the cross-service Overview reads a
-// usage.primary spend), plus a per-member leaderboard table (Codex $, credits, tokens, lines of code, streak),
+// usage.primary spend), plus a per-member leaderboard table (Codex $, credits, tokens, lines of code),
 // costliest first.
 export const buildChatgptUsageResult = (report: CodexReport): CapabilityResult => {
   const result = usage.result({
@@ -596,7 +594,6 @@ export const buildChatgptUsageResult = (report: CodexReport): CapabilityResult =
       credits: number
       tokens: number
       linesOfCode: number
-      streak: number
     }
     const leaderboard = table<LeaderboardRow>({
       id: 'leaderboard',
@@ -609,8 +606,7 @@ export const buildChatgptUsageResult = (report: CodexReport): CapabilityResult =
         // Cumulative on a keyed table → the renderer auto-adds a per-member Trend sparkline of tokens used
         // each day (the day-over-day delta of this rolling-window figure), recorded across refreshes.
         { key: 'tokens', label: 'Tokens', role: 'count', accrual: 'cumulative', resetPeriod: 'monthly' },
-        { key: 'linesOfCode', label: 'Lines', role: 'count' },
-        { key: 'streak', label: 'Streak', role: 'count' }
+        { key: 'linesOfCode', label: 'Lines', role: 'count' }
       ],
       rows: rows.map((m) => ({
         userId: m.userId,
@@ -620,8 +616,7 @@ export const buildChatgptUsageResult = (report: CodexReport): CapabilityResult =
         codexUsd: m.codexUsd,
         credits: round2(m.credits),
         tokens: m.tokens,
-        linesOfCode: m.linesOfCode,
-        streak: m.streak
+        linesOfCode: m.linesOfCode
       })),
       key: 'userId'
     })
@@ -832,24 +827,26 @@ export const buildChatgptUsage = (raw: RawChatgptUsage): CapabilityResult => {
   )
 }
 
-const AGENT_OBS = '/api/agent-observability-v2'
+const AGENT_OBS = '/api/agent-observability-v3'
+// The leaderboard is scoped by a repeated `products` list (org-wide across every surface); `product=all` is
+// no longer accepted. Omitting `workspace_ids` returns every workspace the admin sees.
+const USAGE_PRODUCTS = 'products=chatgpt&products=agents&products=codex&products=work'
 
 // The usage fetch: the Codex leaderboard (admin.openai.com) + the workspace seat roster (chatgpt.com) it
 // joins on. Each degrades to an empty shape so the tab renders zeroed org totals rather than throwing when
 // the admin surface isn't authed on the shared partition (the full roster is the Members tab).
 const fetchChatgptUsage = async (ctx: CollectContext): Promise<RawChatgptUsage> => {
   const window = '1m'
-  const end = isoDay(new Date().toISOString())
   const admin = ctx.clientFor('admin')
 
   const [roster, leaderboard, freshness] = await Promise.all([
     fetchWorkspaceMembers(ctx).catch(() => [] as WorkspaceMember[]),
     admin
       .get<RawLeaderboard>(
-        `${AGENT_OBS}/leaderboards/user-token-usage?product=all&limit=100&window=${window}&end_date=${end}&sort_by=tokens&sort_direction=desc`
+        `${AGENT_OBS}/leaderboards/user-token-usage?limit=100&${USAGE_PRODUCTS}&window=${window}&sort_by=credits&sort_direction=desc`
       )
       .catch(() => ({}) as RawLeaderboard),
-    admin.get<RawFreshness>(`/api/analytics/data-freshness?use_case=overview_page`).catch(() => ({}) as RawFreshness)
+    admin.get<RawFreshness>(`/api/analytics/data-freshness?use_case=leaderboard_page`).catch(() => ({}) as RawFreshness)
   ])
 
   return { leaderboard, freshness, roster, capturedAt: new Date().toISOString(), window }
@@ -907,7 +904,7 @@ export const chatgptPlugin = definePlugin({
       },
       // A dead admin session 302s to sign-in (status < 400 → not thrown by the client), so assert a real 200.
       probe: async (client) => {
-        const res = await client.request({ url: '/api/analytics/data-freshness?use_case=overview_page' })
+        const res = await client.request({ url: '/api/analytics/data-freshness?use_case=leaderboard_page' })
 
         if (res.status !== 200) {
           throw Object.assign(new Error(`OpenAI Admin not signed in (HTTP ${res.status})`), { status: res.status })

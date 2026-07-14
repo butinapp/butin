@@ -121,10 +121,10 @@ export const sampleChatgptUsage = (g: SampleGen, config: SampleConfig): RawChatg
       rows: roster.map((m, i) => ({
         user_id: m.userId,
         display_name: m.name ?? undefined,
+        email: m.email ?? undefined,
         value: g.int(400_000_000, 3_000_000_000),
         credits_used: g.int(900, 7_000),
         lines_of_code: g.int(9_000, 75_000),
-        streak: g.int(1, 12),
         rank: i + 1
       }))
     },

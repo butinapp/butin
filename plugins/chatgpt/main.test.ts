@@ -360,10 +360,17 @@ const codexBundle: RawCodexBundle = {
         value: 3020433462,
         credits_used: 66941.45,
         lines_of_code: 72424,
-        streak: 8,
         rank: 1
       },
-      { user_id: 'user-Z', display_name: 'Zed Q', value: 100, credits_used: 1.5, lines_of_code: 0, streak: 1, rank: 2 }
+      {
+        user_id: 'user-Z',
+        display_name: 'Zed Q',
+        email: 'zed@example.com',
+        value: 100,
+        credits_used: 1.5,
+        lines_of_code: 0,
+        rank: 2
+      }
     ]
   },
   freshness: {
@@ -397,13 +404,12 @@ describe('buildCodexReport', () => {
     expect(ada.credits).toBeCloseTo(66941.45)
     expect(ada.codexUsd).toBeCloseTo(2677.66, 2)
     expect(ada.linesOfCode).toBe(72424)
-    expect(ada.streak).toBe(8)
   })
 
-  it('keeps an unmatched leaderboard row with display_name, null email and null seat', () => {
+  it('keeps an unmatched leaderboard row, falling back to its own email/display_name with a null seat', () => {
     const zed = buildCodexReport(codexBundle, roster, CAPTURED, '1m').members.find((m) => m.userId === 'user-Z')!
 
-    expect(zed.email).toBeNull()
+    expect(zed.email).toBe('zed@example.com')
     expect(zed.name).toBe('Zed Q')
     expect(zed.seatType).toBeNull()
   })

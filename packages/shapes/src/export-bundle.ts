@@ -64,9 +64,71 @@ export const ExportBundleSchema = z.object({
 })
 export type ExportBundle = z.infer<typeof ExportBundleSchema>
 
-// Validate an untrusted bundle blob at the viewer boundary. Gates on `formatVersion` FIRST so a bundle from
-// a newer Butin gets a clear "unsupported version" rather than a wall of shape errors, then full-parses.
-export type ParseBundleResult = { ok: true; bundle: ExportBundle } | { ok: false; errors: string[] }
+// The bundle envelope with its two service arrays left unvalidated (validated per-entry so one bad entry
+// doesn't reject the whole blob). Scalar top-level fields still fail hard.
+const ExportBundleEnvelopeSchema = ExportBundleSchema.extend({
+  plugins: z.array(z.unknown()),
+  overview: z.array(z.unknown())
+})
+
+// Validate an untrusted bundle blob at the viewer boundary. Gates on `formatVersion` FIRST so a bundle from a
+// newer Butin gets a clear "unsupported version" rather than a wall of shape errors. The envelope's scalar
+// fields fail hard, but each `plugins`/`overview` entry is validated on its own: a malformed entry is DROPPED
+// (with a warning), never rejecting the whole bundle — a stale service predating a field shouldn't blank the
+// viewer for every other service. `warnings` is empty on a fully-clean bundle.
+export type ParseBundleResult = { ok: true; bundle: ExportBundle; warnings: string[] } | { ok: false; errors: string[] }
+
+// Walk a value along a zod issue path, returning what the issue points at (undefined if the path runs off a
+// null/absent branch) — lets us tell an absent field apart from a present-but-wrong one.
+const valueAtPath = (value: unknown, path: readonly PropertyKey[]): unknown =>
+  path.reduce<unknown>((acc, key) => (acc == null ? undefined : (acc as Record<PropertyKey, unknown>)[key]), value)
+
+const serviceOf = (kind: 'overview' | 'plugins', item: unknown): string | undefined => {
+  if (kind === 'overview') {
+    const o = item as { pluginId?: string; pluginName?: string } | null
+
+    return o?.pluginId ?? o?.pluginName
+  }
+
+  return (item as { meta?: { id?: string; name?: string } } | null)?.meta?.id
+}
+
+// Validate one array's entries independently: keep the ones that parse, and turn each failure into a warning
+// that names the service and flags absent fields (which usually mean the entry predates a schema addition).
+const salvageEntries = <T>(schema: z.ZodType<T>, items: unknown[], kind: 'overview' | 'plugins') => {
+  const kept: T[] = []
+  const warnings: string[] = []
+
+  items.forEach((item, index) => {
+    const parsed = schema.safeParse(item)
+
+    if (parsed.success) {
+      kept.push(parsed.data)
+
+      return
+    }
+
+    const service = serviceOf(kind, item)
+    const label = `${kind}[${index}]${service ? ` (service '${service}')` : ''}`
+    let anyAbsent = false
+    const detail = parsed.error.issues
+      .map((i) => {
+        const absent = valueAtPath(item, i.path) === undefined
+
+        anyAbsent ||= absent
+
+        return `${i.path.join('.') || '(value)'}: ${i.message}`
+      })
+      .join('; ')
+    const hint = anyAbsent
+      ? " — a field is absent (this service's cached data predates it); refresh it and re-export"
+      : ''
+
+    warnings.push(`dropped ${label}: ${detail}${hint}`)
+  })
+
+  return { kept, warnings }
+}
 
 export const parseExportBundle = (raw: unknown): ParseBundleResult => {
   const version = (raw as { formatVersion?: unknown } | null)?.formatVersion
@@ -78,11 +140,18 @@ export const parseExportBundle = (raw: unknown): ParseBundleResult => {
     }
   }
 
-  const parsed = ExportBundleSchema.safeParse(raw)
+  const envelope = ExportBundleEnvelopeSchema.safeParse(raw)
 
-  if (!parsed.success) {
-    return { ok: false, errors: parsed.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`) }
+  if (!envelope.success) {
+    return { ok: false, errors: envelope.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`) }
   }
 
-  return { ok: true, bundle: parsed.data }
+  const plugins = salvageEntries(ExportPluginSchema, envelope.data.plugins, 'plugins')
+  const overview = salvageEntries(OverviewPluginSchema, envelope.data.overview, 'overview')
+
+  return {
+    ok: true,
+    bundle: { ...envelope.data, plugins: plugins.kept, overview: overview.kept },
+    warnings: [...plugins.warnings, ...overview.warnings]
+  }
 }

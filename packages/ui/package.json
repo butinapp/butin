@@ -1,6 +1,6 @@
 {
   "name": "@butinapp/ui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Butin's embeddable, theme-portable design system + the generic data-view renderer (DashboardRenderer, Overview, app shell). Pure, prop-driven, no Electron. Ships theme.css; a Tailwind host generates the utilities.",
   "homepage": "https://butin.app",
   "bugs": "https://github.com/butinapp/butin/issues",

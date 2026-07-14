@@ -1,8 +1,10 @@
 <!doctype html>
 <!-- Dark-first by construction: Butin's brand is the operator's console in a dim room, and the capture
      window is dark, so the recorder shell hardcodes the dark theme. The inline background matches the
-     charcoal canvas token so there's no white flash before the stylesheet loads. -->
-<html lang="en" class="dark" style="background: #18181b; color-scheme: dark">
+     charcoal canvas token so there's no white flash before the stylesheet loads.
+     `butin` is the theme scope — @butinapp/ui/theme.css defines its token VALUES on `.butin`, so the shell
+     is only themed on an element carrying the class (`.butin.dark` → the dark palette). -->
+<html lang="en" class="butin dark" style="background: #18181b; color-scheme: dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

@@ -333,6 +333,12 @@ The UI is built so **pieces ship standalone and embed anywhere, dark or light**.
    mapping + the dark variant live in **`@butinapp/ui/theme.css`** — the single source of truth every Butin host imports, so a palette change (e.g. a contrast fix)
    lands once. Only the theme _picker_ (`next-themes`, which toggles `.dark`) stays in `core`. An external embedder that wants its OWN palette skips that import and
    defines the same semantic tokens itself.
+   2b. **Tokens are SCOPED to `.butin`, never `:root` — the containment guarantee.** `theme.css` defines its concrete token VALUES on the `.butin` scope class (dark on
+   `.butin.dark` / `.dark .butin`), so importing it into a host's Tailwind build never overwrites the host's own `:root` or its shadcn `--background`/`--chart-*`
+   tokens — Butin's values apply only inside a `.butin` subtree. **Every Butin root must carry the class:** the app's `<html>` (`index.html`), and each embed wrapper
+   (`@butinapp/viewer`'s `ButinViewer`/`ButinView` render it). A host embedding bare `@butinapp/ui` primitives for its OWN chrome puts `.butin` on an ancestor too. The
+   `@theme inline` mapping stays global but only emits utilities that reference `var(--token)` (late-bound to whichever scope resolves them) — no token value lands on
+   `:root`. The echarts `getComputedStyle` probe reads tokens off the nearest `.butin`.
 3. **`@butinapp/ui` ships no COMPILED CSS** (no preflight, no utilities) — a second Tailwind build on a host page would collide (duplicate preflight/`:root`,
    clashing utilities). Instead the **host's single Tailwind build** (a) generates the package's utility classes by scanning its source and (b) imports the shared
    tokens. `core/src/renderer/index.css` does both: `@import 'tailwindcss'; @import '@butinapp/ui/theme.css'; @source '../../../ui/src/**/*.{ts,tsx}'`. `theme.css`

@@ -53,8 +53,9 @@ const readToken = (el: Element, name: string, fallback: string): string => {
   return rgb && rgb !== 'rgba(0, 0, 0, 0)' ? rgb : fallback
 }
 
-// Element whose computed tokens reflect the theme: the viewer root when embedded, else <html>.
-const probeElement = (): Element => document.querySelector('.butin-viewer') ?? document.documentElement
+// Element whose computed tokens reflect the theme: the nearest `.butin` scope (an embed wrapper, or the app's
+// <html>), which is where the token values are defined. Falls back to <html> if the class isn't found.
+const probeElement = (): Element => document.querySelector('.butin') ?? document.documentElement
 
 const computeTheme = (): EchartsTheme => {
   const el = probeElement()

@@ -10,12 +10,21 @@
    build consumes — @butinapp/ui still ships no compiled CSS (no preflight, no utilities), so there is no
    second build to collide with. Importing the same tokens twice is idempotent.
 
+   SCOPED, not global: the concrete token VALUES live on the `.butin` scope class, never on the document
+   `:root`. That's the containment guarantee — a host embedding a Butin surface imports this file and its
+   own `:root` (and its own shadcn `--background` / `--chart-*` tokens) is never overwritten; Butin's values
+   apply only inside the `.butin` subtree. Every Butin root carries the class: the app's <html>, and each
+   embed wrapper (@butinapp/viewer's ButinViewer/ButinView). The @theme mapping stays global (it only
+   defines `--color-*` utility aliases as `var(--token)`, late-bound to whichever scope resolves them), so
+   Butin's `bg-background` inside `.butin` reads Butin's value and the host's utilities outside read the
+   host's.
+
    Theme-portable by design: an embedder that wants its OWN palette skips this import and defines the same
-   semantic tokens itself; the components only ever reference the names. */
+   shadcn-named tokens on `.butin` itself; the components only ever reference the names. */
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
+.butin {
   color-scheme: light;
   --radius: 0.5rem;
   /* Surface elevation mirrors dark's stack (canvas → chrome → card), inverted: the canvas is a soft
@@ -54,7 +63,11 @@
   --sidebar-ring: oklch(0.58 0.09 188);
 }
 
-.dark {
+/* Dark applies when the scope element itself is dark (`.butin.dark`, the standalone viewer's own toggle) or
+   sits under a dark ancestor (`.dark .butin`, a host that owns the theme). Both resolve the dark values only
+   within the Butin subtree. */
+.butin.dark,
+.dark .butin {
   color-scheme: dark;
   --background: oklch(0.177 0.011 261);
   --foreground: oklch(0.957 0.006 256);
