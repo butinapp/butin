@@ -292,7 +292,7 @@ describe('buildOpenaiSummaryResult', () => {
 
     expect(validateCapabilityResult(r)).toEqual([]) // contract-valid
     expect(r.summaries?.[0]?.section).toBe('spend')
-    expect(r.summaries?.[0]?.basis).toBe('invoiced')
+    expect(r.summaries?.[0]?.basis).toBe('accrued') // a live open-period accrual, so backfill seeds the open month's bar
     expect(r.summaries?.[0]?.value).toBe(190) // the live MTD, not the arrears invoice total
     expect(r.datasets.find((d) => d.id === 'monthly')).toBeDefined() // the spark/chart stays
 

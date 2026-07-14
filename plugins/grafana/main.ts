@@ -1,7 +1,7 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, usage, type MembersInput, type UsageMetricInput } from '@butinapp/sdk/presets'
-import { isoDay, round2, startCase } from '@butinapp/sdk/util'
+import { isoDay, monthMinus, round2, startCase } from '@butinapp/sdk/util'
 
 import { sampleGrafanaBilling, sampleGrafanaMembers, sampleGrafanaUsage } from './sample.js'
 
@@ -293,11 +293,14 @@ export const buildGrafanaSummaryResult = (billingData: GrafanaBilling, currentMt
   billing.summary({
     currentMtd,
     currentMtdLabel: 'This month so far',
-    // Consumption invoiced to the current calendar month.
-    mtdBasis: 'invoiced',
+    // currentMtd is the live "Current Billable Usage Cost" off the data plane — a running accrual, so the open
+    // month's bar is seeded from its captured peak via backfill.
+    mtdBasis: 'accrued',
     plan: billingData.planName,
+    // Portal invoices are sent a day or two into the following month (prior month billed in arrears), so bucket
+    // the chart by the incurred month — June's bill under June — leaving the open month for the accrual backfill.
     invoices: billingData.invoices.map((i) => ({
-      date: i.date,
+      date: i.date ? monthMinus(i.date, 1) : i.date,
       amount: i.amount,
       status: i.status,
       hostedUrl: i.hostedUrl ?? null

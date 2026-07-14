@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 
 // ECharts colors live in JS (canvas), so they can't ride the CSS cascade the way Tailwind classes can.
 // Reading the resolved shadcn semantic tokens off the DOM at render and feeding those concrete values to
@@ -86,6 +86,14 @@ const computeTheme = (): EchartsTheme => {
 // <html>/<body>, so charts that fold these into a useMemo option builder re-color on the next render.
 export const useEchartsTheme = (): EchartsTheme => {
   const [tick, setTick] = useState(0)
+
+  // Recompute once after the first commit. The render-phase useMemo above runs BEFORE this component's DOM is
+  // committed, so `document.querySelector('.butin')` in the probe is still null → it falls back to <html>,
+  // which doesn't carry the scoped `.butin` tokens, and the chart comes up black until something re-ticks.
+  // useLayoutEffect fires after commit (so `.butin` exists) but before paint (so there is no black flash).
+  useLayoutEffect(() => {
+    setTick((t) => t + 1)
+  }, [])
 
   useEffect(() => {
     const observer = new MutationObserver(() => setTick((t) => t + 1))

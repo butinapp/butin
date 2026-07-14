@@ -19,7 +19,7 @@ import {
   type MembersInput,
   type TrendPoint
 } from '@butinapp/sdk/presets'
-import { centsToMajor, dayOf, epochMsDay, epochSecDay, getReportingZone, round2 } from '@butinapp/sdk/util'
+import { centsToMajor, dayOf, epochMsDay, epochSecDay, getReportingZone, monthMinus, round2 } from '@butinapp/sdk/util'
 
 import { sampleGroqActivity, sampleGroqBilling, sampleGroqKeys, sampleGroqUsers } from './sample.js'
 
@@ -270,7 +270,10 @@ export const buildGroqSummaryResult = (
     mtdBasis: 'accrued',
     currency: billingData.currency,
     plan: plan ?? undefined,
-    invoices: billingData.invoices,
+    // Groq finalizes each Stripe invoice a day or two into the following month, billing the prior month in
+    // arrears, so `created_at` is one month AFTER the spend it covers. Bucket the chart by the incurred month
+    // so June's bill lands under June and the open month (no invoice yet) reads the live accrual via backfill.
+    invoices: billingData.invoices.map((i) => ({ ...i, date: i.date ? monthMinus(i.date, 1) : i.date })),
     stats: [{ key: 'invoiceCount', label: 'Invoices', role: 'count', value: billingData.invoices.length }]
   })
 }

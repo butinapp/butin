@@ -388,8 +388,15 @@ describe('buildDepotSummaryResult', () => {
     expect(result.summaries?.[0]?.section).toBe('spend')
     expect(result.summaries?.[0]?.value).toBeCloseTo(752.22, 2)
     expect(result.summaries?.[0]?.basis).toBe('accrued')
-    // The monthly-spend trend feeds the spark; the detail tables belong to Billing, not Summary.
-    expect(result.datasets.some((d) => d.id === 'monthly')).toBe(true)
+    // The monthly-spend trend feeds the spark; the detail tables belong to Billing, not Summary. Bars bucket by
+    // the INCURRED month — each invoice shifts a month back from its finalized date (metered billed in arrears),
+    // so issue months 06/05 chart as 05/04; the open month is left for the live accrual (backfilled in core).
+    const monthly = result.datasets.find((d) => d.id === 'monthly')
+
+    expect(monthly?.shape === 'table' && monthly.rows).toEqual([
+      { month: '2026-04', amount: 3955.39 },
+      { month: '2026-05', amount: 1354.55 }
+    ])
     expect(result.datasets.some((d) => d.id === 'invoices')).toBe(false)
     expect(result.datasets.some((d) => d.id === 'lines')).toBe(false)
   })

@@ -58,6 +58,7 @@ const mergeDatasetLog = (existing: DatasetLog | undefined, ds: StoredDataset, no
   const byId = new Map<string, LedgerRow>(
     (existing?.rows ?? []).map((r) => [r.id, { ...r, versions: r.versions.map((v) => ({ ...v })) }])
   )
+  const fetched = new Set<string>()
 
   for (const row of ds.rows) {
     const id = rowId(row, parts)
@@ -66,6 +67,7 @@ const mergeDatasetLog = (existing: DatasetLog | undefined, ds: StoredDataset, no
       continue
     }
 
+    fetched.add(id)
     const prior = byId.get(id)
 
     if (!prior) {
@@ -84,7 +86,19 @@ const mergeDatasetLog = (existing: DatasetLog | undefined, ds: StoredDataset, no
     }
   }
 
-  return { id: ds.id, ...(ds.key !== undefined ? { key: ds.key } : {}), columns: ds.columns, rows: [...byId.values()] }
+  let rows = [...byId.values()]
+
+  // A rollup fetch is authoritative for the key-range it covers: drop a retained row at or above the fetch's
+  // lowest key that this fetch no longer emits (the bucket moved or was re-dated to another month), keeping only
+  // keys BELOW the range — deep history beyond the rolling fetch window. An empty fetch retains everything, so a
+  // transient no-data fetch never wipes the series. Append logs (no `rollup`) keep every key ever seen.
+  if (ds.rollup && fetched.size > 0) {
+    const floor = [...fetched].reduce((lo, id) => (id < lo ? id : lo))
+
+    rows = rows.filter((r) => fetched.has(r.id) || r.id < floor)
+  }
+
+  return { id: ds.id, ...(ds.key !== undefined ? { key: ds.key } : {}), columns: ds.columns, rows }
 }
 
 // A headline series carries at most one point per UTC day — the day's latest capture (its reading closest to

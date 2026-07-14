@@ -62,7 +62,13 @@ export const TableDatasetSchema = z.object({
   rows: z.array(z.record(z.string(), z.unknown())),
   // Column(s) forming a row's stable identity across fetches. Its presence opts the table into accumulation
   // (rows merge into a kept union instead of overwriting); an array is a composite key. Absent → latest-only.
-  key: z.union([z.string(), z.array(z.string())]).optional()
+  key: z.union([z.string(), z.array(z.string())]).optional(),
+  // Marks a keyed table as a re-derived ROLLUP (e.g. monthly spend), not an append log. On accumulation the
+  // fetch is authoritative for the key-range it covers: a retained row at or above the fetch's LOWEST key that
+  // the fetch no longer emits is dropped (the bucket moved or was re-dated), while keys BELOW that range
+  // persist (deep history beyond the rolling fetch window). Requires a sortable `key` (a 'YYYY-MM' month, an
+  // ISO day). Absent → an append log, where every key ever seen is retained.
+  rollup: z.boolean().optional()
 })
 export type TableDataset = z.infer<typeof TableDatasetSchema>
 
@@ -82,8 +88,9 @@ export const rawTable = (
   id: string,
   columns: Column[],
   rows: Record<string, unknown>[],
-  key?: string | string[]
-): TableDataset => ({ id, shape: 'table', columns, rows, ...(key ? { key } : {}) })
+  key?: string | string[],
+  rollup?: boolean
+): TableDataset => ({ id, shape: 'table', columns, rows, ...(key ? { key } : {}), ...(rollup ? { rollup } : {}) })
 
 export const rawRecord = (id: string, fields: Column[], value: Record<string, unknown>): RecordDataset => ({
   id,

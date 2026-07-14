@@ -118,6 +118,9 @@ export const table = <Row extends object>(spec: {
   columns: RowColumn<Row>[]
   rows: Row[]
   key?: Key<Row> | Key<Row>[]
+  // Mark a keyed table as a re-derived rollup (monthly spend), so a fetch is authoritative for the key-range it
+  // covers on accumulation instead of retaining every key ever seen. See TableDataset.rollup.
+  rollup?: boolean
 }): TableHandle<Row> => {
   // The typed builder is the only public way to construct a dataset; it delegates the wire-object shape to
   // the low-level rawTable so there's a single place that knows the TableDataset layout.
@@ -125,7 +128,8 @@ export const table = <Row extends object>(spec: {
     spec.id,
     spec.columns as unknown as Column[],
     spec.rows as Record<string, unknown>[],
-    spec.key
+    spec.key,
+    spec.rollup
   )
 
   // Each method annotates its view against the matching View union variant before omitUndef strips the

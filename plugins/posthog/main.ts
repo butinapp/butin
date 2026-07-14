@@ -22,7 +22,7 @@ import {
   type MemberInput,
   type MembersInput
 } from '@butinapp/sdk/presets'
-import { centsToMajor, epochSecDay, utcDaysAgo } from '@butinapp/sdk/util'
+import { centsToMajor, epochSecDay, monthMinus, utcDaysAgo } from '@butinapp/sdk/util'
 
 import { samplePosthogBilling, samplePosthogMembers, samplePosthogUsage } from './sample.js'
 
@@ -275,7 +275,10 @@ export const buildPosthogSummaryResult = (report: PosthogBillingReport): Capabil
     // Projected period spend accruing live over the open period.
     mtdBasis: 'accrued',
     plan: report.plan,
-    invoices: report.invoices,
+    // Invoices are effective a day or two into the following month (prior period billed in arrears), so
+    // bucket the chart by the incurred month — June's bill under June — leaving the open month for the live
+    // accrual backfill instead of last period's settled total.
+    invoices: report.invoices.map((i) => ({ ...i, date: i.date ? monthMinus(i.date, 1) : i.date })),
     stats: [
       { key: 'subscription', label: 'Subscription', role: 'label', value: report.subscriptionLevel ?? null },
       { key: 'projected', label: 'Projected', role: 'money', value: report.projectedTotal }

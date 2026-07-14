@@ -101,6 +101,12 @@ describe('buildCerebrasSummaryResult', () => {
     expect(r.summaries?.[0]?.section).toBe('spend')
     expect(r.summaries?.[0]?.basis).toBe('accrued')
     expect(r.datasets.length).toBeGreaterThan(0)
+
+    // The chart buckets by the INCURRED month — one back from the invoice's created date (billed in arrears),
+    // so a 2025-06 invoice charts under 2025-05; the open month is left for the live accrual (backfilled in core).
+    const monthly = r.datasets.find((d) => d.id === 'monthly')
+
+    expect(monthly?.shape === 'table' && monthly.rows).toEqual([{ month: '2025-05', amount: 500.01 }])
   })
 })
 

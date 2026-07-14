@@ -1,7 +1,7 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, keys, members, usage, type ApiKeysInput, type MembersInput } from '@butinapp/sdk/presets'
-import { MS_PER_DAY, centsToMajor, epochSecDay, isoDay, round2 } from '@butinapp/sdk/util'
+import { MS_PER_DAY, centsToMajor, epochSecDay, isoDay, monthMinus, round2 } from '@butinapp/sdk/util'
 
 import { sampleCerebrasBilling, sampleCerebrasKeys, sampleCerebrasMembers, sampleCerebrasUsage } from './sample.js'
 
@@ -532,8 +532,11 @@ export const buildCerebrasSummaryResult = (billingData: CerebrasBilling): Capabi
     mtdBasis: 'accrued',
     showDelta: false,
     currency: billingData.currency,
+    // Invoices are created a day or two into the following month (prior period billed in arrears), so bucket
+    // the chart by the incurred month — June's bill under June — leaving the open month for the live accrual
+    // (seeded via backfill) instead of last period's settled total.
     invoices: billingData.invoices.map((i) => ({
-      date: i.date,
+      date: i.date ? monthMinus(i.date, 1) : i.date,
       amount: i.amount,
       status: i.status,
       hostedUrl: i.hostedUrl ?? null

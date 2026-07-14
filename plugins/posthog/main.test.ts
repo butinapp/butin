@@ -217,9 +217,12 @@ describe('buildPosthogSummaryResult', () => {
       expect(account.value.projected).toBeCloseTo(2750.5)
     }
 
+    // The chart buckets by the INCURRED month: each invoice shifts a month back from its effective date (billed
+    // in arrears), so issue months 06/05/04 chart as 05/04/03; the detail invoices table keeps the real dates.
     const monthly = result.datasets.find((d) => d.id === 'monthly')
 
     expect(monthly?.shape).toBe('table')
+    expect(monthly?.shape === 'table' && monthly.rows.map((r) => r.month)).toEqual(['2026-03', '2026-04', '2026-05'])
 
     const products = result.datasets.find((d) => d.id === 'products')
 

@@ -84,6 +84,101 @@ test('a row missing its key value is skipped (not persisted)', () => {
   expect(led.datasets[0]!.rows).toEqual([])
 })
 
+// A monthly rollup dataset keyed by 'month' (a sortable bucket), with the re-derived-rollup flag.
+const monthlyDs = (rows: Record<string, unknown>[], rollup = true): StoredDataset => ({
+  id: 'monthly',
+  shape: 'table',
+  key: 'month',
+  rollup,
+  columns: [
+    { key: 'month', role: 'timestamp' },
+    { key: 'amount', role: 'money' }
+  ],
+  rows
+})
+
+test('rollup heals a re-dated bucket: an above-range orphan is dropped, deep history below the range persists', () => {
+  // Fetch 1 mis-dates the arrears bill into 2026-07; 2026-01 is deep history, 2026-05 a recent month.
+  const a = appendObservation(
+    undefined,
+    obs(
+      [
+        monthlyDs([
+          { month: '2026-01', amount: 10 },
+          { month: '2026-05', amount: 50 },
+          { month: '2026-07', amount: 70 }
+        ])
+      ],
+      [],
+      '2026-07-01T00:00:00Z'
+    )
+  )
+  // Fetch 2 (fixed dating) re-emits the recent window [2026-05, 2026-06]; the stale 2026-07 is gone.
+  const b = appendObservation(
+    a,
+    obs(
+      [
+        monthlyDs([
+          { month: '2026-05', amount: 55 },
+          { month: '2026-06', amount: 60 }
+        ])
+      ],
+      [],
+      '2026-07-02T00:00:00Z'
+    )
+  )
+  const rows = b.datasets[0]!.rows
+
+  // 2026-07 (>= the fetch's floor 2026-05, not re-emitted) is dropped; 2026-01 (< floor) persists.
+  expect(rows.map((r) => r.id).sort()).toEqual(['2026-01', '2026-05', '2026-06'])
+  // 2026-05's value was corrected in place (a new version).
+  expect(rows.find((r) => r.id === '2026-05')!.versions.at(-1)!.data.amount).toBe(55)
+})
+
+test('without rollup a keyed table is an append log — the stale bucket is retained', () => {
+  const a = appendObservation(
+    undefined,
+    obs(
+      [
+        monthlyDs(
+          [
+            { month: '2026-05', amount: 50 },
+            { month: '2026-07', amount: 70 }
+          ],
+          false
+        )
+      ],
+      [],
+      '2026-07-01T00:00:00Z'
+    )
+  )
+  const b = appendObservation(
+    a,
+    obs([monthlyDs([{ month: '2026-06', amount: 60 }], false)], [], '2026-07-02T00:00:00Z')
+  )
+
+  expect(b.datasets[0]!.rows.map((r) => r.id).sort()).toEqual(['2026-05', '2026-06', '2026-07'])
+})
+
+test('a rollup fetch with no rows retains everything (a transient empty fetch never wipes the series)', () => {
+  const a = appendObservation(
+    undefined,
+    obs(
+      [
+        monthlyDs([
+          { month: '2026-05', amount: 50 },
+          { month: '2026-06', amount: 60 }
+        ])
+      ],
+      [],
+      '2026-07-01T00:00:00Z'
+    )
+  )
+  const b = appendObservation(a, obs([monthlyDs([])], [], '2026-07-02T00:00:00Z'))
+
+  expect(b.datasets[0]!.rows.map((r) => r.id).sort()).toEqual(['2026-05', '2026-06'])
+})
+
 test('summaries record one point per day', () => {
   const s: StoredSummary = { section: 'spend', value: 12.3, role: 'money', currency: 'USD' }
   const a = appendObservation(undefined, obs([], [s], '2026-06-15T00:00:00Z'))

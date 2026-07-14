@@ -284,7 +284,11 @@ test('buildGroqSummaryResult: headline MTD + plan + invoice count + monthly spar
     basis: 'accrued',
     spark: { dataset: 'monthly' }
   })
-  expect(result.datasets.some((d) => d.id === 'monthly')).toBe(true)
+  // The chart buckets by the INCURRED month: each invoice shifts a month back from its created_at (billed in
+  // arrears), so issue months 04/05 chart as 03/04 — the detail invoices table keeps the real created dates.
+  const monthly = result.datasets.find((d) => d.id === 'monthly')
+
+  expect(monthly?.shape === 'table' && monthly.rows.map((r) => r.month)).toEqual(['2026-03', '2026-04'])
   expect(result.datasets.some((d) => d.id === 'invoices')).toBe(false)
 })
 

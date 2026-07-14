@@ -465,6 +465,10 @@ export const buildGithubSummary = (args: BuildBillingArgs): CapabilityResult => 
 
   const result = billing.summary({
     currentMtd: c.currentMtd,
+    // currentMtd is net metered usage so far + the fixed monthly license fee — a running open-period figure,
+    // so the open month (no payment posted yet) is seeded from its captured peak via backfill. The payment
+    // history bars stay dated by payment date (settled charges), which the accrual backfill never overwrites.
+    mtdBasis: 'accrued',
     monthlyTitle: 'Monthly payments',
     invoices: c.successfulInvoices,
     stats: [

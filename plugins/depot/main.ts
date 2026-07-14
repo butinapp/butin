@@ -7,7 +7,7 @@ import {
   type StripePortalSession
 } from '@butinapp/sdk/integrations'
 import { billing, members, usage, type MembersInput } from '@butinapp/sdk/presets'
-import { centsToMajor, epochSecDay, round2 } from '@butinapp/sdk/util'
+import { centsToMajor, epochSecDay, monthMinus, round2 } from '@butinapp/sdk/util'
 
 import { sampleDepotBilling, sampleDepotSettings, sampleDepotUsage } from './sample.js'
 
@@ -362,8 +362,11 @@ export const buildDepotSummaryResult = (report: DepotBillingReport): CapabilityR
     mtdBasis: 'accrued',
     plan: report.plan?.name,
     currency: ccy,
+    // Metered usage is invoiced in arrears — each Stripe invoice is finalized a day or two into the month
+    // AFTER the usage it bills — so bucket the chart by the incurred month (June's bill under June), leaving
+    // the open month for the live metered+base accrual (seeded via backfill) instead of last month's total.
     invoices: report.invoices.map((i) => ({
-      date: i.date,
+      date: i.date ? monthMinus(i.date, 1) : i.date,
       amount: i.amount,
       status: i.status,
       hostedUrl: i.hostedUrl ?? null,

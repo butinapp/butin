@@ -303,7 +303,10 @@ export const buildBillingSummary = (
       { key: 'amount', label: 'Spend', role: 'money', currency: CURRENCY }
     ],
     rows: months,
-    key: 'month'
+    key: 'month',
+    // A re-derived rollup (both surfaces summed per month): a fetch is authoritative for the months it covers,
+    // so a corrected bucket heals in place instead of leaving a stale orphan; older months persist.
+    rollup: true
   })
 
   return capabilityResult({

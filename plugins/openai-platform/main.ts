@@ -333,8 +333,9 @@ export const buildOpenaiSummaryResult = (billingData: PlatformBilling, spend: Sp
 
   return billing.summary({
     currentMtd: spend.currentMtd,
-    // The usage report's grand total for the current calendar month (invoiced month-to-date).
-    mtdBasis: 'invoiced',
+    // The usage report's grand total for the current calendar month — a running open-period accrual, so the
+    // open month (no invoice yet, since bills post in arrears) is seeded from its captured peak via backfill.
+    mtdBasis: 'accrued',
     plan: billingData.limits.planTitle ?? undefined,
     // The monthly-spend chart + the cross-service Overview bucket by the period the spend was INCURRED, not the
     // issue date. OpenAI issues each dashboard invoice a day or two into a month, billing the PREVIOUS month in

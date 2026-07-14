@@ -93,6 +93,15 @@ test('buildBasetenSummaryResult: spend.mtd summary from currentNetSpend', () => 
 
   expect(result.summaries?.[0]).toMatchObject({ section: 'spend', role: 'money', basis: 'accrued' })
   expect(result.summaries?.[0]?.value).toBeCloseTo(2299.78, 2)
+
+  // Settled past-month invoices (dated by period_end) stay on the chart; only an invoice whose period_end lands
+  // in the OPEN month is dropped so the live currentNetSpend fills that bar via backfill. These two are past.
+  const monthly = result.datasets.find((d) => d.id === 'monthly')
+
+  expect(monthly?.shape === 'table' && monthly.rows).toEqual([
+    { month: '2026-04', amount: 500 },
+    { month: '2026-05', amount: 8557.74 }
+  ])
 })
 
 test('buildBasetenBillingTab: downloadable invoices + credits record, payment card optional', () => {

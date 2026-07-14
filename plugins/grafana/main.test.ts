@@ -150,8 +150,9 @@ describe('buildGrafanaSummaryResult', () => {
     const monthly = result.datasets.find((d) => d.id === 'monthly')!
 
     expect(monthly.shape).toBe('table')
-    // One bucket per invoice month, ascending.
-    expect(monthly.shape === 'table' && monthly.rows.map((row) => row.month)).toEqual(['2026-02', '2026-05', '2026-06'])
+    // One bucket per INCURRED month, ascending — each invoice is shifted a month back from its issue date
+    // (sent in arrears the month after the usage), so issue months 02/05/06 chart as 01/04/05.
+    expect(monthly.shape === 'table' && monthly.rows.map((row) => row.month)).toEqual(['2026-01', '2026-04', '2026-05'])
   })
 
   it('emits the spend.mtd summary only when currentMtd is a number, with the plan headline', () => {
@@ -165,7 +166,7 @@ describe('buildGrafanaSummaryResult', () => {
       section: 'spend',
       role: 'money',
       value: 6558.76,
-      basis: 'invoiced'
+      basis: 'accrued'
     })
 
     const account = withMtd.datasets.find((d) => d.id === 'account')!

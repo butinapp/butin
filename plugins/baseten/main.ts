@@ -9,7 +9,7 @@ import {
   type BillingInvoiceInput,
   type MembersInput
 } from '@butinapp/sdk/presets'
-import { centsToMajor, isoDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
+import { centsToMajor, currentMonthKey, isoDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
 
 import { sampleBasetenBilling, sampleBasetenKeys, sampleBasetenMembers, sampleBasetenUsage } from './sample.js'
 
@@ -479,9 +479,12 @@ export const buildBasetenSummaryResult = (report: BasetenBillingReport): Capabil
     // Net usage spend accruing live over the open period.
     mtdBasis: 'accrued',
     // No "Δ vs last month": currentNetSpend is the live open period, while the chart bars are overlapping
-    // ~2-month invoices dated by period_end (one lands in the open month), so the comparison is meaningless.
+    // ~2-month invoices dated by period_end, so the comparison is meaningless.
     showDelta: false,
-    invoices: report.invoices,
+    // Drop the invoice whose period_end lands in the open month — it's a mid-flight ~2-month total that would
+    // dwarf the month, so leave that bar for the live currentNetSpend accrual (seeded via backfill). Settled
+    // past-month invoices stay. The invoiceCount stat below still counts every invoice.
+    invoices: report.invoices.filter((i) => !i.date || i.date.slice(0, 7) !== currentMonthKey()),
     stats: [
       { key: 'creditBalance', label: 'Credit balance', role: 'money', value: report.creditBalance },
       { key: 'invoiceCount', label: 'Invoices', role: 'count', value: report.invoices.length }

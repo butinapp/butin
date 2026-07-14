@@ -1,7 +1,7 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult, type MonthPoint } from '@butinapp/sdk/data'
 import { members, type MembersInput } from '@butinapp/sdk/presets'
-import { epochMsDay, isoDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
+import { epochMsDay, isoDay, monthMinus, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
 
 import { sampleVercelData, sampleVercelMembers } from './sample.js'
 
@@ -226,13 +226,16 @@ export const buildMonthly = (invoices: RawInvoice[]): MonthPoint[] => {
   const byMonth = new Map<string, number>()
 
   for (const inv of invoices) {
-    const date = isoDay(inv.issuedAt) ?? isoDay(inv.createdAt) ?? isoDay(inv.dueDate)
+    const issued = isoDay(inv.issuedAt) ?? isoDay(inv.createdAt) ?? isoDay(inv.dueDate)
 
-    if (!date) {
+    if (!issued) {
       continue
     }
 
-    const month = date.slice(0, 7)
+    // Vercel issues each cycle's invoice at period close (early the following month), billing the prior month
+    // in arrears, so bucket by the incurred month — one back from the issue date — so June's bill lands under
+    // June and the open month is left for the live on-demand accrual (seeded via backfill).
+    const month = monthMinus(issued, 1).slice(0, 7)
 
     byMonth.set(month, (byMonth.get(month) ?? 0) + parseDecimalAmount(inv.total))
   }
@@ -299,9 +302,11 @@ export const buildVercelSummaryResult = (inputs: VercelSummaryInputs): Capabilit
       { key: 'month', label: 'Month', role: 'timestamp' },
       { key: 'amount', label: 'Spend', role: 'money' }
     ],
-    // Key by month so the chart accumulates in the ledger — the accrual backfill needs the spend series to
-    // persist past a single fetch's window, and past months survive the rolling invoice-fetch horizon.
+    // Key by month so the chart accumulates in the ledger — months below the fetched invoice window persist so
+    // the accrual backfill has the full spend series. `rollup` makes each fetch authoritative for the range it
+    // covers, so a re-dated bucket is corrected in place rather than leaving a stale orphan month.
     key: 'month',
+    rollup: true,
     rows: monthly
   })
   const projects = topProjects.length

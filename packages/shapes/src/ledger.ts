@@ -21,6 +21,9 @@ export interface StoredDataset {
   columns: StoredColumn[]
   rows: Record<string, unknown>[]
   key?: string | string[]
+  // A keyed table that is a re-derived rollup (monthly spend), not an append log: on accumulation a fetch is
+  // authoritative for the key-range it covers. See the SDK's TableDataset.rollup.
+  rollup?: boolean
 }
 
 export interface StoredSummary {

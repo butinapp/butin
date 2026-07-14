@@ -117,12 +117,13 @@ test('summary: headline stat, monthly chart, top projects, and spend.mtd for the
     invoiceCount: 2
   })
 
-  // Monthly spend bucketed from invoice dates (2026-04, 2026-05).
+  // Monthly spend bucketed by the INCURRED month — each invoice shifts a month back from its issue date
+  // (billed in arrears), so issue months 04/05 chart as 03/04.
   const monthly = result.datasets.find((d) => d.id === 'monthly')
 
   expect(monthly?.shape === 'table' && monthly.rows).toEqual([
-    { month: '2026-04', amount: 120.5 },
-    { month: '2026-05', amount: 540 }
+    { month: '2026-03', amount: 120.5 },
+    { month: '2026-04', amount: 540 }
   ])
 
   // Top projects sorted by spend desc; percent is the raw 0..1 fraction (the renderer scales it via Intl).
