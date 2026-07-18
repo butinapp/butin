@@ -12,6 +12,8 @@ import {
 } from '../../components/dropdown-menu.js'
 import { EChart } from '../../components/echart.js'
 import { useLabels } from '../../i18n/context.js'
+import { useFormat } from '../../i18n/format-context.js'
+import { resolveMoneyLocale } from '../../i18n/format.js'
 import { grid, useEchartsTheme } from '../../lib/echarts-theme.js'
 import { formatMoney, formatMoneyCompact } from '../../lib/format.js'
 
@@ -75,12 +77,19 @@ type ThemeBits = ReturnType<typeof useEchartsTheme>
 const buildBarOption = (
   points: ChartPoint[],
   labelFn: (k: string) => string,
-  opts: { stacked: boolean; isMoney: boolean; currency?: string; theme: ThemeBits; highlightKey?: string }
+  opts: {
+    stacked: boolean
+    isMoney: boolean
+    currency?: string
+    locale: string
+    theme: ThemeBits
+    highlightKey?: string
+  }
 ): EChartsOption => {
-  const { stacked, isMoney, currency, theme, highlightKey } = opts
+  const { stacked, isMoney, currency, locale, theme, highlightKey } = opts
   const { LABEL, AXIS_LINE, TOOLTIP, ACCENT, PALETTE, LEGEND_TEXT } = theme
-  const fmtFull = (v: number) => (isMoney ? formatMoney(v, currency) : String(v))
-  const fmtCompact = (v: number) => (isMoney ? formatMoneyCompact(v, currency) : String(v))
+  const fmtFull = (v: number) => (isMoney ? formatMoney(v, currency, locale) : String(v))
+  const fmtCompact = (v: number) => (isMoney ? formatMoneyCompact(v, currency, locale) : String(v))
 
   const axis = [...new Set(points.map((p) => p.key))].sort()
   const cats = categoriesOf(points)
@@ -165,6 +174,8 @@ export const TimeseriesChart = ({
   estimateCurrentMonth?: number
 }) => {
   const t = useLabels()
+  const prefs = useFormat()
+  const locale = resolveMoneyLocale(prefs, t.intlLocale)
   const theme = useEchartsTheme()
   const nowMonth = nowMonthKey()
 
@@ -204,6 +215,7 @@ export const TimeseriesChart = ({
       stacked,
       isMoney,
       currency,
+      locale,
       theme,
       highlightKey: highlightCurrentMonth ? nowMonth : undefined
     })
@@ -215,6 +227,7 @@ export const TimeseriesChart = ({
     stacked,
     isMoney,
     currency,
+    locale,
     theme,
     nowMonth,
     highlightCurrentMonth
@@ -223,8 +236,8 @@ export const TimeseriesChart = ({
   const dailyChart = useMemo<EChartsOption>(() => {
     const days = (daily ?? []).filter((p) => monthOf(p.key) === activeDailyMonth)
 
-    return buildBarOption(days, dayLabel, { stacked, isMoney, currency, theme })
-  }, [daily, activeDailyMonth, stacked, isMoney, currency, theme])
+    return buildBarOption(days, dayLabel, { stacked, isMoney, currency, locale, theme })
+  }, [daily, activeDailyMonth, stacked, isMoney, currency, locale, theme])
 
   return (
     <Card className="gap-2 py-3">

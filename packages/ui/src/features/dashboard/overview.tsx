@@ -13,7 +13,7 @@ import { ServiceIcon } from '../../components/service-icon.js'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/tooltip.js'
 import { useLabels } from '../../i18n/context.js'
 import { useFormat } from '../../i18n/format-context.js'
-import { formatDateTime } from '../../i18n/format.js'
+import { formatDateTime, resolveMoneyLocale } from '../../i18n/format.js'
 import { formatMoney, formatMoneyCompact } from '../../lib/format.js'
 import { StatCard } from '../charts.js'
 
@@ -33,9 +33,10 @@ import {
 } from './overview-model.js'
 import { TimeseriesChart } from './timeseries-chart.js'
 
-// The currency context the spend band renders in: which currency the converted headline is shown in, and
-// the rate table that gets foreign services there. Defaults make a single-currency (USD) setup a no-op.
-type Fx = { baseCurrency: string; rates: FxRates }
+// The currency context the spend band renders in: which currency the converted headline is shown in, the rate
+// table that gets foreign services there, and the locale money formats in (base currency home-plain, foreign
+// prefixed). Defaults make a single-currency (USD) setup a no-op.
+type Fx = { baseCurrency: string; rates: FxRates; locale: string }
 
 const monthLabel = (key: string): string => {
   const [y, m] = key.split('-')
@@ -57,10 +58,12 @@ const pctClass = (n: number): string =>
 const UnconvertedSpend = ({
   plugins,
   baseCurrency,
+  locale,
   onOpen
 }: {
   plugins: OverviewPlugin[]
   baseCurrency: string
+  locale: string
   onOpen?: (pluginId: string) => void
 }) => {
   const t = useLabels()
@@ -87,7 +90,7 @@ const UnconvertedSpend = ({
                   {p.pluginName}
                 </span>
                 <span className="font-mono tabular-nums">
-                  {formatMoney(spend.value, spend.currency ?? p.currency ?? baseCurrency)}
+                  {formatMoney(spend.value, spend.currency ?? p.currency ?? baseCurrency, locale)}
                 </span>
               </li>
             ))}
@@ -112,7 +115,7 @@ const SpendingSection = ({
 }) => {
   const t = useLabels()
   const nowMonth = nowMonthKey()
-  const { baseCurrency, rates } = fx
+  const { baseCurrency, rates, locale } = fx
 
   const [view, setView] = useState<'compact' | 'detailed'>('compact')
   // How many trailing months the detailed table shows as columns (This mo + Last mo + the older columns).
@@ -147,13 +150,13 @@ const SpendingSection = ({
   // Nothing rolls up into the base currency (no rate yet / offline) yet there ARE spend services: list their
   // native amounts rather than blanking the whole band. With a rate present this never triggers.
   if (combined.length === 0) {
-    return <UnconvertedSpend plugins={plugins} baseCurrency={baseCurrency} onOpen={onOpen} />
+    return <UnconvertedSpend plugins={plugins} baseCurrency={baseCurrency} locale={locale} onOpen={onOpen} />
   }
 
   // Mixed currencies (or one with no rate) → the headline total is an approximation; flag it with `≈` and
   // surface the exact per-currency subtotals so the converted number is never the whole story.
   const approx = breakdown.rows.length > 1 || breakdown.unconverted > 0
-  const money = (n: number): string => `${approx ? '≈ ' : ''}${formatMoney(n, baseCurrency)}`
+  const money = (n: number): string => `${approx ? '≈ ' : ''}${formatMoney(n, baseCurrency, locale)}`
 
   return (
     <div className="space-y-5">
@@ -162,7 +165,7 @@ const SpendingSection = ({
         <StatCard label="This month (MTD)" value={money(stats.mtd)} />
         <StatCard
           label="Annualized run-rate"
-          value={`${approx ? '≈ ' : ''}${formatMoneyCompact(stats.annualizedRunRate, baseCurrency)}`}
+          value={`${approx ? '≈ ' : ''}${formatMoneyCompact(stats.annualizedRunRate, baseCurrency, locale)}`}
           sub="last 3 mo avg × 12"
         />
       </div>
@@ -185,9 +188,16 @@ const SpendingSection = ({
             title="Biggest increases"
             movers={move.increases.slice(0, 4)}
             currency={baseCurrency}
+            locale={locale}
             onOpen={onOpen}
           />
-          <MoverList title="Biggest drops" movers={move.drops.slice(0, 4)} currency={baseCurrency} onOpen={onOpen} />
+          <MoverList
+            title="Biggest drops"
+            movers={move.drops.slice(0, 4)}
+            currency={baseCurrency}
+            locale={locale}
+            onOpen={onOpen}
+          />
         </div>
       ) : null}
 
@@ -209,11 +219,12 @@ const SpendingSection = ({
               months={[nowMonth, ...(to !== nowMonth ? [to] : []), ...cols]}
               nowMonth={nowMonth}
               currency={baseCurrency}
+              locale={locale}
               hints={hints}
               onOpen={onOpen}
             />
           ) : (
-            <CompactSpendTable rows={rows} currency={baseCurrency} hints={hints} onOpen={onOpen} />
+            <CompactSpendTable rows={rows} currency={baseCurrency} locale={locale} hints={hints} onOpen={onOpen} />
           )}
         </CardContent>
       </Card>
@@ -347,11 +358,13 @@ const Sparkline = ({ data }: { data: number[] }) => {
 const CompactSpendTable = ({
   rows,
   currency,
+  locale,
   hints,
   onOpen
 }: {
   rows: ByServiceRow[]
   currency: string
+  locale: string
   hints: ColumnHints
   onOpen?: (pluginId: string) => void
 }) => (
@@ -388,17 +401,19 @@ const CompactSpendTable = ({
               {r.pluginName}
             </div>
           </td>
-          <td className="px-4 py-2 text-right font-mono tabular-nums">{r.mtd ? formatMoney(r.mtd, currency) : '—'}</td>
-          <td className="px-4 py-2 text-right font-mono tabular-nums">{formatMoney(r.lastMo, currency)}</td>
+          <td className="px-4 py-2 text-right font-mono tabular-nums">
+            {r.mtd ? formatMoney(r.mtd, currency, locale) : '—'}
+          </td>
+          <td className="px-4 py-2 text-right font-mono tabular-nums">{formatMoney(r.lastMo, currency, locale)}</td>
           <td className="text-muted-foreground px-4 py-2 text-right font-mono tabular-nums">
-            {formatMoney(r.prevMo, currency)}
+            {formatMoney(r.prevMo, currency, locale)}
           </td>
           <td className={`px-4 py-2 text-right font-mono tabular-nums ${pctClass(r.momPct)}`}>
             {r.momPct > 0 ? '+' : ''}
             {r.momPct}%
           </td>
           <td className="text-muted-foreground px-4 py-2 text-right font-mono tabular-nums">{r.share}%</td>
-          <td className="px-4 py-2 text-right font-mono tabular-nums">{formatMoney(r.total, currency)}</td>
+          <td className="px-4 py-2 text-right font-mono tabular-nums">{formatMoney(r.total, currency, locale)}</td>
         </tr>
       ))}
     </tbody>
@@ -414,6 +429,7 @@ const DetailedSpendTable = ({
   months,
   nowMonth,
   currency,
+  locale,
   hints,
   onOpen
 }: {
@@ -422,6 +438,7 @@ const DetailedSpendTable = ({
   months: string[]
   nowMonth: string
   currency: string
+  locale: string
   hints: ColumnHints
   onOpen?: (pluginId: string) => void
 }) => (
@@ -462,8 +479,10 @@ const DetailedSpendTable = ({
               {r.pluginName}
             </div>
           </td>
-          <td className="px-4 py-2 text-right font-mono tabular-nums">{r.mtd ? formatMoney(r.mtd, currency) : '—'}</td>
-          <td className="px-4 py-2 text-right font-mono tabular-nums">{formatMoney(r.lastMo, currency)}</td>
+          <td className="px-4 py-2 text-right font-mono tabular-nums">
+            {r.mtd ? formatMoney(r.mtd, currency, locale) : '—'}
+          </td>
+          <td className="px-4 py-2 text-right font-mono tabular-nums">{formatMoney(r.lastMo, currency, locale)}</td>
           <td className={`px-4 py-2 text-right font-mono tabular-nums ${pctClass(r.momPct)}`}>
             {r.momPct > 0 ? '+' : ''}
             {r.momPct}%
@@ -478,14 +497,14 @@ const DetailedSpendTable = ({
             // A month within the service's history (even at $0) shows its value; only months before the
             // service's first data are blank ('—').
             <td key={m} className="px-4 py-2 text-right font-mono tabular-nums">
-              {m in r.byMonth ? formatMoney(r.byMonth[m]!, currency) : '—'}
+              {m in r.byMonth ? formatMoney(r.byMonth[m]!, currency, locale) : '—'}
             </td>
           ))}
           <td className="px-4 py-2 text-right font-mono tabular-nums">
-            {formatMoney(windowTotal(r, months, nowMonth), currency)}
+            {formatMoney(windowTotal(r, months, nowMonth), currency, locale)}
           </td>
           <td className="text-muted-foreground px-4 py-2 text-right font-mono tabular-nums">
-            {formatMoney(r.total, currency)}
+            {formatMoney(r.total, currency, locale)}
           </td>
         </tr>
       ))}
@@ -497,11 +516,13 @@ const MoverList = ({
   title,
   movers: items,
   currency,
+  locale,
   onOpen
 }: {
   title: string
   movers: Mover[]
   currency: string
+  locale: string
   onOpen?: (pluginId: string) => void
 }) => (
   <Card className="gap-2 py-3">
@@ -527,7 +548,7 @@ const MoverList = ({
                 className={`flex items-center font-mono tabular-nums ${up ? 'text-red-500 dark:text-red-400' : 'text-emerald-500 dark:text-emerald-400'}`}
               >
                 {up ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
-                {formatMoneyCompact(Math.abs(m.delta), currency)}
+                {formatMoneyCompact(Math.abs(m.delta), currency, locale)}
               </span>
             </button>
           )
@@ -549,7 +570,7 @@ const BalancesSection = ({
   onOpen?: (pluginId: string) => void
 }) => {
   const t = useLabels()
-  const { baseCurrency, rates } = fx
+  const { baseCurrency, rates, locale } = fx
   // Net worth is summed in the base currency; a balance whose currency has no rate is left out of the total
   // (its native amount still shows on its own row). `≈` flags the conversion when any row needed one.
   let approx = false
@@ -568,7 +589,7 @@ const BalancesSection = ({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard label={t.netWorth} value={`${approx ? '≈ ' : ''}${formatMoney(netWorth, baseCurrency)}`} />
+        <StatCard label={t.netWorth} value={`${approx ? '≈ ' : ''}${formatMoney(netWorth, baseCurrency, locale)}`} />
       </div>
       <Card className="gap-0 py-0">
         <CardContent className="p-0">
@@ -584,7 +605,7 @@ const BalancesSection = ({
                   {r.pluginName}
                 </span>
                 <span className="font-mono tabular-nums">
-                  {formatMoney(r.balance ?? 0, r.currency ?? baseCurrency)}
+                  {formatMoney(r.balance ?? 0, r.currency ?? baseCurrency, locale)}
                 </span>
               </li>
             ))}
@@ -649,7 +670,8 @@ export const Overview = ({
   onOpen?: (pluginId: string) => void
 }) => {
   const t = useLabels()
-  const fx: Fx = { baseCurrency, rates }
+  const prefs = useFormat()
+  const fx: Fx = { baseCurrency, rates, locale: resolveMoneyLocale({ ...prefs, baseCurrency }, t.intlLocale) }
   const { spend, balances, others } = partition(plugins)
   const populated = [spend.length > 0, balances.length > 0, others.length > 0].filter(Boolean).length
 
