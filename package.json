@@ -44,15 +44,15 @@
     "turbo": "^2.9.18",
     "vitest": "catalog:"
   },
-  "engines": {
-    "node": ">=24"
-  },
   "devEngines": {
     "runtime": {
       "name": "node",
       "version": "24.18.0",
       "onFail": "download"
     }
+  },
+  "engines": {
+    "node": ">=24"
   },
   "packageManager": "pnpm@11.6.0"
 }
