@@ -63,6 +63,15 @@ export const stringField = (field: number, value: string): Buffer => {
 export const messageField = (field: number, msg: Buffer): Buffer =>
   Buffer.concat([encodeTag(field, WIRE_LEN), encodeVarint(msg.length), msg])
 
+// `field: packed repeated double` (wire type 2) — the encode counterpart of getPackedDoubles.
+export const packedDoublesField = (field: number, values: number[]): Buffer => {
+  const bytes = Buffer.alloc(values.length * 8)
+
+  values.forEach((v, i) => bytes.writeDoubleLE(v, i * 8))
+
+  return Buffer.concat([encodeTag(field, WIRE_LEN), encodeVarint(bytes.length), bytes])
+}
+
 // Concatenate field buffers into a single message body.
 export const message = (...fields: Buffer[]): Buffer => Buffer.concat(fields)
 
@@ -199,6 +208,24 @@ export const getRepeatedStrings = (msg: ProtoMessage, field: number): string[] =
     if (v.kind === 'len') {
       out.push(v.bytes.toString('utf8'))
     }
+  }
+
+  return out
+}
+
+// Every double of a PACKED repeated double field. Protobuf packs repeated scalars into one length-delimited
+// value — here a run of 8-byte little-endian IEEE-754 doubles, so a bucket's values arrive positionally.
+export const getPackedDoubles = (msg: ProtoMessage, field: number): number[] => {
+  const v = firstOf(msg, field)
+
+  if (v?.kind !== 'len') {
+    return []
+  }
+
+  const out: number[] = []
+
+  for (let off = 0; off + 8 <= v.bytes.length; off += 8) {
+    out.push(v.bytes.readDoubleLE(off))
   }
 
   return out

@@ -108,6 +108,13 @@ test('buildBasetenBillingTab: downloadable invoices + credits record, payment ca
   const withCard = buildBasetenBillingTab(buildBasetenBillingReport(rawInvoices, paymentMethod, orgBudget, credits))
 
   expect(withCard.datasets.some((d) => d.id === 'paymentMethod')).toBe(true)
+  const invoicesDs = withCard.datasets.find((d) => d.id === 'invoices')
+
+  // Keyed on the stable invoice-URL id, not the date: Baseten reissues several invoices on one period_end date.
+  expect(invoicesDs?.shape === 'table' && invoicesDs.key).toBe('id')
+  const ids = invoicesDs?.shape === 'table' ? invoicesDs.rows.map((r) => r.id) : []
+
+  expect(new Set(ids).size).toBe(ids.length)
   const tableView = withCard.views?.find((v) => v.type === 'table')
 
   expect(tableView && 'files' in tableView && tableView.files?.ext).toBe('pdf')
@@ -167,6 +174,11 @@ test('buildBasetenUsageResult: usage.primary = dedicated + training, daily spark
   expect(result.summaries?.[0]).toMatchObject({ section: 'other', role: 'money' })
   expect(result.summaries?.[0]?.value).toBeCloseTo(2315.28, 2) // 2299.78 + 15.50
   expect(result.summaries?.[0]?.spark).toMatchObject({ dataset: 'daily', x: 'date', y: 'cost' })
+
+  // Each usage row is one (model, instance, environment) deployment — keyed as that triple.
+  const modelsDs = result.datasets.find((d) => d.id === 'models')
+
+  expect(modelsDs?.shape === 'table' && modelsDs.key).toEqual(['model', 'instanceType', 'environment'])
 })
 
 test('buildBasetenKeys: org + user keys → apiKeys input with revoked status', () => {

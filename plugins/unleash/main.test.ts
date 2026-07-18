@@ -202,7 +202,11 @@ test('buildUnleashBillingTab emits the subscription record + invoice list, no sp
 
   expect(subscription).toBeDefined()
   expect(subscription?.shape === 'record' && subscription.value.recurringFee).toBe(447)
-  expect(result.datasets.some((d) => d.id === 'invoices' && d.shape === 'table')).toBe(true)
+  const invoicesDs = result.datasets.find((d) => d.id === 'invoices')
+
+  expect(invoicesDs?.shape === 'table').toBe(true)
+  // Keyed on the invoice date so each monthly invoice accumulates in the ledger past the fetch window.
+  expect(invoicesDs?.shape === 'table' && invoicesDs.key).toBe('date')
 })
 
 test('buildUnleashBillingTab downloads invoices as PDFs when a PDF URL exists', () => {

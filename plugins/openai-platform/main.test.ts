@@ -354,6 +354,14 @@ describe('buildOpenaiBillingTab', () => {
     expect(r.datasets.find((d) => d.id === 'orgs')).toBeDefined()
     expect(r.datasets.find((d) => d.id === 'invoices')).toBeDefined()
     expect(r.datasets.find((d) => d.id === 'monthly')).toBeUndefined() // the chart lives on Summary
+
+    // Both detail tables carry a ledger key off the unique provider id (threaded hidden) so they accumulate.
+    const orgs = r.datasets.find((d) => d.id === 'orgs')
+    const invoices = r.datasets.find((d) => d.id === 'invoices')
+
+    expect(orgs?.shape === 'table' && orgs.key).toBe('orgId')
+    expect(invoices?.shape === 'table' && invoices.key).toBe('id')
+    expect(invoices?.shape === 'table' && invoices.rows.find((row) => row.status === 'paid')?.id).toBe('in_b1')
   })
 
   it('drops a section with zero rows', () => {

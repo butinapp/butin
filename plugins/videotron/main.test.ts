@@ -178,6 +178,8 @@ test('buildBillingDetail merges marvel + mobile invoices into one table grouped 
 
   const invoices = byId(result.datasets, 'invoices') as Extract<Dataset, { shape: 'table' }>
 
+  // `name` is unique per row across both surfaces — the accumulation key.
+  expect(invoices.key).toBe('name')
   // marvel rows newest-first (Invoice), then the legacy mobile rows (Mobile invoice)
   expect(invoices.rows.map((r) => r.type)).toEqual(['Invoice', 'Invoice', 'Mobile invoice'])
   expect(invoices.rows.map((r) => r.date)).toEqual(['2026-02-06', '2026-01-06', '2026-05-29'])
@@ -287,4 +289,6 @@ test('buildAccountsResult humanizes service families and labels the bare invoice
 
   expect(accounts.rows.map((r) => r.service)).toEqual(['Internet', 'Billing account'])
   expect(accounts.rows[0]).toMatchObject({ account: '800000000001', status: 'Active' })
+  // Each billing account has a distinct account number — the accumulation key.
+  expect(accounts.key).toBe('account')
 })

@@ -163,8 +163,8 @@ export const buildSupabaseBilling = (
   rawInvoices: RawInvoice[] | null | undefined,
   rawUpcoming?: RawUpcomingInvoice | null
 ): SupabaseBillingReport => {
-  const invoices: SupabaseInvoice[] = (rawInvoices ?? []).map((inv) => ({
-    id: inv.id ?? inv.number ?? 'unknown',
+  const invoices: SupabaseInvoice[] = (rawInvoices ?? []).map((inv, i) => ({
+    id: inv.id ?? inv.number ?? `inv-${i}`,
     number: inv.number,
     date: epochSecDay(inv.period_end),
     status: inv.payment_is_processing ? 'processing' : (inv.status ?? 'unknown'),
@@ -266,8 +266,10 @@ interface SupabaseUpcomingLineRow {
   amount: number
 }
 
-// Invoice row: the `name` field is hidden — carried for the download filename, not rendered.
+// Invoice row: the `name` field is hidden — carried for the download filename, not rendered. `id` (the raw
+// Stripe invoice id) rides hidden as the ledger key so an invoice accumulates its status past the fetch window.
 interface SupabaseInvoiceRow {
+  id: string
   date: string | null
   number: string | null
   amount: number
@@ -324,16 +326,19 @@ export const buildSupabaseBillingTab = (report: SupabaseBillingReport): Capabili
       { key: 'amount', label: 'Amount', role: 'money', currency: ccy },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'pdfUrl', label: 'Receipt', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
     rows: report.invoices.map((i) => ({
+      id: i.id,
       date: i.date ?? null,
       number: i.number ?? null,
       amount: i.amount,
       status: i.status,
       pdfUrl: i.pdfUrl ?? null,
       name: `Invoice ${i.number ?? i.date ?? 'unknown'}`
-    }))
+    })),
+    key: 'id'
   })
 
   return capabilityResult({
@@ -496,8 +501,10 @@ export const buildSupabaseUsage = (
   }
 }
 
-// Projects table row.
+// Projects table row. `ref` (the project's immutable Supabase reference) rides hidden as the ledger key so a
+// project accumulates across fetches even if renamed.
 interface SupabaseProjectRow {
+  ref: string
   name: string
   region: string | null
   status: string
@@ -521,15 +528,18 @@ export const buildSupabaseUsageResult = (report: SupabaseUsageReport): Capabilit
           { key: 'region', label: 'Region', role: 'text' },
           { key: 'status', label: 'Status', role: 'status' },
           { key: 'computeSize', label: 'Compute', role: 'text' },
-          { key: 'diskGb', label: 'Disk (GB)', role: 'count' }
+          { key: 'diskGb', label: 'Disk (GB)', role: 'count' },
+          { key: 'ref', role: 'identifier', hidden: true }
         ],
         rows: report.projects.map((p) => ({
+          ref: p.ref,
           name: p.name,
           region: p.region ?? null,
           status: p.status,
           computeSize: p.computeSize ?? null,
           diskGb: p.diskGb
-        }))
+        })),
+        key: 'ref'
       })
     : null
 

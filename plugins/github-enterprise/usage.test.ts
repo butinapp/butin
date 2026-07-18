@@ -79,6 +79,8 @@ test('aggregates per product, drops empty products, sorts by gross desc, summari
   // SKUs sorted by gross desc, names joined; Copilot's repeated SKU de-duped to one name.
   expect(products.rows[0].skus).toBe('Actions Linux · Actions Windows')
   expect(products.rows[1].skus).toBe('Copilot Enterprise')
+  // One row per product, keyed by the product name so it accumulates in the ledger.
+  expect(products.key).toBe('product')
 })
 
 test('usage record totals gross/discount/net + product count; headlines net as usage.primary', () => {
@@ -113,6 +115,8 @@ test('folds rows into a per-day gross/net/discount trend, sorted ascending', () 
   // 2026-06-01: Actions 150.24 (net 0) + Copilot 19 (net 19) → gross 169.24, net 19, discount 150.24
   expect(daily.rows[0]).toMatchObject({ date: '2026-06-01', gross: 169.24, net: 19, discount: 150.24 })
   expect(daily.rows[1]).toMatchObject({ date: '2026-06-02', gross: 4.35, net: 1, discount: 3.35 })
+  // One row per day, keyed by the ISO day so each day accumulates in the ledger.
+  expect(daily.key).toBe('date')
   // A timeseries view binds the daily trend (net over date), declared at daily cadence.
   expect(result.views).toContainEqual({
     type: 'timeseries',

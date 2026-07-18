@@ -160,6 +160,10 @@ test('usage result headlines spend as usage.primary with a daily spark; empty ac
     role: 'money',
     spark: { dataset: 'daily', x: 'date', y: 'cost' }
   })
+  // The per-model table accumulates keyed by the model name.
+  const models = result.datasets.find((d) => d.id === 'models')
+
+  expect(models?.shape === 'table' && models.key).toBe('model')
   expect(buildGroqUsageResult(buildGroqUsage({}, {})).summaries).toBeUndefined()
 })
 
@@ -303,6 +307,21 @@ test('billing result is the invoices table (no account stat / monthly — those 
   expect(r.datasets.some((d) => d.id === 'invoices')).toBe(true)
   expect(r.datasets.some((d) => d.id === 'account')).toBe(false)
   expect(r.datasets.some((d) => d.id === 'monthly')).toBe(false)
+  // the Groq invoice id rides hidden as the accumulation key (date coerces to '' when created_at is absent)
+  const invoices = r.datasets.find((d) => d.id === 'invoices')
+
+  expect(invoices?.shape === 'table' && invoices.key).toBe('id')
+  expect(invoices?.shape === 'table' && invoices.rows[0]?.id).toBe('a')
+  // an id-less invoice falls back to a per-index unique id (not a constant ''), so the ledger key stays unique
+  const idless = buildGroqBillingResult(
+    { data: [{ created_at: Date.UTC(2026, 4, 12), total_amount_cents: 100 }, { total_amount_cents: 200 }] },
+    {},
+    null,
+    null
+  )
+  const idlessRows = idless.datasets.find((d) => d.id === 'invoices')
+
+  expect(idlessRows?.shape === 'table' && idlessRows.rows.map((row) => row.id)).toEqual(['inv-0', 'inv-1'])
   // the invoices table is downloadable (per-row invoice PDF)
   const view = r.views?.find((v) => v.type === 'table' && v.dataset === 'invoices') as { files?: unknown }
 

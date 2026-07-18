@@ -157,9 +157,15 @@ test('billing tab renders a subscription record + invoice table, no spend.mtd su
 
   expect(account.value).toMatchObject({ plan: 'Pro Monthly', seats: 12, period: '2026-05-11 → 2026-06-11' })
 
-  const rows = (result.datasets.find((d) => d.id === 'invoices') as unknown as { rows: Record<string, unknown>[] }).rows
+  const invoiceDataset = result.datasets.find((d) => d.id === 'invoices') as unknown as {
+    rows: Record<string, unknown>[]
+    key: unknown
+  }
 
-  expect(rows[0]).toMatchObject({
+  // A single date can hold two invoices, so (date, amount) is the composite key that accumulates history.
+  expect(invoiceDataset.key).toEqual(['date', 'amount'])
+
+  expect(invoiceDataset.rows[0]).toMatchObject({
     date: '2026-06-11',
     amount: 1098,
     status: 'Draft',

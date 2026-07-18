@@ -258,6 +258,7 @@ export const buildGreptileBilling = (
       }
 
       return {
+        id: period?.invoiceId ?? undefined,
         label: period?.label ?? '',
         date: isoDay(start),
         status: invoice?.status ?? 'unknown',
@@ -408,6 +409,9 @@ interface BillingContactRow {
 }
 
 interface BillingInvoiceRow {
+  // Hidden — the Stripe invoice id rides as the ledger key so a finalized invoice accumulates past the fetch
+  // window. Present on every non-projected row (a finalized period always carries its invoiceId).
+  id: string
   date: string | null
   label: string
   amount: number
@@ -485,17 +489,22 @@ export const buildGreptileBillingTab = (
       { key: 'label', label: 'Period', role: 'label' },
       { key: 'amount', label: 'Amount', role: 'money' },
       { key: 'status', label: 'Status', role: 'status' },
-      { key: 'hostedUrl', label: 'Invoice', role: 'url' }
+      { key: 'hostedUrl', label: 'Invoice', role: 'url' },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
     rows: billing.invoices
       .filter((i) => !i.projected)
-      .map((i) => ({
+      .map((i, idx) => ({
+        id: i.id ?? `inv-${idx}`,
         date: i.date ?? null,
         label: i.label || '—',
         amount: i.amount,
         status: i.status,
         hostedUrl: i.hostedUrl ?? null
-      }))
+      })),
+    // The Stripe invoice id is a stable, unique identity for each finalized invoice — key it so an invoice
+    // accumulates in the ledger past the fetch window.
+    key: 'id'
   })
 
   return capabilityResult({
@@ -671,7 +680,9 @@ export const buildGreptileUsageResult = (usageData: GreptileUsage): CapabilityRe
           { key: 'codeReview', label: 'Web reviews', role: 'count' },
           { key: 'cliReview', label: 'CLI reviews', role: 'count' }
         ],
-        rows: usageData.daily
+        rows: usageData.daily,
+        // One row per day, so the ISO day is its stable identity — each day accumulates in the ledger.
+        key: 'date'
       }).timeseries({ x: 'date', y: 'codeReview', granularity: 'daily', title: 'Daily web reviews' })
     : null
 
@@ -686,7 +697,9 @@ export const buildGreptileUsageResult = (usageData: GreptileUsage): CapabilityRe
           { key: 'totalFlex', label: 'Overage', role: 'count' },
           { key: 'seats', label: 'Seats', role: 'count' }
         ],
-        rows: usageData.authors
+        rows: usageData.authors,
+        // The author login is each author's stable identity, so per-author review counts accumulate in the ledger.
+        key: 'login'
       }).table({ title: 'By author' })
     : null
 

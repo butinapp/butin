@@ -303,8 +303,8 @@ export const buildBillingReport = (
   subs?: RawStripeSubscriptionsList | null
 ): DepotBillingReport => {
   const invoices = (raw.data ?? []).map(
-    (inv): DepotInvoice => ({
-      id: inv.id ?? '',
+    (inv, i): DepotInvoice => ({
+      id: inv.id ?? `inv-${i}`,
       number: inv.number,
       date: epochSecDay(inv.effective_at) ?? epochSecDay(inv.finalized_at) ?? epochSecDay(inv.created),
       status: inv.status ?? 'unknown',
@@ -380,6 +380,10 @@ export const buildDepotSummaryResult = (report: DepotBillingReport): CapabilityR
 // downloadable invoice history and the per-invoice line-item breakdown.
 
 interface BillingInvoiceRow {
+  // Hidden — the Stripe invoice id rides as the ledger key so invoices accumulate their status/amount history
+  // past the fetch window (an open invoice's status flips to paid over time); `number` coerces to '—' when
+  // absent, so it can't serve as a stable identity.
+  id: string
   date: string | null
   number: string
   amount: number
@@ -406,9 +410,11 @@ export const buildDepotBillingTab = (report: DepotBillingReport): CapabilityResu
       { key: 'amount', label: 'Amount', role: 'money', currency: ccy },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'pdfUrl', label: 'PDF', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
     rows: report.invoices.map((i) => ({
+      id: i.id,
       date: i.date ?? null,
       number: i.number || '—',
       amount: i.amount,
@@ -416,7 +422,8 @@ export const buildDepotBillingTab = (report: DepotBillingReport): CapabilityResu
       // The portal exposes a PDF link per invoice; the hosted invoice page is the fallback.
       pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
       name: `Invoice ${i.number || i.date || 'unknown'}`
-    }))
+    })),
+    key: 'id'
   })
 
   // Flatten each invoice's line items into one table, tagged by invoice number so the rows read in context.

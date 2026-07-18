@@ -113,6 +113,8 @@ test('usage result appends a daily timeseries when buckets exist; valid either w
 
   expect(validateCapabilityResult(withTrend)).toEqual([])
   expect(withTrend.datasets.some((d) => d.id === 'daily')).toBe(true)
+  // Keyed by day so each day's credits accumulate past the trailing fetch window.
+  expect((withTrend.datasets.find((d) => d.id === 'daily') as { key?: string }).key).toBe('date')
   expect(
     withTrend.views?.some((v) => v.type === 'timeseries' && v.dataset === 'daily' && v.granularity === 'daily')
   ).toBe(true)
@@ -207,7 +209,14 @@ test('billing invoices table is downloadable (receiptUrl), carries a filename ro
 
   expect(view.files).toMatchObject({ source: { url: 'receiptUrl' }, name: 'name', ext: 'pdf', category: 'Invoices' })
 
-  const rows = (result.datasets.find((d) => d.id === 'invoices') as unknown as { rows: Record<string, unknown>[] }).rows
+  const invoicesDs = result.datasets.find((d) => d.id === 'invoices') as unknown as {
+    key: string
+    rows: Record<string, unknown>[]
+  }
+
+  // Keyed on the payment date so each payment accumulates in the ledger past the fetch window.
+  expect(invoicesDs.key).toBe('date')
+  const rows = invoicesDs.rows
 
   expect(rows[0]).toMatchObject({
     date: '2026-05-19',

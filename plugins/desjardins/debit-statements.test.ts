@@ -214,6 +214,10 @@ test('collect drives the live browser launcher→selection (serial), then yields
   expect(navs[1]).toContain('/coreleADReleve/ObtenirSelectionReleveMensuel.do')
   expect(rows).toHaveLength(4)
   expect(rows[0]).toMatchObject({ name: 'Relevé 2026-02', date: '2026-02-01' })
+  // Each statement accumulates in the ledger keyed by folio + year + month.
+  const ds = result.datasets.find((d) => d.id === 'debit-statements')
+
+  expect(ds?.shape === 'table' && ds.key).toEqual(['folio', 'year', 'month'])
   // the bytes come from the capability's fetchFile hook (no url column) — a fetch-sourced files table
   const view = result.views?.find((v) => v.type === 'table')
 

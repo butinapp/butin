@@ -29,6 +29,8 @@ test('usageResult emits a usage record and a metrics table', () => {
   }
 
   expect(metrics.rows).toHaveLength(2)
+  // Keyed by the metric label so each metric accumulates a value history in the ledger.
+  expect(metrics.key).toBe('label')
 })
 
 test('usageResult summarizes total on-demand spend when any metric has a cost', () => {

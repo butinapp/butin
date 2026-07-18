@@ -231,6 +231,8 @@ describe('buildPosthogSummaryResult', () => {
     if (products?.shape === 'table') {
       expect(products.rows).toHaveLength(2)
       expect(products.rows[0]!.projectedAmount).toBeCloseTo(2400)
+      // keyed by the unique product name so per-product spend accumulates in the ledger.
+      expect(products.key).toBe('name')
     }
   })
 
@@ -262,6 +264,8 @@ describe('buildPosthogBillingTab', () => {
       expect(invoices.rows).toHaveLength(3)
       // Newest first; amounts in dollars; the hosted page carried through for the per-row download.
       expect(invoices.rows[0]).toMatchObject({ amount: 2500, status: 'paid', hostedUrl: 'https://invoice/jun' })
+      // one monthly invoice per period → keyed by date so status accumulates in the ledger.
+      expect(invoices.key).toBe('date')
     }
 
     // Invoices download via fetchFile (PostHog exposes only the hosted page, no direct PDF URL).
@@ -335,6 +339,7 @@ describe('buildPosthogUsageResult', () => {
         { date: '2026-06-01', Events: 100 },
         { date: '2026-06-02', Events: 200 }
       ])
+      expect(daily.key).toBe('date') // one row per day → keyed so the usage trend accumulates
     }
 
     // Usage is counts, not money — no usage.primary money summary.

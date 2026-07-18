@@ -228,7 +228,8 @@ const orgGet = <T>(ctx: CollectContext<GroqConfig>, orgId: string, path: string)
 // Invoice history + the in-progress period's accrued spend (the MTD).
 export const buildGroqBilling = (rawInvoices: RawGroqInvoiceList, rawCurrent: RawCurrentUsage): BillingInput => {
   const invoices = (rawInvoices?.data ?? [])
-    .map((inv) => ({
+    .map((inv, i) => ({
+      id: inv.id ?? `inv-${i}`,
       date: epochMsDay(inv.created_at) ?? '',
       amount: centsToMajor(inv.total_amount_cents),
       status: inv.payment_status ?? inv.status ?? 'unknown',
@@ -283,6 +284,9 @@ export const buildGroqSummaryResult = (
 // is blank (a fresh org).
 
 interface GroqInvoiceRow {
+  // Hidden — the Groq invoice id rides as the ledger key so an invoice's status/amount accumulates past the
+  // fetch window (date coerces to '' when created_at is absent, so it isn't a stable identity).
+  id: string
   date: string | null
   amount: number
   status: string
@@ -305,15 +309,18 @@ export const buildGroqBillingResult = (
       { key: 'amount', label: 'Amount', role: 'money', currency: billing.currency },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'pdfUrl', label: 'PDF', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
-    rows: billing.invoices.map((i) => ({
+    rows: billing.invoices.map((i, idx) => ({
+      id: i.id ?? `inv-${idx}`,
       date: i.date || null,
       amount: i.amount,
       status: i.status,
       pdfUrl: i.pdfUrl ?? null,
       name: `Invoice ${i.date || 'unknown'}`
-    }))
+    })),
+    key: 'id'
   })
   // The invoices table is downloadable: each row's invoice PDF (pdfUrl) becomes a selectable file the host
   // downloads via the shared engine (selection + Download all/selected + per-row Open + on-disk size).
@@ -446,7 +453,9 @@ export const buildGroqUsageResult = (usage: GroqUsage): CapabilityResult => {
       { key: 'outputTokens', label: 'Output tokens', role: 'count' },
       { key: 'cost', label: 'Cost', role: 'money' }
     ],
-    rows: usage.models
+    rows: usage.models,
+    // One row per model (aggregated), so the model name is its stable identity in the ledger.
+    key: 'model'
   })
   const daily = usage.daily.length ? blocks.daily('daily', usage.daily, { title: 'Daily cost' }) : undefined
 

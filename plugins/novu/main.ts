@@ -332,7 +332,9 @@ export const buildNovuBillingTab = (report: NovuBillingReport): CapabilityResult
       status: i.status ?? 'unknown',
       pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
       name: `Invoice ${i.date ?? 'unknown'}`
-    }))
+    })),
+    // Novu posts one invoice per billing month → the invoice date is unique, keying its accumulation.
+    key: 'date'
   })
 
   return capabilityResult({
@@ -533,7 +535,9 @@ export const buildNovuUsageResult = (rawSub: RawNovuSubscription, rawCharts: Raw
       { key: 'channel', label: 'Channel', role: 'label' },
       { key: 'count', label: 'Delivered', role: 'count' }
     ],
-    rows: deliveryRows
+    rows: deliveryRows,
+    // (day, channel) is unique per row (one count per channel per day) → the accumulation key.
+    key: ['day', 'channel']
   })
 
   const runsTrend = charts['workflow-runs-trend'] ?? []
@@ -543,7 +547,9 @@ export const buildNovuUsageResult = (rawSub: RawNovuSubscription, rawCharts: Raw
       { key: 'day', label: 'Day', role: 'timestamp' },
       { key: 'runs', label: 'Workflow runs', role: 'count' }
     ],
-    rows: runsTrend.map((p) => ({ day: p.timestamp ?? '', runs: p.completed ?? 0 }))
+    rows: runsTrend.map((p) => ({ day: p.timestamp ?? '', runs: p.completed ?? 0 })),
+    // One point per day → keyed by day so the runs trend accumulates past the rolling window.
+    key: 'day'
   })
 
   const volume = charts['workflow-by-volume'] ?? []
@@ -553,7 +559,9 @@ export const buildNovuUsageResult = (rawSub: RawNovuSubscription, rawCharts: Raw
       { key: 'workflow', label: 'Workflow', role: 'label' },
       { key: 'count', label: 'Runs', role: 'count' }
     ],
-    rows: volume.map((w) => ({ workflow: w.workflowName ?? 'Unknown', count: w.count ?? 0 }))
+    rows: volume.map((w) => ({ workflow: w.workflowName ?? 'Unknown', count: w.count ?? 0 })),
+    // One row per workflow → keyed by workflow name so the rolling by-volume aggregate accumulates.
+    key: 'workflow'
   })
 
   return capabilityResult({

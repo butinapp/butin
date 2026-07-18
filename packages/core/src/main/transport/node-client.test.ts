@@ -127,3 +127,27 @@ test('without a cache, every read hits the network', async () => {
   await client.get('https://x/a')
   expect(raw).toHaveBeenCalledTimes(2)
 })
+
+// A binary body reaches the wire byte-for-byte and keeps the plugin's own content type: JSON-encoding it
+// would send `{"type":"Buffer","data":[…]}`, which a binary endpoint answers with an undecodable body.
+test('a binary body is sent verbatim, without a JSON content type', async () => {
+  let sent: { data?: unknown; headers: Record<string, string> } | undefined
+  const raw = vi.fn(async (req: { data?: unknown; headers: Record<string, string> }) => {
+    sent = req
+
+    return ok({ v: 1 })
+  })
+  const client = createNodeClient({}, resolver, raw)
+  const frame = Buffer.from([0x00, 0x00, 0x00, 0x00, 0x02, 0x08, 0x96])
+
+  await client.request({
+    url: 'https://x/grpc',
+    method: 'POST',
+    body: frame,
+    headers: { 'content-type': 'application/grpc-web+proto' }
+  })
+
+  expect(sent?.data).toEqual(frame)
+  expect(sent?.headers['Content-Type']).toBeUndefined()
+  expect(sent?.headers['content-type']).toBe('application/grpc-web+proto')
+})

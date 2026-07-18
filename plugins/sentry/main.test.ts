@@ -143,9 +143,11 @@ test('buildSentryBillingResult: invoicing detail is just the invoices table (no 
   const result = buildSentryBillingResult(report)
 
   expect(result.datasets.map((d) => d.id)).toEqual(['invoices'])
+  // Keyed by the raw invoice id (threaded through, hidden) so an invoice accumulates past the fetch window.
+  expect((result.datasets[0] as { key?: string }).key).toBe('id')
   const rows = (result.datasets[0] as { rows: Record<string, unknown>[] }).rows
 
-  expect(rows[0]).toMatchObject({ date: '2026-06-01', amount: 150, status: 'open', pdfUrl: 'https://x/pdf' })
+  expect(rows[0]).toMatchObject({ id: 'b', date: '2026-06-01', amount: 150, status: 'open', pdfUrl: 'https://x/pdf' })
   // the invoices table is downloadable (per-row receipt PDF)
   const view = result.views?.find((v) => v.type === 'table' && v.dataset === 'invoices') as { files?: unknown }
 

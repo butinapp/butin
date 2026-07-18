@@ -73,7 +73,10 @@ export const usageResult = (input: UsageInput): CapabilityResult => {
       unit: m.unit ?? null,
       limit: m.limit ?? null,
       cost: m.cost ?? null
-    }))
+    })),
+    // The metric label is the stable identity — key it so each metric's value accumulates in the ledger
+    // (the per-metric usage history + per-row trend). An unkeyed table carries no history.
+    key: 'label'
   })
 
   // The daily trend renders between the stat and the per-metric table (stat → chart → table).

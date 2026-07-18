@@ -243,6 +243,8 @@ test('buildIntercomBillingTab lists the per-product line items', () => {
     const seats = products.rows.find((r) => r.metric === 'core_seat_count')
 
     expect(seats).toMatchObject({ name: 'Full seats', quantity: 10, total: 600 })
+    // keyed by the line item's unique display name so each line's quantity/total accumulates in the ledger.
+    expect(products.key).toBe('name')
   }
 })
 
@@ -256,6 +258,9 @@ test('buildIntercomBillingTab renders the invoice list with a download wiring', 
     expect(invoices.rows).toHaveLength(2)
     // the Stripe invoice exposes a downloadable PDF
     expect(invoices.rows.find((r) => r.number === 'AAAA0000-0001')?.pdfUrl).toBe('https://example.test/i/abc/pdf')
+    // keyed by the stable invoice id (present even when `number` is blank) so status accumulates in the ledger.
+    expect(invoices.key).toBe('id')
+    expect(invoices.rows.find((r) => r.number === 'AAAA0000-0001')?.id).toBe('in_synthetic1')
   }
 })
 

@@ -228,7 +228,10 @@ export const buildDesjardinsAccounts = (h: DesjHoldings): CapabilityResult => {
             { key: 'name', label: 'Compte', role: 'label' },
             { key: 'amount', label: 'Solde', role: 'money', currency: CURRENCY }
           ],
-          rows: h.accounts.map((a) => ({ name: a.name, amount: a.amount }))
+          rows: h.accounts.map((a) => ({ name: a.name, amount: a.amount })),
+          // The account label (built from its number/description) is the stable identity, so each account's
+          // balance accumulates its history in the ledger.
+          key: 'name'
         })
       : null
 
@@ -241,7 +244,8 @@ export const buildDesjardinsAccounts = (h: DesjHoldings): CapabilityResult => {
             { key: 'type', label: 'Type', role: 'text' },
             { key: 'amount', label: 'Solde', role: 'money', currency: CURRENCY }
           ],
-          rows: h.credit.map((c) => ({ name: c.name, type: c.type, amount: c.amount }))
+          rows: h.credit.map((c) => ({ name: c.name, type: c.type, amount: c.amount })),
+          key: 'name'
         })
       : null
 
@@ -254,7 +258,8 @@ export const buildDesjardinsAccounts = (h: DesjHoldings): CapabilityResult => {
             { key: 'maturity', label: 'Échéance', role: 'timestamp' },
             { key: 'amount', label: 'Montant', role: 'money', currency: CURRENCY }
           ],
-          rows: h.investments.map((i) => ({ name: i.name, maturity: i.maturity, amount: i.amount }))
+          rows: h.investments.map((i) => ({ name: i.name, maturity: i.maturity, amount: i.amount })),
+          key: 'name'
         })
       : null
 
@@ -388,7 +393,10 @@ export const buildStatementsTable = (cards: DesjCard[], statements: DesjStatemen
           { key: 'downloadUrl', label: 'PDF', role: 'url' },
           { key: 'name', role: 'label', hidden: true }
         ],
-        rows
+        rows,
+        // A statement is identified by its card + date + type (the same triple the dedup above keys on), so
+        // each statement accumulates once in the ledger.
+        key: ['card', 'date', 'type']
       }).fileTable({
         title: 'Relevés de carte de crédit',
         name: 'name',

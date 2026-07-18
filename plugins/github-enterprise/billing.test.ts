@@ -321,6 +321,10 @@ describe('buildGithubBilling', () => {
 
     expect(rows.map((r) => r.id)).toEqual(['AAA111', 'BBB222'])
     expect(rows[1]).toMatchObject({ status: 'Declined', receipt: null })
+    // Keyed by the transaction id so each payment accumulates its status/amount history in the ledger.
+    const payments = result.datasets.find((d) => d.id === 'payments')
+
+    expect(payments?.shape === 'table' && payments.key).toBe('id')
     // headline + chart live on Summary
     expect(result.datasets.some((d) => d.id === 'account' || d.id === 'monthly' || d.id === 'metered')).toBe(false)
     expect(validateCapabilityResult(result)).toEqual([])
@@ -361,6 +365,10 @@ describe('buildGithubBilling', () => {
       { email: 'billing@acme-co.example', primary: 'Primary' },
       { email: 'receipts@acme-co.example', primary: null }
     ])
+    // Keyed by the email so each contact accumulates in the ledger.
+    const contacts = result.datasets.find((d) => d.id === 'contacts')
+
+    expect(contacts?.shape === 'table' && contacts.key).toBe('email')
     expect(validateCapabilityResult(result)).toEqual([])
   })
 

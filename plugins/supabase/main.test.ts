@@ -168,6 +168,9 @@ test('billing tab is the detail: account record + line items + invoice file tabl
   expect(r.datasets.some((d) => d.id === 'account' && d.shape === 'record')).toBe(true)
   expect(r.datasets.some((d) => d.id === 'upcoming' && d.shape === 'table')).toBe(true)
   expect(r.datasets.some((d) => d.id === 'invoices' && d.shape === 'table')).toBe(true)
+  // Invoices accumulate on the raw Stripe id (threaded hidden); the in-progress line items don't (no key).
+  expect((r.datasets.find((d) => d.id === 'invoices') as { key?: string }).key).toBe('id')
+  expect((r.datasets.find((d) => d.id === 'upcoming') as { key?: string }).key).toBeUndefined()
   // Billing is the detail — it does NOT emit the Overview rollup.
   expect(r.summaries).toBeUndefined()
 
@@ -266,6 +269,8 @@ test('usage metrics carry cost only when nonzero (on-demand spend rolls up)', ()
   expect(result.summaries?.[0]?.section).toBe('other')
   expect(result.summaries?.[0]?.value).toBe(1655.05)
   expect(result.datasets.some((d) => d.id === 'projects' && d.shape === 'table')).toBe(true)
+  // Projects accumulate on their immutable ref (threaded hidden) so a rename doesn't orphan history.
+  expect((result.datasets.find((d) => d.id === 'projects') as { key?: string }).key).toBe('ref')
 })
 
 // ── members ─────────────────────────────────────────────────────────────────────────

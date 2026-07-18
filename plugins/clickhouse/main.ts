@@ -345,7 +345,9 @@ export const buildClickhouseBillingTab = (r: ClickhouseBillingReport): Capabilit
       hostedUrl: i.hostedUrl ?? null,
       pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
       name: `Invoice ${i.number}`
-    }))
+    })),
+    // Keyed by invoice number so invoices accumulate history (a status flips over time) past the fetch window.
+    key: 'number'
   })
 
   return capabilityResult({

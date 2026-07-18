@@ -239,11 +239,11 @@ export const buildGrafanaBilling = (
   const planName = current?.publicName ?? 'Unknown'
 
   const invoices = (invoiceList?.items ?? [])
-    .map((inv): GrafanaInvoice => {
+    .map((inv, i): GrafanaInvoice => {
       const amountUnpaid = inv.amountUnpaid ?? 0
 
       return {
-        id: inv.id ?? 'unknown',
+        id: inv.id ?? `inv-${i}`,
         date: isoDay(inv.dateSent) ?? isoDay(inv.dateCreated) ?? isoDay(inv.dateDue),
         status: amountUnpaid > 0 ? 'open' : 'paid',
         amount: inv.amount ?? 0,
@@ -322,6 +322,9 @@ interface BillingAccountRow {
 }
 
 interface BillingInvoiceRow {
+  // Hidden — the invoice id rides as the ledger key so an open invoice's status/unpaid balance accumulates as
+  // it's paid off past the fetch window.
+  id: string
   date: string | null
   status: string
   amount: number
@@ -361,16 +364,19 @@ export const buildGrafanaBillingTab = (billing: GrafanaBilling): CapabilityResul
       { key: 'amount', label: 'Amount', role: 'money' },
       { key: 'amountUnpaid', label: 'Unpaid', role: 'money' },
       { key: 'datePaid', label: 'Paid', role: 'timestamp' },
-      { key: 'hostedUrl', label: 'Invoice', role: 'url' }
+      { key: 'hostedUrl', label: 'Invoice', role: 'url' },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
     rows: billing.invoices.map((i) => ({
+      id: i.id,
       date: i.date ?? null,
       status: i.status,
       amount: i.amount,
       amountUnpaid: i.amountUnpaid,
       datePaid: i.datePaid ?? null,
       hostedUrl: i.hostedUrl ?? null
-    }))
+    })),
+    key: 'id'
   })
 
   return capabilityResult({
@@ -501,7 +507,9 @@ export const buildGrafanaUsageResult = (usageData: GrafanaUsage): CapabilityResu
         metricsSeries: s.metricsSeries,
         logsGb: s.logsGb,
         tracesGb: s.tracesGb
-      }))
+      })),
+      // The stack name is its stable identity per org, so each stack accumulates its usage in the ledger.
+      key: 'name'
     })
     const stacksView = stacks.table({ title: 'Stacks' })
 

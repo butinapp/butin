@@ -349,7 +349,10 @@ export const buildDnsimpleBillingResult = (report: DnsimpleBillingReport): Capab
       summary: i.summary || null,
       amount: i.amount,
       status: i.status
-    }))
+    })),
+    // The invoice number is the stable identity — key it so invoices accumulate their status/amount history in
+    // the ledger past the fetch window. An unkeyed table carries no history.
+    key: 'id'
   })
 
   // The estimated-next-charge line items render as a keyvalue (label → amount), plus the total row.
@@ -601,7 +604,10 @@ export const buildDnsimpleAccountResult = (
       status: d.status,
       expiresOn: d.expiresOn ?? null,
       autoRenew: d.autoRenew ? 'On' : 'Off'
-    }))
+    })),
+    // The domain name is its stable identity (parseDomains dedupes it), so each domain's status/expiry
+    // accumulates in the ledger.
+    key: 'name'
   })
 
   return capabilityResult({
@@ -710,7 +716,9 @@ export const buildDnsimpleAccessTokensResult = (
       { key: 'created', label: 'Created', role: 'timestamp' },
       { key: 'lastUsed', label: 'Last used', role: 'timestamp' }
     ],
-    rows: tokens.map((t) => ({ name: t.name, created: t.created ?? null, lastUsed: t.lastUsed ?? null }))
+    rows: tokens.map((t) => ({ name: t.name, created: t.created ?? null, lastUsed: t.lastUsed ?? null })),
+    // The token name is its identity on the account, so each token's last-used history accumulates in the ledger.
+    key: 'name'
   })
 
   return capabilityResult({ sections: [limitsRecord?.stat(), table_.table({ title: 'Access tokens' })] })
@@ -838,6 +846,12 @@ export const dnsimplePlugin = definePlugin({
     cookieDomains: ['dnsimple.com'],
     // The Rails session lands after sign-in; gate the capture on it so a half-set jar isn't grabbed.
     requiredCookie: '_dnsimple_session',
+    // Google sign-in is omniauth, which stashes the OAuth `state` in the Rails `_dnsimple_session` cookie. A
+    // stale `_dnsimple_session` left in the shared partition poisons that state on the callback, so the handshake
+    // fails and the browser lands back on the login page (works once from a clean jar, fails every reconnect
+    // after). Drop it at the start of each capture so the OAuth round-trip begins clean; the authed
+    // `_dnsimple_session` is then re-set on the callback and captured.
+    clearCookiesBeforeCapture: ['_dnsimple_session'],
     // Prefill the account id from the dashboard URL (dnsimple.com/a/<id>/) when the capture settles on it.
     captureFromUrl: [{ pattern: '/a/(\\d+)', storeAs: 'accountId' }]
   },

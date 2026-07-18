@@ -408,7 +408,10 @@ export const buildGoogleWorkspaceBillingTab = (billing: GoogleBilling): Capabili
       perSeatMonthly: s.perSeatMonthly ?? null,
       monthlyEstimate: s.monthlyEstimate ?? null,
       renewalDate: s.renewalDate ?? null
-    }))
+    })),
+    // One subscription per SKU, so the SKU name is its stable identity — each subscription's seats/estimate
+    // accumulate in the ledger.
+    key: 'skuName'
   })
 
   return capabilityResult({
@@ -475,7 +478,9 @@ export const buildGoogleWorkspaceUsageResult = (usageData: GoogleUsage): Capabil
         seatsAssigned: s.seatsAssigned,
         seatsCommitted: s.seatsCommitted ?? null,
         utilization: s.utilization
-      }))
+      })),
+      // One row per subscription (SKU), so the SKU name is its stable identity in the ledger.
+      key: 'skuName'
     })
     const seatsView = seats.table({ title: 'Seat utilization' })
 

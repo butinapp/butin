@@ -103,6 +103,21 @@ describe('buildGrafanaBilling', () => {
     expect(r.latestAmount).toBe(11385.69)
   })
 
+  it('gives an id-less invoice a per-index unique id (not a constant fallback), so the ledger key stays unique', () => {
+    const r = buildGrafanaBilling(
+      org,
+      {
+        items: [
+          { amount: 10, dateSent: '2026-02-01' },
+          { amount: 20, dateSent: '2026-01-01' }
+        ]
+      },
+      'acme'
+    )
+
+    expect(r.invoices.map((i) => i.id)).toEqual(['inv-0', 'inv-1'])
+  })
+
   it('derives paid/open status from amountUnpaid and totals the unpaid balance', () => {
     const r = buildGrafanaBilling(org, invoices, 'acme')
     const open = r.invoices.find((i) => i.id === 'INV003')!
@@ -213,6 +228,9 @@ describe('buildGrafanaBillingTab', () => {
     expect(inv.shape === 'table' && inv.rows[1]!.hostedUrl).toBe('https://grafana.com/orgs/acme/invoices/INV003')
     // The hosted link is a url column, not a downloadable file table.
     expect(inv.shape === 'table' && inv.columns.find((c) => c.key === 'hostedUrl')?.role).toBe('url')
+    // The invoice id rides hidden as the accumulation key so an open invoice's balance accumulates as it's paid.
+    expect(inv.shape === 'table' && inv.key).toBe('id')
+    expect(inv.shape === 'table' && inv.rows[0]!.id).toBe('INV002')
   })
 
   it('drops the invoices section when there are no invoices', () => {
@@ -329,6 +347,8 @@ describe('buildGrafanaUsageResult', () => {
 
     expect(stacks.shape).toBe('table')
     expect(stacks.shape === 'table' && stacks.rows[0]!.name).toBe('acme-prod.grafana.net')
+    // Keyed by the stack name so each stack accumulates its usage in the ledger.
+    expect(stacks.shape === 'table' && stacks.key).toBe('name')
   })
 
   it('omits the stacks table when there are no instances', () => {

@@ -224,7 +224,14 @@ test('billing tab is the detail: a subscription record + a downloadable invoices
   // The PDF has no direct URL — the table downloads through the capability's fetchFile hook.
   expect(view.files).toMatchObject({ name: 'name', source: { fetch: true }, ext: 'pdf', category: 'Invoices' })
 
-  const rows = (result.datasets.find((d) => d.id === 'invoices') as unknown as { rows: Record<string, unknown>[] }).rows
+  const invoicesDs = result.datasets.find((d) => d.id === 'invoices') as unknown as {
+    key: string
+    rows: Record<string, unknown>[]
+  }
+
+  // Keyed on the invoice date so each monthly invoice accumulates in the ledger past the fetch window.
+  expect(invoicesDs.key).toBe('date')
+  const rows = invoicesDs.rows
 
   expect(rows[0]).toMatchObject({
     date: '2026-05-13',

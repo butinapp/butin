@@ -210,6 +210,7 @@ interface MedicationRow {
   refillsRemaining: number | null
   status: string
   klass: string
+  id: string
 }
 
 // `status` (actif/terminé) is derived from the refill count: a med with refills remaining is active.
@@ -226,7 +227,8 @@ export const buildMedicationsResult = (rows: CleanMedication[]): CapabilityResul
           { key: 'pharmacy', label: 'Pharmacie', role: 'text' },
           { key: 'refillsRemaining', label: 'Renouvellements', role: 'count' },
           { key: 'status', label: 'Statut', role: 'status', badges: { actif: 'success', terminé: 'neutral' } },
-          { key: 'klass', label: 'Classe', role: 'text' }
+          { key: 'klass', label: 'Classe', role: 'text' },
+          { key: 'id', role: 'identifier', hidden: true }
         ],
         rows: rows.map((r) => ({
           prescribedAt: r.prescribedAt,
@@ -236,8 +238,11 @@ export const buildMedicationsResult = (rows: CleanMedication[]): CapabilityResul
           pharmacy: r.pharmacy,
           refillsRemaining: r.refillsRemaining,
           status: (r.refillsRemaining ?? 0) > 0 ? 'actif' : 'terminé',
-          klass: r.klass
-        }))
+          klass: r.klass,
+          id: r.id
+        })),
+        // The ordonnance id is the prescription's stable identity, so each accumulates one ledger row.
+        key: 'id'
       }).table()
     ]
   })
@@ -267,9 +272,12 @@ export const buildAppointmentsResult = (rows: CleanAppointment[]): CapabilityRes
           { key: 'doctor', label: 'Médecin', role: 'label' },
           { key: 'clinic', label: 'Clinique', role: 'text' },
           { key: 'specialty', label: 'Spécialité', role: 'text' },
-          { key: 'status', label: 'Statut', role: 'status' }
+          { key: 'status', label: 'Statut', role: 'status' },
+          { key: 'id', role: 'identifier', hidden: true }
         ],
-        rows
+        rows,
+        // The RendezVous id is the appointment's stable identity, so it accumulates one ledger row.
+        key: 'id'
       }).table()
     ]
   })
@@ -304,9 +312,12 @@ export const buildMedicalServicesResult = (rows: CleanService[]): CapabilityResu
           { key: 'description', label: 'Service', role: 'label' },
           { key: 'practitioner', label: 'Professionnel', role: 'text' },
           { key: 'amountPaid', label: 'Payé RAMQ', role: 'money' },
-          { key: 'facility', label: 'Lieu', role: 'text' }
+          { key: 'facility', label: 'Lieu', role: 'text' },
+          { key: 'id', role: 'identifier', hidden: true }
         ],
-        rows
+        rows,
+        // The date+index id is always populated and unique, so each service accumulates its own ledger row.
+        key: 'id'
       }).table()
     ]
   })
@@ -365,7 +376,9 @@ export const buildLabsResult = (list: Record<string, unknown>[], citizenId: stri
             itemId: pick(it, 'id') ?? '',
             citizenId
           }
-        })
+        }),
+        // Keyed by the per-sample id (the same id the incremental fetch unions on) so labs accumulate history.
+        key: 'itemId'
         // Bytes come from the capability's fetchFile (base64-inline /Rapports, no direct URL).
       }).fileTable({ name: 'name', source: { fetch: true }, ext: 'pdf', category: 'Prélèvements' })
     ]
@@ -459,7 +472,9 @@ export const buildImagingResult = (list: Record<string, unknown>[], citizenId: s
             itemId: pick(it, 'NumeroExamen', 'numeroExamen') ?? '',
             citizenId
           }
-        })
+        }),
+        // Keyed by the exam number so imaging exams accumulate history past the ~6-year fetch window.
+        key: 'itemId'
         // Bytes come from the capability's fetchFile (DetailRapport → Rapport, no direct URL).
       }).fileTable({ name: 'name', source: { fetch: true }, ext: 'pdf', category: 'Imagerie' })
     ]
@@ -527,7 +542,10 @@ export const buildAccessResult = (rows: CleanAccess[]): CapabilityResult =>
           role: r.role,
           domains: r.domains.join(', '),
           providerId: r.providerId
-        }))
+        })),
+        // One access event per (day, second, provider) — the journal has no row id, so this stable triple keys
+        // the ledger; the domains touched are already folded into the single row that triple identifies.
+        key: ['date', 'time', 'providerId']
       }).table()
     ]
   })

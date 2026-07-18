@@ -451,7 +451,9 @@ export const buildHubspotUsageResult = (
         { key: 'date', label: 'Date', role: 'timestamp' },
         { key: 'count', label: 'Marketable contacts', role: 'count' }
       ],
-      rows: points
+      rows: points,
+      // One point per day → keyed by date so the marketable-contacts trend accumulates past the fetch window.
+      key: 'date'
     }).timeseries({ x: 'date', y: 'count', granularity: 'daily', title: 'Marketable contacts' })
 
     result.datasets.push(series.dataset)

@@ -116,11 +116,14 @@ test('qdrant Billing detail: the monthly metering records table (newest first), 
 
   expect(validateCapabilityResult(result)).toEqual([])
   const meterings = result.datasets.find((d) => d.id === 'meterings') as unknown as {
+    key: unknown
     rows: Array<{ month: string; status: string }>
   }
 
   expect(meterings.rows.map((r) => r.month)).toEqual(['2026-06', '2026-05'])
   expect(meterings.rows[0].status).toBe('metered')
+  // one row per month → keyed by month so the metering history accumulates in the ledger.
+  expect(meterings.key).toBe('month')
   // headline + chart live on Summary
   expect(result.datasets.some((d) => d.id === 'account')).toBe(false)
   expect(result.datasets.some((d) => d.id === 'currentClusters')).toBe(false)

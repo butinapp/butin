@@ -171,6 +171,9 @@ export const buildFireworksSummaryResult = (rows: RawInvoiceRow[] | undefined | 
 // invoice. Each row's invoiceUrl carries its own token, so it's a downloadable file (the host adds selection +
 // Download all/selected + per-row Open). The headline (MTD / monthly chart) lives on Summary.
 interface FireworksBillingRow {
+  // Hidden — the invoice id rides as the ledger key so an upcoming invoice's status/amount accumulates as it
+  // finalizes (several invoices can share a month, so date isn't a stable identity).
+  id: string
   date: string | null
   amount: number
   status: string
@@ -188,15 +191,18 @@ export const buildFireworksBillingResult = (rows: RawInvoiceRow[] | undefined | 
       { key: 'amount', label: 'Amount', role: 'money' },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'invoiceUrl', label: 'Invoice', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
     rows: report.invoices.map((i) => ({
+      id: i.id,
       date: i.date ?? null,
       amount: i.amount,
       status: i.status,
       invoiceUrl: i.hostedUrl,
       name: `Invoice ${i.date ?? 'unknown'}`
-    }))
+    })),
+    key: 'id'
   })
 
   return capabilityResult({

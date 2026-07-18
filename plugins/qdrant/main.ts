@@ -293,7 +293,9 @@ export const buildQdrantBilling = (input: QdrantBillingInput): CapabilityResult 
           { key: 'amount', label: 'Metered', role: 'money', currency },
           { key: 'status', label: 'Status', role: 'status' }
         ],
-        rows: [...months].reverse().map((m) => ({ month: m.month, amount: m.total, status: 'metered' }))
+        rows: [...months].reverse().map((m) => ({ month: m.month, amount: m.total, status: 'metered' })),
+        // One row per calendar month ('YYYY-MM') → keyed by month so the metering history accumulates.
+        key: 'month'
       }).table({ title: 'Monthly meterings' })
     ]
   })

@@ -323,6 +323,11 @@ describe('buildChatgptBillingTab', () => {
     expect(invoicesView).toBeDefined()
     expect((invoicesView as { files?: unknown }).files).toMatchObject({ source: { url: 'pdfUrl' }, ext: 'pdf' })
 
+    // Keyed by the Stripe invoice id (number can be null) so invoices accumulate.
+    const invoicesDs = result.datasets.find((d) => d.id === 'invoices')
+
+    expect(invoicesDs?.shape === 'table' && invoicesDs.key).toBe('id')
+
     // The account keyvalue renders before the long invoices table.
     const accountIdx = result.views!.findIndex((v) => v.dataset === 'accountInfo')
     const invoicesIdx = result.views!.findIndex((v) => v.dataset === 'invoices')

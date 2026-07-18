@@ -315,7 +315,10 @@ export const buildScreenshotapiBillingTab = (report: ScreenshotApiBillingReport)
       status: i.status,
       hostedUrl: i.hostedUrl ?? null,
       name: `Invoice ${i.date ?? 'unknown'}`
-    }))
+    })),
+    // One subscription invoice per billing month (the payload carries no invoice id) — the date is the stable
+    // unique identity, keyed so each invoice's status/amount accumulates in the ledger past the fetch window.
+    key: 'date'
   })
 
   return capabilityResult({

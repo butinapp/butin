@@ -295,6 +295,9 @@ interface ContactRow {
 }
 
 interface InvoiceRow {
+  // Hidden — the Orb invoice id rides as the ledger key so an invoice accumulates past the fetch window. Two
+  // invoices can share an issue date (a plan charge + a usage charge on the same day), so date/name aren't unique.
+  id: string
   date: string | null
   status: string
   amount: number
@@ -378,15 +381,18 @@ export const buildHookdeckBillingTab = (report: HookdeckBillingReport): Capabili
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'amount', label: 'Amount', role: 'money', currency: ccy },
       { key: 'pdfUrl', label: 'PDF', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
-    rows: report.invoices.map((i) => ({
+    rows: report.invoices.map((i, idx) => ({
+      id: i.id || `inv-${idx}`,
       date: i.date ?? null,
       status: i.status,
       amount: i.amount,
       pdfUrl: i.pdfUrl ?? null,
       name: `Invoice ${i.date ?? i.id}`
-    }))
+    })),
+    key: 'id'
   })
 
   return capabilityResult({
@@ -525,7 +531,9 @@ export const buildHookdeckUsageResult = (report: HookdeckUsageReport): Capabilit
         { key: 'date', label: 'Date', role: 'timestamp' },
         { key: 'quantity', label: m.name, role: 'count' }
       ],
-      rows: m.daily
+      rows: m.daily,
+      // One point per day → keyed by date so each metric's daily consumption accumulates past the fetch window.
+      key: 'date'
     }).timeseries({ x: 'date', y: 'quantity', granularity: 'daily', title: `Daily ${m.name}` })
 
     result.datasets.push(series.dataset)

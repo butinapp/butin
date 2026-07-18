@@ -380,7 +380,9 @@ export const buildBillingDetail = (
       { key: 'medium', role: 'identifier', hidden: true },
       { key: 'resourceVersion', role: 'identifier', hidden: true }
     ],
-    rows: [...marvelRows, ...mobileRows]
+    rows: [...marvelRows, ...mobileRows],
+    // `name` ("Invoice <date>" / "Mobile invoice <date>") is unique per row across both surfaces — the ledger key.
+    key: 'name'
   })
 
   const balance = record<BalanceRow>({
@@ -488,7 +490,9 @@ export const buildAccountsResult = (accounts: RawPlanAccount[]): CapabilityResul
           { key: 'status', label: 'Status', role: 'status' },
           { key: 'address', label: 'Service address', role: 'text' }
         ],
-        rows
+        rows,
+        // Each billing account has a distinct account number — the stable key.
+        key: 'account'
       }).table({ title: 'Services' })
     ]
   })

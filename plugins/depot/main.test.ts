@@ -426,6 +426,9 @@ describe('buildDepotBillingTab', () => {
     if (invoices?.shape === 'table') {
       // PDF falls back to the hosted invoice page (first row carries only hostedUrl).
       expect(invoices.rows[0]?.pdfUrl).toBe('https://invoice.stripe.com/i/acct_TEST/live_abc')
+      // The Stripe invoice id rides hidden as the accumulation key (number coerces to '—' when absent).
+      expect(invoices.key).toBe('id')
+      expect(invoices.rows[0]?.id).toBe('in_TEST1')
     }
 
     const lines = result.datasets.find((d) => d.id === 'lines')

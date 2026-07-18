@@ -303,7 +303,9 @@ export const buildPosthogSummaryResult = (report: PosthogBillingReport): Capabil
         name: p.name,
         currentAmount: p.currentAmount,
         projectedAmount: p.projectedAmount
-      }))
+      })),
+      // One row per product, uniquely named → keyed so per-product spend accumulates.
+      key: 'name'
     })
 
     result.datasets.push(products.dataset)
@@ -373,7 +375,9 @@ export const buildPosthogBillingTab = (report: PosthogBillingReport): Capability
       status: i.status,
       hostedUrl: i.hostedUrl ?? null,
       name: `Invoice ${i.date ?? 'unknown'}`
-    }))
+    })),
+    // PostHog posts one monthly invoice per period → the invoice date is unique, keying its accumulation.
+    key: 'date'
   })
 
   return capabilityResult({
@@ -507,7 +511,9 @@ export const buildPosthogUsageResult = (report: PosthogUsageReport): CapabilityR
     const daily = table<DailyRow>({
       id: 'daily',
       columns: [{ key: 'date', label: 'Date', role: 'timestamp' }, ...seriesColumns] as never,
-      rows: rows as never
+      rows: rows as never,
+      // One row per day → keyed by date so the usage trend accumulates past the trailing window.
+      key: 'date'
     }).timeseries({ x: 'date', y: firstSeries.label as never, granularity: 'daily', title: 'Daily usage' })
 
     result.datasets.push(daily.dataset)

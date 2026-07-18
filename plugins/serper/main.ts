@@ -129,7 +129,10 @@ export const buildSerperBillingResult = (
       status: i.status,
       receiptUrl: i.hostedUrl ?? null,
       name: `Invoice ${i.date || 'unknown'}`
-    }))
+    })),
+    // Payments carry no id — the payment date is the stable identity (renewals are ~monthly), keyed so each
+    // payment accumulates in the ledger past the fetch window.
+    key: 'date'
   })
   const pm = buildSerperPaymentMethod(rawDetails)
   const card = pm
@@ -223,7 +226,9 @@ export const buildSerperUsageResult = (
         { key: 'date', label: 'Date', role: 'timestamp' },
         { key: 'credits', label: 'Credits', role: 'count' }
       ],
-      rows: points
+      rows: points,
+      // Keyed by day so each day's credit total accumulates in the ledger past the trailing fetch window.
+      key: 'date'
     }).timeseries({ x: 'date', y: 'credits', granularity: 'daily', title: 'Daily credits' })
 
     result.datasets.push(series.dataset)

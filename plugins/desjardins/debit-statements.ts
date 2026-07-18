@@ -331,7 +331,9 @@ export const buildDebitStatementsResult = (refs: DebitStatementRef[]): Capabilit
           { key: 'month', role: 'count', hidden: true },
           { key: 'yearCode', role: 'label', hidden: true }
         ],
-        rows
+        rows,
+        // One statement per folio + year + month — that triple is its stable identity in the ledger.
+        key: ['folio', 'year', 'month']
       }).fileTable({
         name: 'name',
         source: { fetch: true },

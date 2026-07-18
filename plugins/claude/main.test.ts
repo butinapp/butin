@@ -72,9 +72,20 @@ test('buildClaudeBillingTab: a seats/usage breakdown + the invoices table (no Su
   expect(validateCapabilityResult(result)).toEqual([])
   // the stacked breakdown + the invoices detail — but NOT the Summary's `account` stat or `monthly` total
   expect(result.datasets.map((d) => d.id).sort()).toEqual(['invoices', 'monthlyByCategory'])
-  const invoicesDs = result.datasets.find((d) => d.id === 'invoices') as unknown as { rows: unknown[] }
+  const invoicesDs = result.datasets.find((d) => d.id === 'invoices') as unknown as {
+    key: string
+    rows: Array<{ id: string }>
+  }
 
   expect(invoicesDs.rows).toHaveLength(report.invoices.length)
+  // Keyed on the stable invoice-URL id, not the date: a month carries both a seats and a usage invoice.
+  expect(invoicesDs.key).toBe('id')
+  const invoiceIds = invoicesDs.rows.map((r) => r.id)
+
+  expect(new Set(invoiceIds).size).toBe(invoiceIds.length)
+  const byCategory = result.datasets.find((d) => d.id === 'monthlyByCategory')
+
+  expect(byCategory?.shape === 'table' && byCategory.key).toEqual(['month', 'category'])
   // the invoices table is downloadable (per-row invoice PDF)
   const view = result.views?.find((v) => v.type === 'table' && v.dataset === 'invoices') as { files?: unknown }
 
@@ -179,6 +190,15 @@ test('buildClaudeAnalytics produces a valid result with MTD summary, seats, memb
     accrual: 'cumulative',
     resetPeriod: 'monthly'
   })
+
+  // The analytics series/tables are keyed so the ledger accumulates them past the current period's fetch.
+  const spend = result.datasets.find((d) => d.id === 'spend')
+  const byModel = result.datasets.find((d) => d.id === 'byModel')
+  const byModelDaily = result.datasets.find((d) => d.id === 'byModelDaily')
+
+  expect(spend?.shape === 'table' && spend.key).toBe('date')
+  expect(byModel?.shape === 'table' && byModel.key).toBe('model')
+  expect(byModelDaily?.shape === 'table' && byModelDaily.key).toEqual(['date', 'model'])
 
   const activity = result.datasets.find((d) => d.id === 'activity') as unknown as { value: Record<string, unknown> }
 

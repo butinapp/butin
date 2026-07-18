@@ -167,6 +167,8 @@ test('buildHydroBilling: downloadable Factures table (pdfUrl) + statement keyval
   }
 
   expect(invoices.rows[0]).toMatchObject({ date: '2026-06-11', number: '90000002', name: 'Facture 2026-06-11' })
+  // keyed by the unique bill number so invoices accumulate in the ledger.
+  expect(invoices.key).toBe('number')
   expect(result.datasets.some((d) => d.id === 'statement')).toBe(true)
   // headline + chart live on Summary
   expect(result.datasets.some((d) => d.id === 'account' || d.id === 'monthly')).toBe(false)
@@ -210,4 +212,8 @@ test('buildHydroEquipment produces a valid custom-kind dashboard result', () => 
 
   expect(validateCapabilityResult(result)).toEqual([])
   expect(result.datasets.map((d) => d.id).sort()).toEqual(['equipment', 'installation', 'warranties'])
+  // The warranties table keys on the covered part — always present and unique per row.
+  const warranties = result.datasets.find((d) => d.id === 'warranties') as unknown as { key: string }
+
+  expect(warranties.key).toBe('part')
 })

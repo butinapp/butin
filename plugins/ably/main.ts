@@ -10,10 +10,10 @@ import { sampleAblyBilling, sampleAblyUsage } from './sample.js'
 // Ably (ably.com) — realtime messaging / pub-sub. The account dashboard is server-rendered Rails HTML with
 // NO JSON billing/usage API, so the capabilities scrape the HTML with cheerio.
 //
-// AUTH is a plain cookie session — the `_ably_session` Rails cookie, replayed verbatim, cleared on 401 only
-// (a 403 is a per-route permission, not a dead session — core's default). The usage stats route is the
-// exception: it returns 401 for a per-account permission denial, so its fetch tags that as `permissionDenied`
-// to keep the live session from being wiped (see fetchAblyUsage).
+// AUTH is a plain cookie session — the `_ably_session` Rails cookie, replayed verbatim, cleared on 401 (a 403
+// is a per-route permission, not a dead session — core's default). The stats API route is more session-sensitive
+// than the server-rendered HTML pages: it is the first to return 401 as the session degrades, so a 401 there is
+// treated as an expired session (clears the cookie → the UI prompts reconnect) rather than swallowed.
 //
 // CLOUDFLARE: ably.com sits behind Cloudflare and only accepts a real browser (cf-ray on every response) —
 // `requiresBrowserEngine: true` forces the Electron net.request transport with the real browser's TLS identity. The replay UA is
@@ -215,8 +215,11 @@ export const buildAblySummaryResult = (billingData: AblyBilling): CapabilityResu
   })
 }
 
-// Billing tab — the invoice history; each row links to its Stripe-hosted invoice.
+// Billing tab — the invoice history; each row links to its Stripe-hosted invoice. `id` rides hidden as the
+// ledger key so invoices accumulate their status/amount history past the fetch window (the status of an open
+// invoice flips to paid over time), without adding a column to the table.
 interface AblyInvoiceRow {
+  id: string
   date: string | null
   number: string | null
   amount: number
@@ -232,15 +235,18 @@ export const buildAblyBillingResult = (billing: AblyBilling): CapabilityResult =
       { key: 'number', label: 'Number', role: 'identifier' },
       { key: 'amount', label: 'Amount', role: 'money', currency: CURRENCY },
       { key: 'status', label: 'Status', role: 'status' },
-      { key: 'hostedUrl', label: 'Invoice', role: 'url' }
+      { key: 'hostedUrl', label: 'Invoice', role: 'url' },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
     rows: billing.invoices.map((i) => ({
+      id: i.id,
       date: i.date ?? null,
       number: i.number ?? null,
       amount: i.amount,
       status: i.status,
       hostedUrl: i.hostedUrl ?? null
-    }))
+    })),
+    key: 'id'
   })
 
   return capabilityResult({ sections: [invoices.table({ title: 'Invoices' })] })
@@ -322,7 +328,9 @@ export const buildAblyUsageResult = (metrics: AblyUsageMetric[]): CapabilityResu
         lastMonth: m.lastMonth ?? null,
         thisMonth: m.thisMonth ?? null,
         projected: m.projected ?? null
-      }))
+      })),
+      // Keyed by the stable metric label so each metric's month-over-month figures accumulate in the ledger.
+      key: 'label'
     })
 
     result.datasets.push(detail.dataset)
@@ -381,20 +389,13 @@ const fetchAblyBilling = async (ctx: CollectContext<AblyConfig>): Promise<AblyBi
   return { invoicesHtml, packageHtml }
 }
 
-// The stats table is gated by a per-account permission Ably serves as 401 "Access denied" — the same session
-// reads invoices/package fine. Tag that 401 so it surfaces as a permission error on this tab rather than being
-// taken for a dead session and wiping the whole cookie (core's clearOnStatuses default).
-const fetchAblyUsage = async (ctx: CollectContext<AblyConfig>): Promise<AblyUsageRaw> => {
-  try {
-    return { html: await ctx.client.getText(`${ORIGIN}/api/stats/account/${accountSlug(ctx)}/table`) }
-  } catch (err) {
-    if ((err as { status?: number }).status === 401) {
-      ;(err as { permissionDenied?: boolean }).permissionDenied = true
-    }
-
-    throw err
-  }
-}
+// The stats table is a JSON API endpoint that authenticates more strictly than the server-rendered HTML pages
+// (invoices/package), so it 401s first as the session degrades. A 401 here is left to core's default handling —
+// it clears the stored cookie so the connection indicator flips to disconnected and the UI prompts reconnect,
+// rather than being taken for a permission denial and leaving a dead session marked "connected".
+const fetchAblyUsage = async (ctx: CollectContext<AblyConfig>): Promise<AblyUsageRaw> => ({
+  html: await ctx.client.getText(`${ORIGIN}/api/stats/account/${accountSlug(ctx)}/table`)
+})
 
 // ── descriptor ───────────────────────────────────────────────────────────────────────
 

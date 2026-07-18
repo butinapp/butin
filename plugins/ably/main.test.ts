@@ -160,6 +160,13 @@ describe('buildAblyBillingResult', () => {
     expect(invoices?.shape).toBe('table')
     expect(invoices?.shape === 'table' && invoices.columns.some((c) => c.role === 'url')).toBe(true)
   })
+
+  it('keys the invoices table by id so it accumulates history in the ledger', () => {
+    const r = buildAblyBillingResult(buildAblyBilling(invoicesHtml, packageHtml))
+    const invoices = r.datasets.find((d) => d.id === 'invoices')
+
+    expect(invoices?.shape === 'table' && invoices.key).toBe('id')
+  })
 })
 
 describe('buildAblyUsageMetrics', () => {
@@ -202,6 +209,15 @@ describe('buildAblyUsageResult', () => {
 
     expect(r.datasets.find((d) => d.id === 'usageDetail')).toBeDefined()
     expect(r.views?.some((v) => v.type === 'table')).toBe(true)
+  })
+
+  it('keys the detail + metrics tables so usage accumulates in the ledger', () => {
+    const r = buildAblyUsageResult(buildAblyUsageMetrics(usageHtml))
+    const detail = r.datasets.find((d) => d.id === 'usageDetail')
+    const metrics = r.datasets.find((d) => d.id === 'metrics')
+
+    expect(detail?.shape === 'table' && detail.key).toBe('label')
+    expect(metrics?.shape === 'table' && metrics.key).toBe('label')
   })
 })
 

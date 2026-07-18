@@ -62,6 +62,8 @@ export interface RawFirecrawlTeam {
 
 // Normalized invoice — USD dollars, dated 'YYYY-MM-DD'. Shape-compatible with the SDK's BillingInvoiceInput.
 export interface FirecrawlInvoice extends BillingInvoiceInput {
+  /** Stripe invoice id — the stable ledger key (number is nullable, and a month can carry several invoices). */
+  id: string
   date?: string
   status: string
   amount: number // dollars
@@ -81,7 +83,8 @@ export interface FirecrawlBilling {
 
 // ── domain logic ────────────────────────────────────────────────────────────────────
 
-const normalizeInvoice = (inv: RawFirecrawlInvoice): FirecrawlInvoice => ({
+const normalizeInvoice = (inv: RawFirecrawlInvoice, i: number): FirecrawlInvoice => ({
+  id: inv.id ?? `inv-${i}`,
   date: epochSecDay(inv.created),
   status: inv.status ?? 'unknown',
   amount: centsToMajor(inv.total ?? inv.amount_due),
@@ -140,8 +143,10 @@ export const buildFirecrawlBilling = (raw: RawFirecrawlInvoice[] | undefined | n
   }
 }
 
-// Row type for the downloadable invoice history table. `name` carries the download filename — not rendered.
+// Row type for the downloadable invoice history table. `name` carries the download filename — not rendered;
+// `id` (Stripe invoice id) rides hidden as the ledger key.
 interface FirecrawlInvoiceRow {
+  id: string
   date: string | null
   number: string | null
   amount: number
@@ -181,16 +186,19 @@ export const buildFirecrawlBillingResult = (raw: RawFirecrawlInvoice[] | undefin
       { key: 'amount', label: 'Amount', role: 'money', currency: billingData.currency },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'pdfUrl', label: 'PDF', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
     rows: billingData.invoices.map((i) => ({
+      id: i.id,
       date: i.date ?? null,
       number: i.number ?? null,
       amount: i.amount,
       status: i.status,
       pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
       name: `Invoice ${i.number ?? i.date ?? 'unknown'}`
-    }))
+    })),
+    key: 'id'
   })
 
   const section = invoices.fileTable({

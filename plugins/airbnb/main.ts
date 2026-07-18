@@ -236,7 +236,9 @@ export const buildAirbnbSummary = (raw: RawAirbnbSummary): CapabilityResult => {
       { key: 'month', label: 'Month', role: 'timestamp' },
       { key: 'earned', label: 'Earned', role: 'money' }
     ],
-    rows: months
+    rows: months,
+    // Keyed by month so the ledger accumulates the earnings series past the current year's fetch window.
+    key: 'month'
   })
 
   const stats = record<AirbnbSummaryStats>({
@@ -396,7 +398,10 @@ export const buildAirbnbTaxDocuments = (raw: RawTaxDocument[]): CapabilityResult
       { key: 'title', label: 'Document', role: 'label' },
       { key: 'authority', label: 'Authority', role: 'category' }
     ],
-    rows
+    rows,
+    // One document per (year, authority) — the composite keys the ledger so past years accumulate beyond the
+    // trailing-4-year fetch window.
+    key: ['year', 'authority']
   })
 
   return capabilityResult({ sections: [docs.table({ title: 'Tax documents' })] })

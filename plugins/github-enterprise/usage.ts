@@ -195,7 +195,9 @@ export const buildGithubUsage = (total: RawUsageTotal, perProduct: ProductNetUsa
       { key: 'discount', label: 'Discount', role: 'money' },
       { key: 'skus', label: 'SKUs', role: 'text' }
     ],
-    rows: productRows
+    rows: productRows,
+    // One row per product (aggregated), so the product name is its stable identity in the ledger.
+    key: 'product'
   })
 
   const daily = table<DailyRow>({
@@ -206,7 +208,9 @@ export const buildGithubUsage = (total: RawUsageTotal, perProduct: ProductNetUsa
       { key: 'gross', label: 'Gross', role: 'money' },
       { key: 'discount', label: 'Discount', role: 'money' }
     ],
-    rows: dailyRows
+    rows: dailyRows,
+    // One row per day, so the ISO day is its stable identity — each day's usage accumulates in the ledger.
+    key: 'date'
   })
 
   return capabilityResult({

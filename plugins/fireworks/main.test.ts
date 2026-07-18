@@ -147,6 +147,9 @@ describe('buildFireworksBillingResult', () => {
       status: 'Upcoming',
       invoiceUrl: 'https://invoices.withorb.com/view?token=AAA'
     })
+    // The invoice id rides hidden as the accumulation key (a month can carry several invoices, so date isn't unique).
+    expect(invoices.key).toBe('id')
+    expect(invoices.rows[0]?.id).toBe('INV0001sample')
   })
 
   test('the invoices view is downloadable via the invoiceUrl column', () => {

@@ -283,7 +283,7 @@ export const buildVercelSummaryResult = (inputs: VercelSummaryInputs): Capabilit
   const invoiceCount = invoices ? (invoices.data?.length ?? 0) : null
 
   const topProjects = (usage?.data?.usage ?? [])
-    .map((p) => ({ name: p.name ?? 'unknown', value: p.value ?? 0, percent: p.percent ?? 0 }))
+    .map((p, i) => ({ name: p.name ?? `project-${i}`, value: p.value ?? 0, percent: p.percent ?? 0 }))
     .sort((a, b) => b.value - a.value)
 
   const account = record<VercelAccountRow>({
@@ -317,7 +317,10 @@ export const buildVercelSummaryResult = (inputs: VercelSummaryInputs): Capabilit
           { key: 'value', label: 'On-demand spend', role: 'money' },
           { key: 'percent', label: 'Share', role: 'percent' }
         ],
-        rows: topProjects
+        rows: topProjects,
+        // The project name is the stable identity (unique per project, always present via the per-index fallback),
+        // so each project's on-demand spend accumulates in the ledger past the current fetch window.
+        key: 'name'
       })
     : null
 
@@ -359,6 +362,8 @@ export interface VercelBillingInputs {
 }
 
 interface VercelInvoiceRow {
+  // The invoice number — hidden, the ledger key so an invoice accumulates its status/amount past the fetch window.
+  invoiceNumber: string
   date: string | null
   amount: number
   status: string
@@ -404,19 +409,24 @@ export const buildVercelBillingResult = (inputs: VercelBillingInputs): Capabilit
       { key: 'amount', label: 'Amount', role: 'money' },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'pdfUrl', label: 'PDF', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'invoiceNumber', role: 'identifier', hidden: true }
     ],
-    rows: (invoices?.data ?? []).map((inv) => {
+    rows: (invoices?.data ?? []).map((inv, i) => {
       const date = isoDay(inv.issuedAt) ?? isoDay(inv.createdAt) ?? isoDay(inv.dueDate) ?? null
 
       return {
+        // The human invoice number is present on every invoice and unique; a per-row synthetic id backs the rare
+        // gap so the key can never collapse to a shared constant (which would drop rows from the ledger projection).
+        invoiceNumber: inv.invoiceNumber ?? `inv-${i}`,
         date,
         amount: parseDecimalAmount(inv.total),
         status: inv.status ?? 'unknown',
         pdfUrl: inv.pdfDownloadUrl ?? null,
         name: `Invoice ${inv.invoiceNumber ?? date ?? 'unknown'}`
       }
-    })
+    }),
+    key: 'invoiceNumber'
   })
   const details = record<VercelDetailsRow>({
     id: 'details',
@@ -460,7 +470,9 @@ export const buildVercelBillingResult = (inputs: VercelBillingInputs): Capabilit
           { key: 'quantity', label: 'Quantity', role: 'count' },
           { key: 'maxQuantity', label: 'Max', role: 'count' }
         ],
-        rows: licensed.map((l) => ({ slug: l.slug, quantity: l.quantity, maxQuantity: l.maxQuantity }))
+        rows: licensed.map((l) => ({ slug: l.slug, quantity: l.quantity, maxQuantity: l.maxQuantity })),
+        // Each licensed line is one billable item — its slug is the stable key.
+        key: 'slug'
       })
     : null
 

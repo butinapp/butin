@@ -308,7 +308,10 @@ export const buildLinearBillingResult = (report: LinearBillingReport): Capabilit
       url: i.hostedUrl ?? null,
       pdfUrl: stripeInvoicePdfUrl(i.hostedUrl),
       name: `Invoice ${i.date ?? 'unknown'}`
-    }))
+    })),
+    // Linear posts one subscription invoice per billing month (no invoice id in the payload) → the invoice
+    // date is the stable unique identity, keyed so each invoice's status/amount accumulates in the ledger.
+    key: 'date'
   })
 
   let accountSpec = null

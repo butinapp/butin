@@ -349,6 +349,9 @@ interface BillingInvoiceRow {
   pdfUrl: string | null
   // Hidden — carried for the download filename.
   name: string
+  // Hidden — the invoice's stable id (present on every native/Stripe invoice, unlike `number` which is blank
+  // until finalized); rides as the ledger key so an invoice's status accumulates as it finalizes.
+  id: string
 }
 
 export const buildIntercomBillingTab = (report: IntercomBillingReport): CapabilityResult => {
@@ -393,7 +396,9 @@ export const buildIntercomBillingTab = (report: IntercomBillingReport): Capabili
       { key: 'quantity', label: 'Qty', role: 'count' },
       { key: 'total', label: 'Total', role: 'money', currency: ccy }
     ],
-    rows: sub.products.map((p) => ({ name: p.name, metric: p.pricingMetric, quantity: p.quantity, total: p.totalUsd }))
+    rows: sub.products.map((p) => ({ name: p.name, metric: p.pricingMetric, quantity: p.quantity, total: p.totalUsd })),
+    // One row per subscription line item, uniquely named → keyed so each line's quantity/total accumulates.
+    key: 'name'
   })
 
   const invoices = table<BillingInvoiceRow>({
@@ -404,7 +409,8 @@ export const buildIntercomBillingTab = (report: IntercomBillingReport): Capabili
       { key: 'amount', label: 'Amount', role: 'money', currency: ccy },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'pdfUrl', label: 'PDF', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
     rows: report.invoices.map((i) => ({
       date: i.date ?? null,
@@ -412,8 +418,10 @@ export const buildIntercomBillingTab = (report: IntercomBillingReport): Capabili
       amount: i.amount,
       status: i.status,
       pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
-      name: `Invoice ${i.number || i.date || 'unknown'}`
-    }))
+      name: `Invoice ${i.number || i.date || 'unknown'}`,
+      id: i.id
+    })),
+    key: 'id'
   })
 
   return capabilityResult({

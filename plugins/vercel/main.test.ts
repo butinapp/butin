@@ -133,6 +133,8 @@ test('summary: headline stat, monthly chart, top projects, and spend.mtd for the
     { name: 'web', value: 30, percent: 0.6 },
     { name: 'api', value: 12.5, percent: 0.25 }
   ])
+  // Keyed on the project name so on-demand spend accumulates in the ledger past the fetch window.
+  expect(projects?.shape === 'table' && projects.key).toBe('name')
 })
 
 test('summary: MTD null + no projects when the usage summary is missing (so the Overview skips Vercel)', () => {
@@ -167,6 +169,8 @@ test('billing: invoices, account details, payment method, and licensed items', (
   const licensed = result.datasets.find((d) => d.id === 'licensed')
 
   expect(licensed?.shape === 'table' && licensed.rows.map((r) => r.slug)).toEqual(['teamSeats', 'concurrentBuilds'])
+  // Licensed items accumulate on their slug; invoices on the invoice number (threaded hidden).
+  expect(licensed?.shape === 'table' && licensed.key).toBe('slug')
 
   // Default source picked (not the first), display_brand preferred.
   const pm = result.datasets.find((d) => d.id === 'paymentMethod')
@@ -176,7 +180,12 @@ test('billing: invoices, account details, payment method, and licensed items', (
   // Invoices flow through (dollar strings → numbers).
   const invoiceDs = result.datasets.find((d) => d.id === 'invoices')
 
-  expect(invoiceDs?.shape === 'table' && invoiceDs.rows[0]).toMatchObject({ amount: 540, status: 'paid' })
+  expect(invoiceDs?.shape === 'table' && invoiceDs.rows[0]).toMatchObject({
+    amount: 540,
+    status: 'paid',
+    invoiceNumber: 'F-002'
+  })
+  expect(invoiceDs?.shape === 'table' && invoiceDs.key).toBe('invoiceNumber')
 
   // The two keyvalue panels are adjacent so the renderer's 2-col grid pairs them side by side.
   expect(result.views?.map((v) => v.type)).toEqual(['table', 'keyvalue', 'keyvalue', 'table'])

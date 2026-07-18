@@ -494,6 +494,10 @@ export const buildBasetenSummaryResult = (report: BasetenBillingReport): Capabil
 // Billing tab — invoice history + credits + payment card, not the Overview rollup.
 
 interface BasetenInvoiceRow {
+  // Hidden — the Orb invoice id (the stable path of the invoice URL, minus its rotating token) rides as the
+  // ledger key. Baseten reissues several invoices on the same period_end date with identical amounts, so
+  // date/amount can't tell them apart; the invoice URL's path is each one's unique identity.
+  id: string
   date: string | null
   amount: number
   status: string
@@ -524,15 +528,25 @@ export const buildBasetenBillingTab = (report: BasetenBillingReport): Capability
       { key: 'amount', label: 'Amount', role: 'money' },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'pdfUrl', label: 'PDF', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
-    rows: report.invoices.map((i) => ({
-      date: i.date ?? null,
-      amount: i.amount,
-      status: i.status,
-      pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
-      name: `Invoice ${i.date ?? 'unknown'}`
-    }))
+    rows: report.invoices.map((i, idx) => {
+      const url = i.pdfUrl ?? i.hostedUrl ?? null
+
+      return {
+        // The stable invoice-URL path (token stripped) is the Orb invoice id; a per-row synthetic backs the rare gap.
+        id: url ? url.split('?')[0] : `inv-${idx}`,
+        date: i.date ?? null,
+        amount: i.amount,
+        status: i.status,
+        pdfUrl: url,
+        name: `Invoice ${i.date ?? 'unknown'}`
+      }
+    }),
+    // The invoice-URL id is each invoice's stable identity — key it so an invoice accumulates history
+    // (an open invoice's status flips to paid over time) past the fetch window.
+    key: 'id'
   })
 
   const credits = record<BasetenCreditsRow>({
@@ -717,7 +731,10 @@ export const buildBasetenUsageResult = (report: BasetenUsageReport): CapabilityR
       { key: 'minutes', label: 'Minutes', role: 'count' },
       { key: 'cost', label: 'Cost', role: 'money' }
     ],
-    rows: report.models
+    rows: report.models,
+    // Each row is one (model, instance, environment) deployment — the triple is its stable identity, so the
+    // ledger accumulates a deployment's usage history across periods.
+    key: ['model', 'instanceType', 'environment']
   })
 
   const daily = blocks.daily('daily', report.daily)

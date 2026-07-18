@@ -126,6 +126,11 @@ test('buildFilgoTanks maps the roster to one valid table with a service-state ba
   const state = tanks.columns.find((c) => c.key === 'serviceState')
 
   expect(state?.badges).toMatchObject({ Fonctionnel: 'success' })
+  // Keyed by the Dataverse asset guid, carried hidden on each row, so a tank accumulates ledger history.
+  const keyed = result.datasets.find((d) => d.id === 'tanks') as unknown as { key: string; rows: { assetId: string }[] }
+
+  expect(keyed.key).toBe('assetId')
+  expect(keyed.rows[0].assetId).toBe('asset-guid-1')
 })
 
 // --- statements ---

@@ -451,6 +451,8 @@ interface InvoiceTableRow {
   pdfUrl: string | null
   // Hidden — carried for the download filename, declared not smuggled.
   name: string
+  // Hidden — the Stripe invoice id (globally unique, non-null), the ledger accumulation key. `number` can be null.
+  id: string
 }
 
 // Billing tab — the financial detail (not the Overview rollup; the headline + chart live on Summary): the
@@ -495,7 +497,8 @@ export const buildChatgptBillingTab = (report: WorkspaceBillingReport): Capabili
       { key: 'amount', label: 'Amount', role: 'money', currency },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'pdfUrl', label: 'PDF', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
     rows: sorted.map((i) => ({
       date: i.date || null,
@@ -503,8 +506,11 @@ export const buildChatgptBillingTab = (report: WorkspaceBillingReport): Capabili
       amount: i.amount,
       status: i.status,
       pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
-      name: `Invoice ${i.number || i.date || 'unknown'}`
-    }))
+      name: `Invoice ${i.number || i.date || 'unknown'}`,
+      id: i.id
+    })),
+    // Keyed by the Stripe invoice id so invoices accumulate history (a status flips over time) past the fetch window.
+    key: 'id'
   })
 
   // Each row's invoice PDF is a selectable file the host downloads (else its hosted URL).

@@ -2,7 +2,13 @@ import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@b
 import { currentMonthKey } from '@butinapp/sdk/util'
 import { expect, test } from 'vitest'
 
-import { buildFirecrawlBilling, buildFirecrawlKeys, firecrawlPlugin, maskKey } from './main.js'
+import {
+  buildFirecrawlBilling,
+  buildFirecrawlBillingResult,
+  buildFirecrawlKeys,
+  firecrawlPlugin,
+  maskKey
+} from './main.js'
 
 const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
   rawValidateCR(resolveCurrencies(r, 'USD'))
@@ -145,6 +151,15 @@ test('buildFirecrawlBilling tolerates empty / missing input', () => {
     expect(billing.paymentMethod).toBeUndefined()
     expect(billing.currency).toBe('USD')
   }
+})
+
+test('buildFirecrawlBillingResult keys the invoice table by the Stripe invoice id', () => {
+  const result = buildFirecrawlBillingResult(INVOICES)
+  const invoices = result.datasets.find((d) => d.id === 'invoices')
+
+  // The Stripe invoice id rides hidden as the accumulation key (number is nullable).
+  expect(invoices?.shape === 'table' && invoices.key).toBe('id')
+  expect(invoices?.shape === 'table' && invoices.rows[0]?.id).toBe('in_new')
 })
 
 test('firecrawl plugin is well-formed', () => {

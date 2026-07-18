@@ -539,7 +539,9 @@ export const buildGithubBilling = (args: BuildBillingArgs): CapabilityResult => 
       receipt: p.receiptUrl ?? null,
       invoice: p.invoiceUrl ?? null,
       name: `Invoice ${p.date || p.id}`
-    }))
+    })),
+    // The transaction id is each payment's stable identity, so a payment accumulates its status/amount in the ledger.
+    key: 'id'
   })
 
   const license = c.license
@@ -583,7 +585,9 @@ export const buildGithubBilling = (args: BuildBillingArgs): CapabilityResult => 
             { key: 'email', label: 'Email', role: 'identifier' },
             { key: 'primary', label: 'Primary', role: 'text' }
           ],
-          rows: c.contacts.map((contact) => ({ email: contact.email, primary: contact.primary ? 'Primary' : null }))
+          rows: c.contacts.map((contact) => ({ email: contact.email, primary: contact.primary ? 'Primary' : null })),
+          // The email is each contact's identity (parseContacts dedupes by it), so contacts accumulate in the ledger.
+          key: 'email'
         })
       : null
 

@@ -165,6 +165,13 @@ test('buildDesjardinsAccounts produces a valid balance result with a net-worth s
   expect(result.summaries?.[0]).toMatchObject({ section: 'balance', value: -193500, role: 'money', currency: 'CAD' })
   expect(result.datasets.map((d) => d.id).sort()).toEqual(['accounts', 'credit', 'investments', 'totals'])
 
+  // Each drawer accumulates its balance history keyed by the account label (its stable identity).
+  for (const id of ['accounts', 'credit', 'investments']) {
+    const ds = result.datasets.find((d) => d.id === id)
+
+    expect(ds?.shape === 'table' && ds.key, id).toBe('name')
+  }
+
   const totals = result.datasets.find((d) => d.id === 'totals')
 
   expect(totals?.shape).toBe('record')
@@ -245,6 +252,11 @@ test('buildStatementsTable yields a downloadable statements table (newest first)
 
   const rows = (result.datasets.find((d) => d.id === 'statements') as unknown as { rows: Record<string, unknown>[] })
     .rows
+
+  // Each statement accumulates in the ledger keyed by card + date + type.
+  const statements = result.datasets.find((d) => d.id === 'statements')
+
+  expect(statements?.shape === 'table' && statements.key).toEqual(['card', 'date', 'type'])
 
   expect(rows).toHaveLength(3)
   // newest first

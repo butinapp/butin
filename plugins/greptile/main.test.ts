@@ -214,13 +214,17 @@ test('Billing detail: subscription record + url-column invoice table, NO spend.m
 
   // the invoice list is a plain table with a `url` column (hostedInvoiceUrl only, no PDF byte source)
   const invoices = result.datasets.find((d) => d.id === 'invoices') as unknown as {
-    rows: { hostedUrl: string | null }[]
+    key?: string
+    rows: { id: string; hostedUrl: string | null }[]
     columns: { key: string; role: string }[]
   }
 
   expect(invoices.columns.find((c) => c.key === 'hostedUrl')?.role).toBe('url')
+  // keyed by the Stripe invoice id (present on every finalized period) so it accumulates in the ledger
+  expect(invoices.key).toBe('id')
   // only the finalized April invoice — the open projection is dropped from the detail list
   expect(invoices.rows).toHaveLength(1)
+  expect(invoices.rows[0].id).toBe('in_001')
   expect(invoices.rows[0].hostedUrl).toBe('https://invoice.stripe.com/i/acct_test/inv_test')
 
   const pm = result.datasets.find((d) => d.id === 'paymentMethod') as unknown as { value: Record<string, unknown> }
@@ -438,6 +442,12 @@ test('usageResult is valid, appends a daily timeseries + author table, emits usa
   expect(validateCapabilityResult(result)).toEqual([])
   expect(result.datasets.some((d) => d.id === 'daily')).toBe(true)
   expect(result.datasets.some((d) => d.id === 'authors')).toBe(true)
+  // daily accumulates keyed by day, authors keyed by login
+  const daily = result.datasets.find((d) => d.id === 'daily')
+  const authors = result.datasets.find((d) => d.id === 'authors')
+
+  expect(daily?.shape === 'table' && daily.key).toBe('date')
+  expect(authors?.shape === 'table' && authors.key).toBe('login')
   expect(result.views?.some((v) => v.type === 'timeseries' && v.dataset === 'daily')).toBe(true)
   expect(result.views?.some((v) => v.type === 'table' && v.dataset === 'authors')).toBe(true)
   // the projected flex charge gives the usage a money summary

@@ -129,7 +129,11 @@ describe('buildUpstashBillingResult', () => {
 
     if (products?.shape === 'table') {
       expect(products.rows).toHaveLength(4)
+      // Products accumulate on the product name; invoices on the month (dated 'YYYY-MM-01', one per month).
+      expect(products.key).toBe('product')
     }
+
+    expect((result.datasets.find((d) => d.id === 'invoices') as { key?: string }).key).toBe('date')
 
     const account = result.datasets.find((d) => d.id === 'account')
 

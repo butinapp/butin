@@ -651,7 +651,9 @@ export const buildCerebrasBillingTab = (billing: CerebrasBilling): CapabilityRes
       // Prefer the direct PDF for the download; the Stripe-hosted page also serves the PDF, so it's the fallback.
       pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
       name: `Invoice ${i.number || i.date || 'unknown'}`
-    }))
+    })),
+    // Keyed by invoice number so invoices accumulate history (a status flips over time) past the fetch window.
+    key: 'number'
   }).fileTable({ title: 'Invoices', name: 'name', source: { url: 'pdfUrl' }, ext: 'pdf', category: 'Invoices' })
 
   return capabilityResult({
@@ -882,7 +884,8 @@ export const buildCerebrasUsageResult = (usageData: CerebrasUsage): CapabilityRe
         { key: 'date', label: 'Date', role: 'timestamp' },
         { key: 'requests', label: 'Requests', role: 'count' }
       ],
-      rows: usageData.daily.map((d) => ({ date: d.date, requests: d.requests }))
+      rows: usageData.daily.map((d) => ({ date: d.date, requests: d.requests })),
+      key: 'date'
     }).timeseries({ x: 'date', y: 'requests', granularity: 'daily', title: 'Daily requests' })
 
     result.datasets.push(series.dataset)
@@ -905,7 +908,9 @@ export const buildCerebrasUsageResult = (usageData: CerebrasUsage): CapabilityRe
         tpm: m.tpm,
         rpd: m.rpd,
         maxCompletion: m.maxCompletion
-      }))
+      })),
+      // One quota per model — key on the model name so per-model quotas accumulate.
+      key: 'name'
     }).table({ title: 'Rate-limit quotas' })
 
     result.datasets.push(quotas.dataset)

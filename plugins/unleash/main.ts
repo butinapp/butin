@@ -323,7 +323,10 @@ export const buildUnleashBillingTab = (billing: UnleashBilling): CapabilityResul
       url: i.hostedUrl ?? i.pdfUrl ?? null,
       pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
       name: `Invoice ${i.date ?? 'unknown'}`
-    }))
+    })),
+    // One subscription invoice per billing month (the payload carries no invoice id) — the date is the stable
+    // unique identity, keyed so each invoice's status/amount accumulates in the ledger past the fetch window.
+    key: 'date'
   })
 
   return capabilityResult({

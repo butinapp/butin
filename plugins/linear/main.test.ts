@@ -262,6 +262,8 @@ describe('buildLinearBillingResult', () => {
 
     expect(invoices?.shape).toBe('table')
     expect((invoices as { rows: unknown[] }).rows).toHaveLength(3)
+    // keyed by the invoice date (one invoice per billing month, no id in the payload) so status accumulates.
+    expect((invoices as { key?: unknown }).key).toBe('date')
 
     const tableView = result.views?.find((v) => v.type === 'table')
 

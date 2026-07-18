@@ -411,7 +411,10 @@ export const buildInfisicalBillingResult = (input: InfisicalBillingInput): Capab
       status: i.status,
       pdfUrl: i.pdfUrl ?? null,
       name: `Invoice ${i.number}`
-    }))
+    })),
+    // The Stripe invoice number is unique + present on the finalized history → the ledger key, so an invoice's
+    // status accumulates as it flips open→paid past the fetch window.
+    key: 'number'
   })
 
   return capabilityResult({
@@ -515,7 +518,9 @@ export const buildInfisicalUsage = (input: InfisicalUsageInput): CapabilityResul
         { key: 'metric', label: 'Resource', role: 'label' },
         { key: 'count', label: 'Count', role: 'count' }
       ],
-      rows: productRows
+      rows: productRows,
+      // (product, metric) is unique per row (one entry per product-group × resource field) → the ledger key.
+      key: ['product', 'metric']
     })
 
     result.datasets.push(products.dataset)
@@ -536,7 +541,9 @@ export const buildInfisicalUsage = (input: InfisicalUsageInput): CapabilityResul
         { key: 'allowed', label: 'Allowed', role: 'label' },
         { key: 'used', label: 'Used', role: 'label' }
       ],
-      rows: featureRows
+      rows: featureRows,
+      // The feature name is unique in the plan matrix → the ledger key.
+      key: 'name'
     })
 
     result.datasets.push(features.dataset)

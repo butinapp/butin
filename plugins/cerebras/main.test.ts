@@ -142,6 +142,7 @@ describe('buildCerebrasBillingTab', () => {
     const invoiceRow = invoicesDs && 'rows' in invoicesDs ? (invoicesDs.rows[0] as { pdfUrl?: string }) : undefined
 
     expect(invoiceRow?.pdfUrl).toBe('https://pay/1.pdf')
+    expect(invoicesDs?.shape === 'table' && invoicesDs.key).toBe('number')
     expect(r.summaries ?? []).toEqual([]) // detail tab emits no rollup summary
   })
 
@@ -273,8 +274,11 @@ describe('buildCerebrasUsageResult', () => {
     )
     const r = buildCerebrasUsageResult(usage)
 
-    expect(r.datasets.find((d) => d.id === 'daily')).toBeDefined()
-    expect(r.datasets.find((d) => d.id === 'quotas')).toBeDefined()
+    const daily = r.datasets.find((d) => d.id === 'daily')
+    const quotas = r.datasets.find((d) => d.id === 'quotas')
+
+    expect(daily?.shape === 'table' && daily.key).toBe('date')
+    expect(quotas?.shape === 'table' && quotas.key).toBe('name')
     expect(r.views?.some((v) => v.type === 'timeseries')).toBe(true)
   })
 })

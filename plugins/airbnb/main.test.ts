@@ -44,6 +44,9 @@ test('buildAirbnbSummary normalizes micros, sums YTD, and emits an other-section
   const result = buildAirbnbSummary(raw)
 
   expect(valid(result)).toEqual([])
+  const monthly = result.datasets.find((d) => d.id === 'monthly')
+
+  expect(monthly?.shape === 'table' && monthly.key).toBe('month')
   const stats = result.datasets.find((d) => d.id === 'stats')
 
   expect(stats?.shape).toBe('record')
@@ -166,6 +169,7 @@ test('buildAirbnbTaxDocuments lists documents newest-year first', () => {
 
   expect(ds?.shape === 'table' && ds.rows.map((r) => r.year)).toEqual(['2025', '2024'])
   expect(ds?.shape === 'table' && ds.rows[0]).toMatchObject({ authority: 'CA' })
+  expect(ds?.shape === 'table' && ds.key).toEqual(['year', 'authority'])
 })
 
 test('every capability declares a sample that is contract-valid', () => {

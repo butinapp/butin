@@ -293,7 +293,9 @@ export const awsSummaryResult = (r: AwsBillingReport): CapabilityResult => {
       { key: 'month', label: 'Month', role: 'timestamp' },
       { key: 'amount', label: 'Spend', role: 'money', currency: r.currency }
     ],
-    rows: r.byMonth
+    rows: r.byMonth,
+    // Keyed by month so the ledger accumulates the spend series past the trailing-window fetch.
+    key: 'month'
   })
 
   const summary = monthly.summary({
@@ -322,7 +324,7 @@ export const awsSummaryResult = (r: AwsBillingReport): CapabilityResult => {
 // a fallback. Currency is reported only when it isn't the plugin's USD default, so the amount column overrides it.
 export const buildInvoices = (raw: RawInvoiceSummary[]): AwsInvoicesReport => {
   const rows: AwsInvoiceRow[] = raw
-    .map((s) => {
+    .map((s, i) => {
       const issuedDate = isoDay(s.IssuedDate) ?? null
       const billingPeriod =
         s.BillingPeriod?.Year && s.BillingPeriod?.Month
@@ -331,7 +333,7 @@ export const buildInvoices = (raw: RawInvoiceSummary[]): AwsInvoicesReport => {
 
       return {
         billingPeriod,
-        invoiceId: s.InvoiceId ?? '',
+        invoiceId: s.InvoiceId ?? `inv-${i}`,
         invoiceType: s.InvoiceType ?? 'INVOICE',
         entity: s.Entity?.InvoicingEntity ?? null,
         issuedDate,
@@ -384,7 +386,8 @@ export const awsUsageResult = (r: AwsBillingReport): CapabilityResult => {
       { key: 'service', label: 'Service', role: 'label' },
       { key: 'amount', label: 'Spend', role: 'money', currency: r.currency }
     ],
-    rows: r.byService
+    rows: r.byService,
+    key: 'service'
   })
 
   const byAccount = table<AwsAccountRow>({
@@ -394,7 +397,8 @@ export const awsUsageResult = (r: AwsBillingReport): CapabilityResult => {
       { key: 'accountId', label: 'ID', role: 'identifier' },
       { key: 'amount', label: 'Spend', role: 'money', currency: r.currency }
     ],
-    rows: r.byAccount
+    rows: r.byAccount,
+    key: 'accountId'
   })
 
   return capabilityResult({
@@ -433,8 +437,10 @@ export const mapIdentityUser = (u: IdentityUserLike): AwsMember => {
   }
 }
 
-// Row type for the Identity Center users table (mapped subset of AwsMember — id is not displayed).
+// Row type for the Identity Center users table (mapped subset of AwsMember). `id` rides along as a hidden
+// row-identity field (email can be absent on a user), keying the roster so members accumulate stably.
 interface AwsMemberRow {
+  id: string
   name: string | null
   email: string | null
   status: string
@@ -452,7 +458,8 @@ export const awsMembersResult = (members: AwsMember[]): CapabilityResult => {
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'username', label: 'Username', role: 'text' }
     ],
-    rows: members.map((m) => ({ name: m.name, email: m.email, status: m.status, username: m.username }))
+    rows: members.map((m) => ({ id: m.id, name: m.name, email: m.email, status: m.status, username: m.username })),
+    key: 'id'
   })
 
   return capabilityResult({ sections: [members_.table({ title: 'Identity Center users' })] })

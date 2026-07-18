@@ -113,6 +113,7 @@ const resolveOrgSlug = async (ctx: CollectContext<SentryConfig>): Promise<string
 // Pure transform — fixture-tested. Net billed = amountBilled (or amount) minus refunds, cents → USD.
 export const buildSentryBillingReport = (invoicesRaw: RawInvoice[], customer: RawCustomer) => {
   const invoices: BillingInvoiceInput[] = invoicesRaw.map((inv) => ({
+    id: inv.id,
     date: isoDay(inv.dateCreated),
     status: inv.isPaid ? 'paid' : 'open',
     amount: centsToMajor(inv.amountBilled ?? inv.amount) - centsToMajor(inv.amountRefunded),
@@ -148,6 +149,8 @@ export const buildSentrySummaryResult = (report: SentryBillingReport): Capabilit
 // --- Billing tab (renders via the generic renderer; emits no summary, so it's NOT the Overview rollup) ---
 // The invoice history. The headline (MTD / plan / monthly chart) lives on Summary; this is the detail.
 interface SentryInvoiceRow {
+  // The Sentry invoice id — hidden, the ledger key so an invoice accumulates its status/amount past the fetch window.
+  id: string
   date: string | null
   amount: number
   status: string
@@ -168,15 +171,18 @@ export const buildSentryBillingResult = (report: SentryBillingReport): Capabilit
       { key: 'amount', label: 'Amount', role: 'money' },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'pdfUrl', label: 'PDF', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
-    rows: invoices.map((i) => ({
+    rows: invoices.map((i, idx) => ({
+      id: i.id ?? `inv-${idx}`,
       date: i.date ?? null,
       amount: i.amount,
       status: i.status,
       pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
       name: `Invoice ${i.date ?? 'unknown'}`
-    }))
+    })),
+    key: 'id'
   })
 
   return capabilityResult({

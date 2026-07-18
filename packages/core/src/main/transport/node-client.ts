@@ -4,6 +4,7 @@ import axios from 'axios'
 
 import type { AuthResolver } from '../plugin/auth-resolve.js'
 
+import { encodeBody } from './body.js'
 import { REQUEST_TIMEOUT_MS } from './constants.js'
 import { logPacedRequest, logRequest, logRequestError } from './log.js'
 import type { RequestCache } from './request-cache.js'
@@ -55,8 +56,7 @@ export const createNodeClient = (
   const request = async <T>(opts: RequestOptions): Promise<ButinResponse<T>> => {
     const url = transport.baseUrl && !opts.url.startsWith('http') ? `${transport.baseUrl}${opts.url}` : opts.url
     const method = opts.method ?? 'GET'
-    const isObjectBody = opts.body !== undefined && typeof opts.body === 'object'
-    const bodyString = isObjectBody ? JSON.stringify(opts.body) : (opts.body as string | undefined)
+    const { data: body, isJson, cacheKey } = encodeBody(opts.body)
 
     const doFetch = async (): Promise<ButinResponse> => {
       const auth = await resolveAuth()
@@ -73,7 +73,7 @@ export const createNodeClient = (
         ...(opts.headers ?? {})
       }
 
-      if (isObjectBody) {
+      if (isJson) {
         headers['Content-Type'] = headers['Content-Type'] ?? 'application/json'
       }
 
@@ -85,7 +85,7 @@ export const createNodeClient = (
           method,
           url,
           headers,
-          data: bodyString,
+          data: body,
           responseType: opts.responseType,
           maxRedirects: opts.maxRedirects,
           timeout: opts.timeout
@@ -113,7 +113,7 @@ export const createNodeClient = (
     const runFetch = opts.pace === false || isStaticAsset(url) ? doFetch : pacedFetch
     const cacheable =
       cache && opts.cache !== false && opts.responseType !== 'arraybuffer' && (method === 'GET' || method === 'POST')
-    const res = cacheable ? await cache.run(method, url, bodyString, opts.headers, runFetch) : await runFetch()
+    const res = cacheable ? await cache.run(method, url, cacheKey, opts.headers, runFetch) : await runFetch()
 
     return res as ButinResponse<T>
   }

@@ -362,6 +362,8 @@ interface OrgRow {
   name: string
   total: number
   count: number
+  // Hidden — the org id (unique, always present) rides as the ledger key so per-org totals accumulate.
+  orgId: string
 }
 
 // `name` is hidden — carried for the download filename, not rendered.
@@ -372,6 +374,8 @@ interface InvoiceRow {
   status: string
   hostedUrl: string | null
   name: string
+  // Hidden — the invoice id (unique, always present via the org-scoped fallback) rides as the ledger key.
+  id: string
 }
 
 export const buildOpenaiBillingTab = (billing: PlatformBilling): CapabilityResult => {
@@ -380,9 +384,11 @@ export const buildOpenaiBillingTab = (billing: PlatformBilling): CapabilityResul
     columns: [
       { key: 'name', label: 'Organization', role: 'label' },
       { key: 'total', label: 'Billed', role: 'money' },
-      { key: 'count', label: 'Invoices', role: 'count' }
+      { key: 'count', label: 'Invoices', role: 'count' },
+      { key: 'orgId', role: 'identifier', hidden: true }
     ],
-    rows: billing.orgs.map((o) => ({ name: o.name, total: o.total, count: o.count }))
+    rows: billing.orgs.map((o) => ({ name: o.name, total: o.total, count: o.count, orgId: o.orgId })),
+    key: 'orgId'
   })
 
   const invoices = table<InvoiceRow>({
@@ -393,7 +399,8 @@ export const buildOpenaiBillingTab = (billing: PlatformBilling): CapabilityResul
       { key: 'amount', label: 'Amount', role: 'money' },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'hostedUrl', label: 'Receipt', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
     rows: billing.invoices.map((i) => ({
       date: i.date ?? null,
@@ -401,8 +408,10 @@ export const buildOpenaiBillingTab = (billing: PlatformBilling): CapabilityResul
       amount: i.amount,
       status: i.status,
       hostedUrl: i.hostedUrl ?? i.pdfUrl ?? null,
-      name: `Invoice ${i.date ?? 'unknown'}`
-    }))
+      name: `Invoice ${i.date ?? 'unknown'}`,
+      id: i.id
+    })),
+    key: 'id'
   })
 
   return capabilityResult({

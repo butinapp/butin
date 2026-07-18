@@ -387,7 +387,11 @@ describe('buildGoogleWorkspaceBillingTab', () => {
     const result = buildGoogleWorkspaceBillingTab(billing)
 
     expect(validateCapabilityResult(result)).toEqual([])
-    expect(result.datasets.some((d) => d.id === 'subscriptions')).toBe(true)
+    const subscriptions = result.datasets.find((d) => d.id === 'subscriptions')
+
+    expect(subscriptions?.shape).toBe('table')
+    // Keyed by the SKU name so each subscription accumulates its seats/estimate history in the ledger.
+    expect(subscriptions?.shape === 'table' && subscriptions.key).toBe('skuName')
     // detail tab: no rollup summary, no Summary headline cards
     expect(result.summaries).toBeUndefined()
   })
@@ -432,7 +436,11 @@ describe('buildGoogleWorkspaceUsageResult', () => {
     const result = buildGoogleWorkspaceUsageResult(buildGoogleWorkspaceUsage(SUBS_RAW))
 
     expect(validateCapabilityResult(result)).toEqual([])
-    expect(result.datasets.some((d) => d.id === 'seats')).toBe(true)
+    const seats = result.datasets.find((d) => d.id === 'seats')
+
+    expect(seats?.shape).toBe('table')
+    // Keyed by the SKU name so each subscription's seat utilization accumulates in the ledger.
+    expect(seats?.shape === 'table' && seats.key).toBe('skuName')
   })
 
   it('stays contract-valid with zero seats', () => {

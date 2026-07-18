@@ -5,8 +5,10 @@ import { describe, expect, it, test } from 'vitest'
 
 import {
   buildAccessResult,
+  buildAppointmentsResult,
   buildImagingResult,
   buildLabsResult,
+  buildMedicalServicesResult,
   buildMedicationsResult,
   buildProfileResult,
   carnetSantePlugin
@@ -275,6 +277,13 @@ describe('buildMedicationsResult', () => {
     expect(ds.shape === 'table' && ds.rows.length).toBe(1)
   })
 
+  it('keys the ledger by the ordonnance id, carried hidden on each row', () => {
+    const ds = buildMedicationsResult([med]).datasets[0]
+
+    expect(ds.shape === 'table' && ds.key).toBe('id')
+    expect(ds.shape === 'table' && ds.rows[0].id).toBe('1')
+  })
+
   it('derives an actif status from a positive refill count, terminé otherwise', () => {
     const ds = buildMedicationsResult([med, { ...med, refillsRemaining: 0 }]).datasets[0]
 
@@ -325,6 +334,16 @@ describe('normalizeAppointments', () => {
   })
 })
 
+describe('buildAppointmentsResult', () => {
+  it('keys the ledger by the RendezVous id, carried hidden on each row', () => {
+    const ds = buildAppointmentsResult([{ id: 'RDV0001', date: '2026-06-15', time: '10:00', doctor: 'JOHN SMITH' }])
+      .datasets[0]
+
+    expect(ds.shape === 'table' && ds.key).toBe('id')
+    expect(ds.shape === 'table' && ds.rows[0].id).toBe('RDV0001')
+  })
+})
+
 // --- medical services ----------------------------------------------------------------------------
 
 describe('normalizeMedicalServices', () => {
@@ -354,6 +373,16 @@ describe('normalizeMedicalServices', () => {
 
   it('handles empty array', () => {
     expect(normalizeMedicalServices([])).toEqual([])
+  })
+})
+
+describe('buildMedicalServicesResult', () => {
+  it('keys the ledger by the date+index id, carried hidden on each row', () => {
+    const ds = buildMedicalServicesResult([{ id: '2026-01-02-0', date: '2026-01-02', description: 'Visite' }])
+      .datasets[0]
+
+    expect(ds.shape === 'table' && ds.key).toBe('id')
+    expect(ds.shape === 'table' && ds.rows[0].id).toBe('2026-01-02-0')
   })
 })
 
@@ -387,6 +416,7 @@ describe('downloadable labs + imaging tables', () => {
       itemId: 'EX1',
       citizenId: 'cit-9'
     })
+    expect(ds.shape === 'table' && ds.key).toBe('itemId')
   })
 
   it('labs rows are downloadable: a files view + hidden name/itemId/citizenId per row', () => {
@@ -405,6 +435,7 @@ describe('downloadable labs + imaging tables', () => {
       itemId: 'LAB1',
       citizenId: 'cit-9'
     })
+    expect(ds.shape === 'table' && ds.key).toBe('itemId')
   })
 })
 
@@ -536,5 +567,11 @@ describe('buildAccessResult', () => {
     const ds = buildAccessResult([entry]).datasets[0]
 
     expect(ds.shape === 'table' && ds.rows[0].domains).toBe('Imagerie, Prelevement')
+  })
+
+  it('keys the ledger by the (date, time, provider) event triple — the journal has no row id', () => {
+    const ds = buildAccessResult([]).datasets[0]
+
+    expect(ds.shape === 'table' && ds.key).toEqual(['date', 'time', 'providerId'])
   })
 })

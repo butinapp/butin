@@ -210,7 +210,9 @@ export const buildHydroBilling = (bills: HydroBill[], summary?: HydroAccountSumm
       amount: b.amount,
       pdfUrl: b.pdfUrl,
       name: `Facture ${b.date || b.number}`
-    }))
+    })),
+    // The bill number is unique + always present (the parser skips number-less rows) → the ledger key.
+    key: 'number'
   })
 
   const hasStatement = summary && (summary.amountDue != null || summary.dueDate || summary.currentCharges != null)
@@ -403,7 +405,9 @@ export const buildHydroEquipment = (detail: HydroEquipmentDetail): CapabilityRes
             { key: 'part', label: 'Garantie', role: 'text' },
             { key: 'remaining', label: 'Restante', role: 'text' }
           ],
-          rows: detail.equipment.warranties.map((w) => ({ part: w.part, remaining: w.remaining }))
+          rows: detail.equipment.warranties.map((w) => ({ part: w.part, remaining: w.remaining })),
+          // One warranty per covered part — the part name is always present and unique, so it keys the ledger.
+          key: 'part'
         })
       : null
 

@@ -216,6 +216,25 @@ describe('hookdeck buildHookdeckBillingTab', () => {
     expect(invoiceView?.type === 'table' && invoiceView.files?.ext).toBe('pdf')
   })
 
+  it('keys the invoices table on the Orb invoice id so two same-date invoices both survive the ledger', () => {
+    // A plan charge and a usage charge can issue the same day → identical date (and the derived name); only the
+    // Orb invoice id is unique, so keying on name/date would drop one row from the ledger projection.
+    const sameDay = `${ym}-13T00:00:00+00:00`
+    const twoOnOneDay: RawHookdeckInvoice[] = [
+      { id: 'INV-A', is_paid: true, amount_due: 0, issue_date: sameDay },
+      { id: 'INV-B', is_paid: true, amount_due: 6960, issue_date: sameDay }
+    ]
+    const result = buildHookdeckBillingTab(buildBillingReport(twoOnOneDay, sub, card, email, address))
+    const invoices = result.datasets.find((d) => d.id === 'invoices')
+
+    expect(invoices?.shape).toBe('table')
+
+    if (invoices?.shape === 'table') {
+      expect(invoices.key).toBe('id')
+      expect(invoices.rows.map((r) => r.id)).toEqual(['INV-A', 'INV-B'])
+    }
+  })
+
   it('drops the payment-method and contact records when nothing is on file', () => {
     // No card, no contact email/address, and a subscription with no customer contact → both records drop.
     const bareSub: RawHookdeckSubscription = { status: 'active', name: 'Team', plan: { name: 'Team' } }
@@ -298,9 +317,12 @@ describe('hookdeck buildHookdeckUsageResult', () => {
       expect(metrics.rows[0].value).toBe(3359)
     }
 
-    // one daily timeseries dataset per metric.
+    // one daily timeseries dataset per metric, keyed by date so it accumulates in the ledger.
     expect(result.datasets.some((d) => d.id === 'daily-metric_events')).toBe(true)
     expect(result.datasets.some((d) => d.id === 'daily-metric_discarded')).toBe(true)
+    const daily = result.datasets.find((d) => d.id === 'daily-metric_events')
+
+    expect(daily?.shape === 'table' && daily.key).toBe('date')
   })
 })
 

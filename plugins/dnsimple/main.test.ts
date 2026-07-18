@@ -274,6 +274,8 @@ describe('buildDnsimpleBillingResult', () => {
 
     expect(amountCol?.role).toBe('money')
     expect(amountCol?.currency).toBe('USD')
+    // Keyed by the invoice number so invoices accumulate their history in the ledger.
+    expect(invoices.key).toBe('id')
   })
 
   it('renders the estimated-next-charge line items + total as a keyvalue record', () => {
@@ -486,6 +488,8 @@ describe('parseAccountProfile', () => {
 
     expect(domains.rows.map((r) => r.name)).toEqual(['example.com', 'example.org'])
     expect(domains.rows[0]).toMatchObject({ status: 'registered', expiresOn: '2027-03-15', autoRenew: 'On' })
+    // Keyed by the domain name so each domain accumulates its status/expiry history in the ledger.
+    expect(domains.key).toBe('name')
   })
 
   it('omits the domains header + table when the account has no domains', () => {
@@ -553,6 +557,8 @@ describe('parseApiLimits / parseAccessTokens', () => {
     const tokens = result.datasets.find((d) => d.id === 'tokens') as TableDataset
 
     expect(tokens.rows[0]).toMatchObject({ name: 'CI deploy token' })
+    // Keyed by the token name so each token's last-used history accumulates in the ledger.
+    expect(tokens.key).toBe('name')
   })
 })
 
@@ -571,5 +577,11 @@ describe('capabilities', () => {
 describe('session', () => {
   it('prefills the account id from the dashboard URL', () => {
     expect(dnsimplePlugin.session?.captureFromUrl).toContainEqual({ pattern: '/a/(\\d+)', storeAs: 'accountId' })
+  })
+
+  // Google sign-in is omniauth; the OAuth state rides the Rails `_dnsimple_session` cookie, so a stale one must
+  // be cleared before each capture or the callback's state check fails and login lands back on the login page.
+  it('clears the omniauth state cookie before capture', () => {
+    expect(dnsimplePlugin.session?.clearCookiesBeforeCapture).toContain('_dnsimple_session')
   })
 })

@@ -338,6 +338,10 @@ describe('buildHubspotUsageResult', () => {
     expect(validateCapabilityResult(r)).toEqual([])
     expect(r.datasets.some((d) => d.id === 'daily')).toBe(true)
     expect(r.views?.some((v) => v.type === 'timeseries' && v.dataset === 'daily')).toBe(true)
+    // keyed by date so the daily trend accumulates in the ledger.
+    const daily = r.datasets.find((d) => d.id === 'daily')
+
+    expect(daily?.shape === 'table' && daily.key).toBe('date')
   })
 
   test('omits the timeseries when there is no daily data, still valid', () => {

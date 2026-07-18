@@ -165,8 +165,10 @@ describe('buildClickhouseBillingTab', () => {
     // The download targets the real Stripe PDF link, not the hosted page.
     expect(view.files).toMatchObject({ source: { url: 'pdfUrl' }, ext: 'pdf' })
 
-    const rows = (result.datasets.find((d) => d.id === 'invoices') as unknown as { rows: Record<string, unknown>[] })
-      .rows
+    const invoicesDs = result.datasets.find((d) => d.id === 'invoices')
+
+    expect(invoicesDs?.shape === 'table' && invoicesDs.key).toBe('number')
+    const rows = (invoicesDs as unknown as { rows: Record<string, unknown>[] }).rows
 
     expect(rows[0]).toMatchObject({
       number: 'AC-0002',

@@ -262,7 +262,8 @@ export const buildUpstashBillingResult = (data: UpstashBillingData): CapabilityR
       { key: 'storage', label: 'Storage', role: 'count' },
       { key: 'bandwidth', label: 'Bandwidth', role: 'count' }
     ],
-    rows: products
+    rows: products,
+    key: 'product'
   })
 
   const invoicesTable = table<UpstashInvoiceRow>({
@@ -272,7 +273,9 @@ export const buildUpstashBillingResult = (data: UpstashBillingData): CapabilityR
       { key: 'amount', label: 'Amount', role: 'money' },
       { key: 'status', label: 'Status', role: 'status' }
     ],
-    rows: billing.invoices.map((i) => ({ date: i.date ?? null, amount: i.amount, status: i.status }))
+    rows: billing.invoices.map((i) => ({ date: i.date ?? null, amount: i.amount, status: i.status })),
+    // One invoice per month, dated 'YYYY-MM-01' — the month is the stable accumulation key.
+    key: 'date'
   })
 
   const accountValue: UpstashAccountRow = {

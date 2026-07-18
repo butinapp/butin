@@ -166,6 +166,11 @@ test('billing result exposes a downloadable invoices table + subscription/contac
 
   expect(invoiceView).toMatchObject({ files: { source: { url: 'pdfUrl' }, ext: 'pdf' } })
 
+  // keyed by the unique invoice number so an invoice's status accumulates as it flips open→paid.
+  const invoices = result.datasets.find((d) => d.id === 'invoices')
+
+  expect(invoices?.shape === 'table' && invoices.key).toBe('number')
+
   expect(result.datasets.map((d) => d.id)).toEqual(['subscription', 'contact', 'paymentMethod', 'invoices'])
 
   // The long invoices table renders last, after the compact context panels.
@@ -227,6 +232,8 @@ test('usage maps seats to count metrics, joins product counts, and the feature/l
     expect(products.rows).toContainEqual({ product: 'Secret Manager', metric: 'Secrets', count: 128 })
     expect(products.rows).toContainEqual({ product: 'KMS', metric: 'Keys', count: 5 })
     expect(products.rows).toContainEqual({ product: 'Custom Thing', metric: 'Widgets', count: 9 })
+    // (product, metric) uniquely identifies a resource row → the ledger key.
+    expect(products.key).toEqual(['product', 'metric'])
   }
 
   const features = result.datasets.find((d) => d.id === 'features')
@@ -236,6 +243,8 @@ test('usage maps seats to count metrics, joins product counts, and the feature/l
       { name: 'Audit logs', allowed: 'Yes', used: '29' },
       { name: 'SAML SSO', allowed: 'No', used: '—' }
     ])
+    // the feature name is unique in the plan matrix → the ledger key.
+    expect(features.key).toBe('name')
   }
 })
 

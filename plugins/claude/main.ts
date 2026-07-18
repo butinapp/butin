@@ -433,6 +433,10 @@ export const buildClaudeSummaryResult = (report: ClaudeBillingReport): Capabilit
 }
 
 interface InvoiceRow {
+  // Hidden — the Stripe invoice id (the invoice-PDF URL's stable path, minus its query) rides as the ledger
+  // key. A month carries both a seats invoice and a usage invoice, so date/amount can't tell them apart; the
+  // invoice URL's path is each one's unique identity.
+  id: string
   date: string | null
   amount: number
   status: string
@@ -465,7 +469,9 @@ export const buildClaudeBillingTab = (report: ClaudeBillingReport): CapabilityRe
       { key: 'category', label: 'Category', role: 'label' },
       { key: 'amount', label: 'Spend', role: 'money', currency }
     ],
-    rows: monthlyCategoryRows(report.monthly)
+    rows: monthlyCategoryRows(report.monthly),
+    // One row per (month, category) — the composite keys the ledger so the breakdown accumulates past the window.
+    key: ['month', 'category']
   })
 
   const invoices = table<InvoiceRow>({
@@ -475,15 +481,24 @@ export const buildClaudeBillingTab = (report: ClaudeBillingReport): CapabilityRe
       { key: 'amount', label: 'Amount', role: 'money', currency },
       { key: 'status', label: 'Status', role: 'status' },
       { key: 'pdfUrl', label: 'PDF', role: 'url' },
-      { key: 'name', role: 'label', hidden: true }
+      { key: 'name', role: 'label', hidden: true },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
-    rows: report.invoices.map((i) => ({
-      date: i.date || null,
-      amount: i.amount,
-      status: i.status,
-      pdfUrl: i.pdfUrl ?? i.hostedUrl ?? null,
-      name: `Invoice ${i.date || 'unknown'}`
-    }))
+    rows: report.invoices.map((i, idx) => {
+      const url = i.pdfUrl ?? i.hostedUrl ?? null
+
+      return {
+        // The stable invoice-URL path (query stripped) is the Stripe invoice id; a per-row synthetic backs the rare gap.
+        id: url ? url.split('?')[0] : `inv-${idx}`,
+        date: i.date || null,
+        amount: i.amount,
+        status: i.status,
+        pdfUrl: url,
+        name: `Invoice ${i.date || 'unknown'}`
+      }
+    }),
+    // The invoice-URL id is each invoice's stable identity — key it so an invoice accumulates history past the fetch window.
+    key: 'id'
   })
 
   // The invoices table is downloadable: each row's invoice PDF (pdfUrl) becomes a selectable file the host
@@ -726,7 +741,8 @@ export const buildClaudeAnalytics = (raw: RawAnalyticsBundle): CapabilityResult 
       { key: 'date', label: 'Date', role: 'timestamp' },
       { key: 'value', label: 'Spend', role: 'money', currency }
     ],
-    rows: spendPoints.map((p) => ({ date: p.date, value: p.value }))
+    rows: spendPoints.map((p) => ({ date: p.date, value: p.value })),
+    key: 'date'
   })
 
   const byModel = table<ByModelRow>({
@@ -735,7 +751,8 @@ export const buildClaudeAnalytics = (raw: RawAnalyticsBundle): CapabilityResult 
       { key: 'model', label: 'Model', role: 'label' },
       { key: 'spend', label: 'Spend', role: 'money', currency }
     ],
-    rows: aggregateSpendByModelFamily(raw.spendByModel.models ?? []).map((m) => ({ model: m.model, spend: m.spend }))
+    rows: aggregateSpendByModelFamily(raw.spendByModel.models ?? []).map((m) => ({ model: m.model, spend: m.spend })),
+    key: 'model'
   })
 
   const byModelDaily = table<ModelDayRow>({
@@ -745,7 +762,9 @@ export const buildClaudeAnalytics = (raw: RawAnalyticsBundle): CapabilityResult 
       { key: 'model', label: 'Model', role: 'label' },
       { key: 'value', label: 'Spend', role: 'money', currency }
     ],
-    rows: modelDailyRows(raw.spendByModel.models ?? [])
+    rows: modelDailyRows(raw.spendByModel.models ?? []),
+    // One row per (date, model family) — the composite keys the daily breakdown for accumulation.
+    key: ['date', 'model']
   })
 
   // Keyed by email so the ledger records each member's row across captures; `spend` is an MTD counter that

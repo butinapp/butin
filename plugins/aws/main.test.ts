@@ -137,6 +137,9 @@ test('awsSummaryResult is the lean rollup: headline cards + monthly spark + spen
   expect(validateCapabilityResult(r)).toEqual([])
   // Summary carries only the headline stat record + the monthly chart — the breakdown tables live on Billing.
   expect(r.datasets.map((d) => d.id)).toEqual(['account', 'monthly'])
+  const monthly = r.datasets.find((d) => d.id === 'monthly')
+
+  expect(monthly?.shape === 'table' && monthly.key).toBe('month')
   expect(r.summaries?.[0]).toMatchObject({
     section: 'spend',
     value: 180.5,
@@ -152,6 +155,11 @@ test('awsUsageResult is the spend detail: by-service + by-account tables, no cha
 
   expect(validateCapabilityResult(r)).toEqual([])
   expect(r.datasets.map((d) => d.id)).toEqual(['byService', 'byAccount'])
+  const byService = r.datasets.find((d) => d.id === 'byService')
+  const byAccount = r.datasets.find((d) => d.id === 'byAccount')
+
+  expect(byService?.shape === 'table' && byService.key).toBe('service')
+  expect(byAccount?.shape === 'table' && byAccount.key).toBe('accountId')
   expect(r.summaries ?? []).toEqual([])
 })
 
@@ -298,4 +306,6 @@ test('awsMembersResult is a valid members table with status badges', () => {
   expect(statusCol?.role).toBe('status')
   expect(statusCol?.badges).toBeUndefined()
   expect(members.rows[1]).toMatchObject({ name: null, email: null, status: 'suspended' })
+  // Keyed by the stable id (not email — a user may have none) so the roster accumulates.
+  expect(members.key).toBe('id')
 })

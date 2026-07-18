@@ -220,6 +220,7 @@ interface TankRow {
   capacity: string | null
   serviceState: string | null
   address: string | null
+  assetId: string
 }
 
 // Pure transform — fixture-tested. The tank roster as one table.
@@ -231,15 +232,20 @@ export const buildFilgoTanks = (actifs: FilgoActifs): CapabilityResult => {
       { key: 'product', label: 'Produit', role: 'category' },
       { key: 'capacity', label: 'Capacité', role: 'text' },
       { key: 'serviceState', label: 'État de service', role: 'status', badges: { Fonctionnel: 'success' } },
-      { key: 'address', label: 'Adresse', role: 'text', truncate: true }
+      { key: 'address', label: 'Adresse', role: 'text', truncate: true },
+      { key: 'assetId', role: 'identifier', hidden: true }
     ],
     rows: actifs.tanks.map((t) => ({
       name: t.name,
       product: t.product,
       capacity: t.capacity,
       serviceState: t.serviceState,
-      address: t.address
-    }))
+      address: t.address,
+      assetId: t.assetId
+    })),
+    // The Dataverse asset guid is each tank's stable identity (its card id + delivery-lookup key), so the ledger
+    // accumulates a tank's history even as its capacity / service-state readings change.
+    key: 'assetId'
   })
 
   return capabilityResult({ sections: [tanks.table({ title: 'Réservoirs' })] })

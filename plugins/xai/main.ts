@@ -1,7 +1,8 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
 import { table, type CapabilityResult } from '@butinapp/sdk/data'
-import { billing, keys, type ApiKeysInput } from '@butinapp/sdk/presets'
-import { centsToMajor, epochSecDay } from '@butinapp/sdk/util'
+import { DateTime } from '@butinapp/sdk/libs'
+import { billing, keys, members, usage, type ApiKeysInput } from '@butinapp/sdk/presets'
+import { centsToMajor, epochSecDay, getReportingZone, monthKey, round2 } from '@butinapp/sdk/util'
 
 import {
   decodeMessage,
@@ -9,6 +10,7 @@ import {
   frameMessage,
   getMessage,
   getNumber,
+  getPackedDoubles,
   getRepeatedMessages,
   getRepeatedStrings,
   getString,
@@ -18,35 +20,37 @@ import {
   stringField,
   varintField
 } from './codec.js'
-import { sampleXaiBilling, sampleXaiKeys } from './sample.js'
+import { sampleXaiBilling, sampleXaiKeys, sampleXaiMembers, sampleXaiUsage } from './sample.js'
 
 // The protobuf/gRPC-web codec is re-exported so the contract surface (and the fixture tests) read off this module.
 export * from './codec.js'
 
-// xAI developer console (console.x.ai — Grok). The console serves ALL of its data over
-// `application/grpc-web+proto`: binary protobuf wrapped in gRPC-Web frames. There is NO JSON API and the
-// Next.js RSC routes carry only the page shell, so the only way to read billing/keys is to speak protobuf.
-// There is no `.proto` schema — requests are hand-encoded from observed field numbers, and responses are
-// walked generically by field number. The field numbers are not a contract — a renamed or renumbered field
-// breaks the decode. If a tab breaks, re-check the field numbers against a fresh capture; that is almost always the cause.
+// xAI developer console (console.x.ai — Grok). There is no JSON API. The console reads its data two ways, and
+// so does this plugin:
 //
-// AUTH is the console session cookie (the `sso` cookie on x.ai), replayed verbatim (cookie auth). The console
-// sits behind Cloudflare and only accepts a real browser, so this uses the Electron
-// transport (requiresBrowserEngine) — the request UA must match the sign-in window UA (cf_clearance is bound to
-// (IP, UA, TLS identity)). MONEY is in CENTS (line-item cost + spending-limit) → centsToMajor.
+//   1. gRPC-Web (`application/grpc-web+proto`) for everything the browser fetches — billing, usage, members.
+//      There is no `.proto` schema, so requests are hand-encoded by field number and responses walked the same
+//      way. Field numbers are not a contract: a renumbered field breaks the decode, and each message numbers
+//      its OWN fields (the team id is #10 on the invoice RPCs, #1 on the rest — there is no global convention).
+//      If a tab breaks, re-check its field numbers against a fresh capture; that is almost always the cause.
+//   2. The page's RSC flight for what the browser never fetches. The console's server prefetches some calls and
+//      dehydrates them into the HTML, and those are NOT routed on the browser-facing gRPC gateway at all — it
+//      answers them 200 with an empty body. `apiKeys` is one, so it reads the page (see its section).
 //
-// The gRPC-web replay path (collect()) is wired to the observed endpoints; the framing/field numbers are
-// best-effort and may need adjustment against a live account. The pure decoder + build*() transforms are
-// fixture-tested below.
+// AUTH is the console session cookie (the `sso` cookie on x.ai), replayed verbatim (cookie auth). The
+// console's edge verifies a real browser, so this uses the Electron transport (requiresBrowserEngine) — the
+// request UA must match the sign-in window UA (cf_clearance is bound to (IP, UA, TLS identity)).
+//
+// MONEY ARRIVES IN TWO UNITS: invoice/amount-to-pay line items are CENTS (→ centsToMajor), while the usage
+// analytics buckets are already dollars, as packed doubles. Normalize per call site, not globally.
 
 const CONSOLE_ORIGIN = 'https://console.x.ai'
 const BILLING_SERVICE = 'prod_mc_billing.UISvc'
 const AUTH_SERVICE = 'auth_mgmt.AuthManagement'
 
-// ── billing (ListInvoices · GetAmountToPay · GetSpendingLimits) ─────────────────────────
+// ── billing (ListInvoices · GetAmountToPay · GetBillingInfo · GetSpendingLimits) ────────
 // No explicit invoice-total field exists — the total is the sum of each invoice's per-model/per-usage line
-// items. Money is CENTS (line-item #6 + spending-limit values). Billing month comes from the PDF path, not
-// the #31 timestamp (which is the issue date, early in the following month).
+// items. Money is CENTS here (line-item #6 + the spending-limit values), unlike the usage buckets below.
 
 export interface XaiLineItem {
   region?: string
@@ -81,14 +85,15 @@ export interface XaiBillingReport {
 // Inferred invoice status enum (#40): the current/most-recent month reads 1, finalized past months read 2.
 const STATUS_BY_CODE: Record<number, string> = { 1: 'open', 2: 'paid' }
 
-const MONTH_FROM_PDF_PATH = /\/billing\/(\d{4})-(\d{1,2})-/
+// Billing month 'YYYY-MM-01' from the invoice's own billing period (#120 → #10 {year, month}), falling back to
+// the issue date. The period is authoritative: the issue date lands early in the FOLLOWING month, and a prepaid
+// credit invoice carries no period at all.
+const billingMonth = (period: ProtoMessage | undefined, issueDate: string | undefined): string | undefined => {
+  const year = period ? getNumber(period, 1) : undefined
+  const month = period ? getNumber(period, 2) : undefined
 
-// Billing month 'YYYY-MM-01' from the PDF path, falling back to the issue date.
-const billingMonth = (pdfPath: string | undefined, issueDate: string | undefined): string | undefined => {
-  const m = pdfPath ? MONTH_FROM_PDF_PATH.exec(pdfPath) : null
-
-  if (m) {
-    return `${m[1]}-${m[2]!.padStart(2, '0')}-01`
+  if (year !== undefined && month !== undefined) {
+    return `${monthKey(year, month)}-01`
   }
 
   return issueDate ? `${issueDate.slice(0, 7)}-01` : undefined
@@ -103,18 +108,19 @@ const parseLineItem = (item: ProtoMessage): XaiLineItem => ({
   cost: centsToMajor(getNumber(item, 6) ?? 0)
 })
 
-// Invoice: #20 id · #21 number · #31 {#1 seconds} issue ts · #40 status · #70 repeated line items · #110 pdf path.
+// Invoice: #20 id · #21 number · #31 {#1 seconds} issue ts · #40 status · #70 repeated line items · #110 pdf
+// path · #120 {#10 {#1 year, #2 month}} billing period.
 const parseInvoice = (inv: ProtoMessage, teamId: string): XaiInvoice => {
   const lineItems = getRepeatedMessages(inv, 70).map(parseLineItem)
   const issueDate = epochSecDay(getNumber(getMessage(inv, 31) ?? new Map(), 1))
-  const pdfPath = getString(inv, 110)
+  const period = getMessage(getMessage(inv, 120) ?? new Map(), 10)
   const code = getNumber(inv, 40)
   // The invoice id (#20, a base64 string ending in '=') is the URL segment of the detail page —
   // encodeURIComponent turns '=' into '%3D'.
   const id = getString(inv, 20)
 
   return {
-    date: billingMonth(pdfPath, issueDate),
+    date: billingMonth(period, issueDate),
     number: getString(inv, 21),
     status: (code !== undefined && STATUS_BY_CODE[code]) || 'unknown',
     amount: lineItems.reduce((sum, li) => sum + li.cost, 0),
@@ -168,6 +174,10 @@ export const buildBillingReport = (
   }
 }
 
+// GetBillingInfo: `{ #10: { #20: <name>, #30: <email> } }` — the contact the receipts go to.
+export const billingEmail = (resp: ProtoMessage): string | undefined =>
+  getString(getMessage(resp, 10) ?? new Map(), 30) || undefined
+
 interface TopModelRow {
   label: string
   cost: number
@@ -176,7 +186,7 @@ interface TopModelRow {
 // Map the normalized billing report onto a CapabilityResult: the shared billing preset (account stat +
 // monthly-spend chart + invoices table + spend.mtd summary), augmented with the current-period top-models
 // table and the spending-limit stat. Pure — fixture-tested.
-export const buildXaiBillingResult = (report: XaiBillingReport): CapabilityResult => {
+export const buildXaiBillingResult = (report: XaiBillingReport, email?: string): CapabilityResult => {
   const result = billing.result({
     currentMtd: report.currentPeriodAccrued,
     // Usage-metered spend accruing live over the open period.
@@ -188,14 +198,18 @@ export const buildXaiBillingResult = (report: XaiBillingReport): CapabilityResul
       hostedUrl: i.hostedUrl ?? null
     }))
   })
+  const account = result.datasets.find((d) => d.id === 'account')
 
-  // Fold the spending limit (when set) onto the account record so it shows beside the MTD figure.
-  if (report.spendingLimit !== undefined) {
-    const account = result.datasets.find((d) => d.id === 'account')
-
-    if (account && account.shape === 'record') {
+  // Fold the spending limit (when set) and the billing contact onto the account record, beside the MTD figure.
+  if (account?.shape === 'record') {
+    if (report.spendingLimit !== undefined) {
       account.fields.push({ key: 'spendingLimit', label: 'Spending limit', role: 'money' })
       account.value.spendingLimit = report.spendingLimit
+    }
+
+    if (email) {
+      account.fields.push({ key: 'billingEmail', label: 'Billing contact', role: 'identifier' })
+      account.value.billingEmail = email
     }
   }
 
@@ -217,9 +231,255 @@ export const buildXaiBillingResult = (report: XaiBillingReport): CapabilityResul
   return result
 }
 
-// ── apiKeys (ListApiKeys) ───────────────────────────────────────────────────────────────
-// The console only ever returns the masked 'xai-…suffix' hint, never the full secret. Each key carries the
-// creator's email/name + the ACL scope strings.
+// ── usage (AnalyzeBillingItems) ─────────────────────────────────────────────────────────
+// The console's own usage chart. One request asks for a date range at a granularity plus the metrics it wants
+// by name; each daily bucket answers with a PACKED double per metric, positionally in the order requested. The
+// values are already in MAJOR units (dollars) — unlike the invoice line items, which are cents.
+
+// The metrics requested, in wire order — a bucket's packed doubles line up with this list index-for-index.
+const USAGE_METRICS = ['usd', 'items', 'units'] as const
+// Granularity: daily buckets.
+const USAGE_DAILY = 3
+const USAGE_WINDOW_DAYS = 30
+
+export interface XaiUsageDay {
+  date: string
+  cost: number
+  requests: number
+  units: number
+}
+
+export interface XaiUsageReport {
+  days: XaiUsageDay[]
+  totalCost: number
+  totalRequests: number
+  totalUnits: number
+}
+
+// Pure transform — fixture-tested. Response: `{ #1: { #2: repeated { #1: {#1 seconds}, #2: packed doubles } } }`.
+export const buildUsageReport = (resp: ProtoMessage): XaiUsageReport => {
+  const buckets = getRepeatedMessages(getMessage(resp, 1) ?? new Map(), 2)
+  const days: XaiUsageDay[] = []
+
+  for (const bucket of buckets) {
+    const date = epochSecDay(getNumber(getMessage(bucket, 1) ?? new Map(), 1))
+    const [cost = 0, requests = 0, units = 0] = getPackedDoubles(bucket, 2)
+
+    if (date) {
+      days.push({ date, cost: round2(cost), requests, units })
+    }
+  }
+
+  days.sort((a, b) => a.date.localeCompare(b.date))
+
+  return {
+    days,
+    totalCost: round2(days.reduce((sum, d) => sum + d.cost, 0)),
+    totalRequests: days.reduce((sum, d) => sum + d.requests, 0),
+    totalUnits: days.reduce((sum, d) => sum + d.units, 0)
+  }
+}
+
+// Pure transform — fixture-tested. The trailing-window meters plus the daily cost trend.
+export const buildXaiUsageResult = (report: XaiUsageReport): CapabilityResult =>
+  usage.result({
+    periodStart: report.days[0]?.date,
+    periodEnd: report.days.at(-1)?.date,
+    metrics: [
+      { label: 'Requests', value: report.totalRequests, unit: 'calls', cost: report.totalCost },
+      { label: 'Units', value: report.totalUnits, unit: 'tokens' }
+    ],
+    daily: report.days.map((d) => ({ date: d.date, cost: d.cost })),
+    dailyTitle: 'Daily spend'
+  })
+
+export interface RawXaiUsage {
+  usage: ProtoMessage
+}
+
+export const buildXaiUsage = (raw: RawXaiUsage): CapabilityResult => buildXaiUsageResult(buildUsageReport(raw.usage))
+
+// AnalyzeBillingItems request: `{ #1: { #1: {#1 start, #2 end, #3 tz}, #2: granularity, #3: repeated {#1 metric,
+// #2: 1} }, #2: teamId }`. The bounds are wall-clock strings read in the named zone, so the days bucket on the
+// user's own calendar rather than UTC's.
+const analyzeBillingItemsBody = (id: string, now: DateTime): Buffer => {
+  const stamp = (d: DateTime): string => d.toFormat('yyyy-MM-dd HH:mm:ss')
+
+  return message(
+    messageField(
+      1,
+      message(
+        messageField(
+          1,
+          message(
+            stringField(1, stamp(now.minus({ days: USAGE_WINDOW_DAYS }).startOf('day'))),
+            stringField(2, stamp(now.endOf('day'))),
+            stringField(3, now.zoneName ?? 'UTC')
+          )
+        ),
+        varintField(2, USAGE_DAILY),
+        ...USAGE_METRICS.map((m) => messageField(3, message(stringField(1, m), varintField(2, 1))))
+      )
+    ),
+    stringField(2, id)
+  )
+}
+
+const fetchXaiUsage = async (ctx: CollectContext<XaiConfig>): Promise<RawXaiUsage> => ({
+  usage: await unary(
+    ctx,
+    BILLING_SERVICE,
+    'AnalyzeBillingItems',
+    analyzeBillingItemsBody(teamId(ctx), DateTime.now().setZone(getReportingZone()))
+  )
+})
+
+// ── members (ListSubscriptionAssignments) ───────────────────────────────────────────────
+// The roster the console's own Team-members page renders: who holds a seat of each product. There is no
+// list-products call to walk (it answers empty), so each product in the console's catalog is asked in turn and
+// the people are unioned by user id — the same person holding two seats is one row.
+
+// The product ids the console asks for on its Team-members page.
+const SEAT_PRODUCT_IDS = ['prd_V6Gd', 'prd_UCd6']
+
+export interface XaiMember {
+  id: string
+  name?: string
+  email?: string
+}
+
+// PublicUser: #1 userId · #3 email · #4 profileImage · #5 givenName · #6 familyName · #7 profileImageUrl.
+const parseMember = (user: ProtoMessage): XaiMember => {
+  const name = [getString(user, 5), getString(user, 6)].filter(Boolean).join(' ')
+
+  return { id: getString(user, 1) ?? '', name: name || undefined, email: getString(user, 3) }
+}
+
+// Pure transform — fixture-tested. Each response is `{ #1: repeated { #1: PublicUser } }`; one per product.
+export const buildMembersReport = (responses: ProtoMessage[]): XaiMember[] => {
+  const byId = new Map<string, XaiMember>()
+
+  for (const resp of responses) {
+    for (const assignment of getRepeatedMessages(resp, 1)) {
+      const user = getMessage(assignment, 1)
+      const member = user && parseMember(user)
+
+      if (member && member.id && !byId.has(member.id)) {
+        byId.set(member.id, member)
+      }
+    }
+  }
+
+  return [...byId.values()].sort((a, b) => (a.name ?? a.email ?? '').localeCompare(b.name ?? b.email ?? ''))
+}
+
+export const buildXaiMembersResult = (list: XaiMember[]): CapabilityResult => members.result({ members: list })
+
+export interface RawXaiMembers {
+  assignments: ProtoMessage[]
+}
+
+export const buildXaiMembers = (raw: RawXaiMembers): CapabilityResult =>
+  buildXaiMembersResult(buildMembersReport(raw.assignments))
+
+// ListSubscriptionAssignments request: `{ #1: teamId, #2: { #1: productId } }`.
+const fetchXaiMembers = async (ctx: CollectContext<XaiConfig>): Promise<RawXaiMembers> => {
+  const id = teamId(ctx)
+
+  return {
+    assignments: await Promise.all(
+      SEAT_PRODUCT_IDS.map((productId) =>
+        unary(
+          ctx,
+          BILLING_SERVICE,
+          'ListSubscriptionAssignments',
+          message(stringField(1, id), messageField(2, message(stringField(1, productId))))
+        )
+      )
+    )
+  }
+}
+
+// ── apiKeys (server-rendered into the page) ─────────────────────────────────────────────
+// ListApiKeys is NOT reachable over gRPC-Web: the browser-facing gateway does not route it — it answers 200
+// with an empty body, not even a status trailer — because the console never calls it from the client. Its
+// server renders the keys into the page instead, so the PAGE is the API here.
+//
+// Next.js streams the RSC flight as a run of `self.__next_f.push([1,"<js string literal>"])` calls; joining the
+// decoded literals reassembles a dehydrated query cache in which each response sits as JSON keyed by FIELD
+// NAME. That is the whole reason to read the page rather than the wire: a protobuf response would need field
+// numbers, which cannot be observed for a call the browser never makes.
+
+const FLIGHT_PUSH = /self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g
+
+// Reassemble the RSC flight from a page's HTML.
+export const readFlight = (html: string): string => {
+  let flight = ''
+
+  for (const [, literal] of html.matchAll(FLIGHT_PUSH)) {
+    try {
+      flight += JSON.parse(literal!) as string
+    } catch {
+      // Not a well-formed string literal, so not flight data — skip it.
+    }
+  }
+
+  return flight
+}
+
+// The end index (exclusive) of the JSON object opening at `start`, tracking quotes so a brace inside a string
+// value cannot close the scan early.
+const objectEnd = (s: string, start: number): number => {
+  let depth = 0
+
+  for (let i = start; i < s.length; i++) {
+    if (s[i] === '"') {
+      i++
+
+      while (i < s.length && s[i] !== '"') {
+        i += s[i] === '\\' ? 2 : 1
+      }
+    } else if (s[i] === '{') {
+      depth++
+    } else if (s[i] === '}' && --depth === 0) {
+      return i + 1
+    }
+  }
+
+  return -1
+}
+
+// The dehydrated message of a given protobuf type, parsed out of the flight. protobuf-es serializes `$typeName`
+// as the object's first key, so the marker's own opening brace is the object's.
+export const findFlightMessage = <T>(flight: string, typeName: string): T | undefined => {
+  const at = flight.indexOf(`"$typeName":"${typeName}"`)
+  const start = at < 0 ? -1 : flight.lastIndexOf('{', at)
+  const end = start < 0 ? -1 : objectEnd(flight, start)
+
+  if (end < 0) {
+    return undefined
+  }
+
+  try {
+    return JSON.parse(flight.slice(start, end)) as T
+  } catch {
+    return undefined
+  }
+}
+
+// The flight encodes a protobuf int64 as a BigInt token — `"$n1783696231"`.
+const flightSeconds = (value?: string): number | undefined => (value ? Number(value.replace(/^\$n/, '')) : undefined)
+
+// One key as the page carries it. The console only ever renders the masked 'xai-…suffix' hint, never the secret.
+export interface RawXaiApiKey {
+  redactedApiKey?: string
+  name?: string
+  userId?: string
+  apiKeyId?: string
+  disabled?: boolean
+  aclStrings?: string[]
+  createTime?: { seconds?: string }
+}
 
 export interface XaiApiKey {
   id: string
@@ -229,25 +489,7 @@ export interface XaiApiKey {
   creatorName?: string
   created?: string // 'YYYY-MM-DD' (UTC)
   acls: string[] // scope ACLs, e.g. 'api-key:model:*'
-}
-
-// Key: #1 masked hint · #4 name · #5 {#1 seconds} created · #8 id · #10 creator {#3 email, #5 first, #6 last}
-//      · #16 repeated ACL strings.
-const parseKey = (key: ProtoMessage): XaiApiKey => {
-  const creator = getMessage(key, 10)
-  const firstName = creator ? getString(creator, 5) : undefined
-  const lastName = creator ? getString(creator, 6) : undefined
-  const creatorName = [firstName, lastName].filter(Boolean).join(' ') || undefined
-
-  return {
-    id: getString(key, 8) ?? '',
-    name: getString(key, 4) ?? '(unnamed)',
-    keyHint: getString(key, 1) ?? '',
-    creatorEmail: creator ? getString(creator, 3) : undefined,
-    creatorName,
-    created: epochSecDay(getNumber(getMessage(key, 5) ?? new Map(), 1)),
-    acls: getRepeatedStrings(key, 16)
-  }
+  disabled: boolean
 }
 
 export interface XaiKeysReport {
@@ -255,16 +497,33 @@ export interface XaiKeysReport {
   totalKeys: number
 }
 
-// Pure transform — fixture-tested. ListApiKeys response: repeated #1 = keys. Sorted by created desc.
-export const buildKeysReport = (resp: ProtoMessage): XaiKeysReport => {
-  const keys = getRepeatedMessages(resp, 1)
-    .map(parseKey)
+// Pure transform — fixture-tested. A key names only its creator's `userId`, so the roster resolves it to a
+// person; a key made by someone since removed from the team keeps its id and shows no creator.
+export const buildKeysReport = (raw: RawXaiKeys): XaiKeysReport => {
+  const people = new Map(raw.members.map((m) => [m.id, m]))
+  const keys = raw.keys
+    .map((k) => {
+      const creator = k.userId ? people.get(k.userId) : undefined
+
+      return {
+        id: k.apiKeyId ?? '',
+        name: k.name || '(unnamed)',
+        keyHint: k.redactedApiKey ?? '',
+        creatorEmail: creator?.email,
+        creatorName: creator?.name,
+        created: epochSecDay(flightSeconds(k.createTime?.seconds)),
+        acls: k.aclStrings ?? [],
+        disabled: k.disabled === true
+      }
+    })
     .sort((a, b) => (b.created ?? '').localeCompare(a.created ?? ''))
 
   return { keys, totalKeys: keys.length }
 }
 
 interface KeyDetailRow {
+  // The key id — hidden, the ledger key so each key's creator/scope history accumulates past the fetch window.
+  id: string
   name: string
   keyHint: string
   creator: string | null
@@ -281,7 +540,7 @@ export const buildXaiKeysResult = (report: XaiKeysReport): CapabilityResult => {
       name: k.name,
       masked: k.keyHint,
       createdAt: k.created,
-      revoked: false
+      revoked: k.disabled
     }))
   }
   const result = keys.result(base)
@@ -294,15 +553,19 @@ export const buildXaiKeysResult = (report: XaiKeysReport): CapabilityResult => {
       { key: 'keyHint', label: 'Key', role: 'label' },
       { key: 'creator', label: 'Creator', role: 'label' },
       { key: 'created', label: 'Created', role: 'timestamp' },
-      { key: 'acls', label: 'Scopes', role: 'text' }
+      { key: 'acls', label: 'Scopes', role: 'text' },
+      { key: 'id', role: 'identifier', hidden: true }
     ],
-    rows: report.keys.map((k) => ({
+    rows: report.keys.map((k, i) => ({
+      // The console key id is present on every key; a per-row synthetic id backs the rare gap so the key stays unique.
+      id: k.id || `key-${i}`,
       name: k.name,
       keyHint: k.keyHint,
       creator: k.creatorName ?? k.creatorEmail ?? null,
       created: k.created ?? null,
       acls: k.acls.join(', ') || null
-    }))
+    })),
+    key: 'id'
   }).table({ title: 'Key details' })
 
   result.datasets.push(keyDetails.dataset)
@@ -327,7 +590,7 @@ const teamId = (ctx: CollectContext<XaiConfig>): string => {
 
 // Issue one unary gRPC-web call: frame the request body, POST it as the gRPC-web content type, read the
 // response as binary, deframe it, surface a non-zero grpc-status (a failure even on HTTP 200), then decode the
-// first data frame. Headers/framing are best-effort — verify against a live account.
+// first data frame.
 const unary = async (
   ctx: CollectContext<XaiConfig>,
   service: string,
@@ -351,60 +614,101 @@ const unary = async (
 
   const { message: data, grpcStatus, grpcMessage } = deframeResponse(Buffer.from(res.data))
 
-  if (grpcStatus && grpcStatus !== 0) {
+  if (grpcStatus !== undefined && grpcStatus !== 0) {
     throw new Error(
       `[xai] ${service}/${method} failed: grpc-status ${grpcStatus}${grpcMessage ? ` — ${grpcMessage}` : ''}`
+    )
+  }
+
+  // No data frame AND no status trailer means the body was never gRPC-Web (an edge challenge page, a sign-in
+  // redirect, a JSON error). Decoding that to an empty message would render every tab as 0 while reporting
+  // success, so fail instead. A trailer with status 0 and no data frame IS a legitimate empty result (a month
+  // with no invoices) and returns an empty map.
+  if (!data && grpcStatus === undefined) {
+    throw new Error(
+      `[xai] ${service}/${method}: response is not gRPC-Web (${res.data.byteLength} bytes) — the session may be stale`
     )
   }
 
   return data ? decodeMessage(data) : new Map()
 }
 
-// ListInvoices request: `{ #10: teamId, #30: { #1: year, #2: month } }`. The #30 since-filter is pinned to an
-// early date so the full invoice history returns.
+// ListInvoices request: `{ #10: teamId, #30: { #1: year, #2: month } }`. #30 is the since-filter, pinned to an
+// early month so the full invoice history returns in one call.
 const listInvoicesBody = (id: string): Buffer =>
   message(stringField(10, id), messageField(30, message(varintField(1, 2024), varintField(2, 5))))
 
-// GetAmountToPay (field 10) / GetSpendingLimits (field 1) request: `{ <field>: teamId }`.
+// A request whose only field is the team id. The field number is per-message, not global: the invoice/amount
+// RPCs carry it at #10, the rest at #1.
 const teamIdBody = (id: string, field: number): Buffer => message(stringField(field, id))
 
-// ListApiKeys request: `{ #1: 1, #2: teamId, #5: 1 }` — the flag fields #1 and #5 have unknown semantics
-// (no schema) and are sent verbatim.
-const listApiKeysBody = (id: string): Buffer => message(varintField(1, 1), stringField(2, id), varintField(5, 1))
+// A call whose result enriches a tab but must never fail it — the spending limit is absent on a team that has
+// not set one, and the console itself renders that as simply nothing.
+const readOptional = async (
+  ctx: CollectContext<XaiConfig>,
+  service: string,
+  method: string,
+  body: Buffer
+): Promise<ProtoMessage> => {
+  try {
+    return await unary(ctx, service, method, body)
+  } catch (err) {
+    ctx.log(`${method} failed: ${err instanceof Error ? err.message : String(err)}`)
 
-// The three billing RPC responses, decoded, plus the team id (needed to build invoice detail URLs). This is
-// the RAW wire-decoded shape the build half transforms — sample.ts synthesizes one via the encoder.
+    return new Map()
+  }
+}
+
+// The billing RPC responses, decoded, plus the team id (needed to build invoice detail URLs). This is the RAW
+// wire-decoded shape the build half transforms — sample.ts synthesizes one via the encoder.
 export interface RawXaiBilling {
   invoices: ProtoMessage
   amountToPay: ProtoMessage
   spendingLimits: ProtoMessage
+  billingInfo: ProtoMessage
   teamId: string
 }
 
 export const buildXaiBilling = (raw: RawXaiBilling): CapabilityResult =>
-  buildXaiBillingResult(buildBillingReport(raw.invoices, raw.amountToPay, raw.spendingLimits, raw.teamId))
+  buildXaiBillingResult(
+    buildBillingReport(raw.invoices, raw.amountToPay, raw.spendingLimits, raw.teamId),
+    billingEmail(raw.billingInfo)
+  )
 
 const fetchXaiBilling = async (ctx: CollectContext<XaiConfig>): Promise<RawXaiBilling> => {
   const id = teamId(ctx)
-  const [invoices, amountToPay, spendingLimits] = await Promise.all([
+  const [invoices, amountToPay, billingInfo, spendingLimits] = await Promise.all([
     unary(ctx, BILLING_SERVICE, 'ListInvoices', listInvoicesBody(id)),
     unary(ctx, BILLING_SERVICE, 'GetAmountToPay', teamIdBody(id, 10)),
-    unary(ctx, BILLING_SERVICE, 'GetSpendingLimits', teamIdBody(id, 1))
+    unary(ctx, BILLING_SERVICE, 'GetBillingInfo', teamIdBody(id, 1)),
+    readOptional(ctx, BILLING_SERVICE, 'GetSpendingLimits', teamIdBody(id, 1))
   ])
 
-  return { invoices, amountToPay, spendingLimits, teamId: id }
+  return { invoices, amountToPay, spendingLimits, billingInfo, teamId: id }
 }
 
 // The ListApiKeys response, decoded — the raw wire shape the build half transforms.
 export interface RawXaiKeys {
-  keys: ProtoMessage
+  keys: RawXaiApiKey[]
+  // The roster the key's `userId` resolves against — the page names the creator by id only.
+  members: XaiMember[]
 }
 
-export const buildXaiKeys = (raw: RawXaiKeys): CapabilityResult => buildXaiKeysResult(buildKeysReport(raw.keys))
+export const buildXaiKeys = (raw: RawXaiKeys): CapabilityResult => buildXaiKeysResult(buildKeysReport(raw))
 
-const fetchXaiKeys = async (ctx: CollectContext<XaiConfig>): Promise<RawXaiKeys> => ({
-  keys: await unary(ctx, AUTH_SERVICE, 'ListApiKeys', listApiKeysBody(teamId(ctx)))
-})
+const fetchXaiKeys = async (ctx: CollectContext<XaiConfig>): Promise<RawXaiKeys> => {
+  const [html, assignments] = await Promise.all([
+    ctx.client.getText(`${CONSOLE_ORIGIN}/team/${teamId(ctx)}`),
+    fetchXaiMembers(ctx)
+  ])
+  const resp = findFlightMessage<{ apiKeys?: RawXaiApiKey[] }>(readFlight(html), 'auth_mgmt.ListApiKeysResponse')
+
+  if (!resp) {
+    throw new Error('[xai] the team page carried no ListApiKeys data — the session may be stale')
+  }
+
+  return { keys: resp.apiKeys ?? [], members: buildMembersReport(assignments.assignments) }
+}
 
 // ── descriptor ──────────────────────────────────────────────────────────────────────
 export const xaiConfigSchema = defineConfigSchema([
@@ -440,9 +744,9 @@ export const xaiPlugin = definePlugin({
     captureFromUrl: [{ pattern: '/team/([0-9a-fA-F-]{36})', storeAs: 'teamId' }]
   },
   auth: { kind: 'cookie' },
-  // console.x.ai sits behind Cloudflare and only accepts a real browser — Electron net.request
-  // (the real browser's TLS identity) is required. cf_clearance is bound to (IP, UA, TLS identity), so the replay UA must match the
-  // sign-in window UA (injected centrally).
+  // The console's edge verifies a real browser, so replay needs the browser engine's own TLS identity.
+  // cf_clearance is bound to (IP, UA, TLS identity), so the replay UA must match the sign-in window UA
+  // (injected centrally).
   transport: {
     requiresBrowserEngine: true,
     baseUrl: CONSOLE_ORIGIN
@@ -457,15 +761,30 @@ export const xaiPlugin = definePlugin({
       sample: sampleXaiBilling
     }),
     defineCapability({
+      id: 'usage',
+      label: 'Usage',
+      fetch: fetchXaiUsage,
+      build: buildXaiUsage,
+      sample: sampleXaiUsage
+    }),
+    defineCapability({
       id: 'apiKeys',
       label: 'API Keys',
       fetch: fetchXaiKeys,
       build: buildXaiKeys,
       sample: sampleXaiKeys
+    }),
+    defineCapability({
+      id: 'members',
+      label: 'Members',
+      fetch: fetchXaiMembers,
+      build: buildXaiMembers,
+      sample: sampleXaiMembers
     })
   ],
   probe: async (ctx) => {
-    // One small gRPC-web call (the spending-limit RPC) proves the console session cookie reaches the API.
-    await unary(ctx, BILLING_SERVICE, 'GetSpendingLimits', teamIdBody(teamId(ctx), 1))
+    // The billing-contact RPC is the cheapest call that answers with the team's own data, so a decodable
+    // response proves the console session cookie reaches the API.
+    await unary(ctx, BILLING_SERVICE, 'GetBillingInfo', teamIdBody(teamId(ctx), 1))
   }
 })

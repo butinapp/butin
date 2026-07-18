@@ -242,7 +242,10 @@ export const buildNgrokBillingTab = (billing: NgrokBilling): CapabilityResult =>
       amount: i.amount,
       status: i.status,
       url: i.hostedUrl ?? null
-    }))
+    })),
+    // The invoice payload carries no id, and a single date can hold two invoices (subscription + metered), so
+    // (date, amount) is the stable unique identity — keyed as a composite so each invoice's status accumulates.
+    key: ['date', 'amount']
   })
 
   return capabilityResult({

@@ -251,6 +251,8 @@ test('buildNovuBillingTab is the DETAIL: subscription record + downloadable invo
       },
       { date: '2026-02-13', amount: 50, status: 'open', pdfUrl: null, name: 'Invoice 2026-02-13' }
     ])
+    // one invoice per billing month → keyed by date so status accumulates in the ledger.
+    expect(invoices.key).toBe('date')
   }
 
   const invoicesView = result.views?.find((v) => v.type === 'table' && v.dataset === 'invoices')
@@ -325,6 +327,8 @@ test('buildNovuUsageResult: delivery trend stacks only non-zero channels; runs +
   if (delivery?.shape === 'table') {
     expect([...new Set(delivery.rows.map((r) => r.channel))]).toEqual(['In-App', 'Email'])
     expect(delivery.rows).toHaveLength(4) // 2 channels × 2 days
+    // (day, channel) uniquely keys each delivery count so the trend accumulates.
+    expect(delivery.key).toEqual(['day', 'channel'])
   }
 
   const deliveryView = result.views?.find((v) => v.type === 'timeseries' && v.dataset === 'delivery')
@@ -339,6 +343,7 @@ test('buildNovuUsageResult: delivery trend stacks only non-zero channels; runs +
       { day: '2026-06-16', runs: 7158 },
       { day: '2026-06-17', runs: 6960 }
     ])
+    expect(runs.key).toBe('day') // one point per day → keyed so the trend accumulates
   }
 
   const top = result.datasets.find((d) => d.id === 'topWorkflows')
@@ -348,6 +353,7 @@ test('buildNovuUsageResult: delivery trend stacks only non-zero channels; runs +
       { workflow: 'Quota Reached', count: 160000 },
       { workflow: 'Auto-Recharge Success', count: 4 }
     ])
+    expect(top.key).toBe('workflow') // one row per workflow → keyed so the aggregate accumulates
   }
 })
 
