@@ -52,6 +52,52 @@ const nowMonthKey = (): string => {
 const pctClass = (n: number): string =>
   n > 0 ? 'text-red-500 dark:text-red-400' : n < 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-muted-foreground'
 
+// The graceful fallback when no spend converts into the base currency (no rate fetched yet, or offline): each
+// spend service's headline in its OWN currency, so the band stays useful instead of collapsing to "No data yet".
+const UnconvertedSpend = ({
+  plugins,
+  baseCurrency,
+  onOpen
+}: {
+  plugins: OverviewPlugin[]
+  baseCurrency: string
+  onOpen?: (pluginId: string) => void
+}) => {
+  const t = useLabels()
+  const rows = plugins.flatMap((p) => {
+    const spend = (p.summaries ?? []).find((s) => s.section === 'spend')
+
+    return spend ? [{ p, spend }] : []
+  })
+
+  return (
+    <div className="space-y-2">
+      <p className="text-muted-foreground text-sm">{t.spendUnconverted(baseCurrency)}</p>
+      <Card className="gap-0 py-0">
+        <CardContent className="p-0">
+          <ul>
+            {rows.map(({ p, spend }) => (
+              <li
+                key={p.pluginId}
+                className={`flex items-center justify-between border-b px-4 py-2.5 text-sm last:border-0 ${onOpen ? 'hover:bg-secondary/40 cursor-pointer' : ''}`}
+                onClick={onOpen ? () => onOpen(p.pluginId) : undefined}
+              >
+                <span className="flex items-center gap-2">
+                  <ServiceIcon id={p.pluginId} icon={p.icon} name={p.pluginName} color={p.color} size={16} />
+                  {p.pluginName}
+                </span>
+                <span className="font-mono tabular-nums">
+                  {formatMoney(spend.value, spend.currency ?? p.currency ?? baseCurrency)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 // The Spending band: rollup stat cards, a combined monthly-spend bar chart, "what changed" movers, and a
 // by-service table. Fed only the plugins reporting a spend section (see `partition`) — so non-monetary
 // services never land in the spend math. Reads each plugin's monthly series; one with none contributes nothing.
@@ -98,8 +144,10 @@ const SpendingSection = ({
   const move = useMemo(() => movers(plugins, from, to, baseCurrency, rates), [plugins, from, to, baseCurrency, rates])
   const hints = columnHints(nowMonth, to, from)
 
+  // Nothing rolls up into the base currency (no rate yet / offline) yet there ARE spend services: list their
+  // native amounts rather than blanking the whole band. With a rate present this never triggers.
   if (combined.length === 0) {
-    return <p className="text-muted-foreground text-sm">{t.noDataYet}</p>
+    return <UnconvertedSpend plugins={plugins} baseCurrency={baseCurrency} onOpen={onOpen} />
   }
 
   // Mixed currencies (or one with no rate) → the headline total is an approximation; flag it with `≈` and

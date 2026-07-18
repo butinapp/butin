@@ -225,6 +225,9 @@ export interface ButinLabels {
 
   // Overview tiles.
   noDataYet: string
+  // Shown when spend services can't be rolled up into the base currency (no rate yet / offline): their native
+  // amounts are listed instead of blanking the band.
+  spendUnconverted: (base: string) => string
   serviceCount: (n: number) => string
   overviewSpending: string
   overviewBalances: string
@@ -693,6 +696,7 @@ export const en: ButinLabels = {
   disconnectedWithData: (service) => `${service} is disconnected — showing the last loaded data.`,
 
   noDataYet: 'No data yet',
+  spendUnconverted: (base) => `No ${base} exchange rate yet — showing amounts as reported:`,
   serviceCount: (n) => `${n} ${n === 1 ? 'service' : 'services'}`,
   overviewSpending: 'Spending',
   overviewBalances: 'Balances',
@@ -1158,6 +1162,7 @@ export const fr: ButinLabels = {
   disconnectedWithData: (service) => `${service} est déconnecté — affichage des dernières données chargées.`,
 
   noDataYet: 'Aucune donnée',
+  spendUnconverted: (base) => `Aucun taux de change ${base} — montants tels que déclarés :`,
   serviceCount: (n) => `${n} ${n === 1 ? 'service' : 'services'}`,
   overviewSpending: 'Dépenses',
   overviewBalances: 'Soldes',
