@@ -4,7 +4,14 @@
 export { I18nProvider, LabelsProvider, useLabels } from './context.js'
 export type { ButinI18n } from './context.js'
 export { FormatProvider, useFormat } from './format-context.js'
-export { DEFAULT_FORMAT_PREFS, resolveNumberLocale, formatDateTime, formatRelative } from './format.js'
+export {
+  DEFAULT_FORMAT_PREFS,
+  resolveNumberLocale,
+  resolveMoneyLocale,
+  moneyLocale,
+  formatDateTime,
+  formatRelative
+} from './format.js'
 export type { FormatPrefs, CurrencyStyle, DateFormatPreset } from './format.js'
 export { en, fr, butinLabels } from './labels.js'
 export type { ButinLabels, Locale } from './labels.js'

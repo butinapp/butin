@@ -24,7 +24,7 @@ import { Sparkline } from '../../components/sparkline.js'
 import { TruncatedCell } from '../../components/truncated-cell.js'
 import { useLabels } from '../../i18n/context.js'
 import { useFormat } from '../../i18n/format-context.js'
-import { resolveNumberLocale } from '../../i18n/format.js'
+import { resolveMoneyLocale } from '../../i18n/format.js'
 import { cn } from '../../lib/utils.js'
 import { StatCard } from '../charts.js'
 import { formatSize } from '../documents/doc-models.js'
@@ -731,7 +731,9 @@ export const DashboardRenderer = ({
 }) => {
   const t = useLabels()
   const prefs = useFormat()
-  const numberLocale = resolveNumberLocale(prefs.currencyStyle, t.intlLocale)
+  // Money renders in the base currency's home region (so it shows a plain symbol, foreign currencies a prefix);
+  // this same locale also groups plain numbers, which is identical across same-language regions.
+  const numberLocale = resolveMoneyLocale(prefs, t.intlLocale)
   const plans = planViews(result)
   // Every dataset by id, so a table view's row-detail binding can resolve its child dataset.
   const byId = new Map(result.datasets.map((d) => [d.id, d] as const))

@@ -504,14 +504,14 @@ export const hydrosolutionPlugin = definePlugin({
     // The bill PDFs aren't a separate documents tab — the Factures table is downloadable (its pdfUrl column).
     defineCapability({
       id: 'summary',
-      label: 'Sommaire',
+      label: 'Summary',
       fetch: fetchHydroBilling,
       build: buildHydroSummaryFromRaw,
       sample: sampleHydroBilling
     }),
     defineCapability({
       id: 'billing',
-      label: 'Factures',
+      label: 'Billing',
       fetch: fetchHydroBilling,
       build: buildHydroBillingFromRaw,
       sample: sampleHydroBilling

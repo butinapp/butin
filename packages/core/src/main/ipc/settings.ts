@@ -10,7 +10,8 @@ import {
   setSetting,
   setTablePrefs
 } from '../store/config-file.js'
-import { getFxConfig, setFxConfig } from '../store/fx-rates.js'
+import { resolveFxConfig, setFxConfig } from '../store/fx-rates.js'
+import { installedCurrencies } from '../store/overview.js'
 import { configureRequestPacing } from '../transport/request-pacer.js'
 
 import type { IpcHandlers } from './result.js'
@@ -107,6 +108,12 @@ export const settingsHandlers = {
     }
   },
 
-  getFx: () => getFxConfig(),
-  setFx: (_event, cfg: FxConfigDto) => setFxConfig(cfg)
+  // Resolving on read auto-picks the base currency from the connected services and fills any missing/stale
+  // foreign rate from the keyless rate API — so opening the Overview (or Settings) is what refreshes rates,
+  // keeping Butin pull-only. Best-effort: offline just returns the cached table.
+  getFx: async () => resolveFxConfig(await installedCurrencies()),
+
+  // A manual save fixes the base currency (baseExplicit) so the auto-pick stops overriding it, and marks the
+  // table manual so auto-fetch never overwrites the hand-entered rates.
+  setFx: (_event, cfg: FxConfigDto) => setFxConfig({ ...cfg, source: 'manual', baseExplicit: true })
 } satisfies IpcHandlers['settings']

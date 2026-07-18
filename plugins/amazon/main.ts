@@ -1,5 +1,5 @@
 import { type CollectContext, defineCapability, definePlugin } from '@butinapp/sdk'
-import { type CapabilityResult, table } from '@butinapp/sdk/data'
+import { type CapabilityResult, capabilityResult, table } from '@butinapp/sdk/data'
 import { billing } from '@butinapp/sdk/presets'
 import { currentMonthKey, parseDollarAmount, round2 } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
@@ -178,16 +178,15 @@ interface OrderRow {
   name: string
 }
 
-// Pure transform — fixture-tested. The orders drive the monthly-spend rollup (the headline stat + chart + the
-// cross-service Overview spark) AND a downloadable Orders table. The invoice PDFs are NOT fetched here — each
-// row carries its popover URL and the host calls fetchFile only for the rows the user actually downloads.
-// currentMtd sums the current calendar month's orders (null when none, so the Overview skips Amazon vs charting 0).
-export const buildAmazonBilling = (orders: AmazonOrder[] | undefined | null): CapabilityResult => {
+// Pure transform — fixture-tested. The Summary tab: the orders drive the monthly-spend rollup (the headline
+// stat + chart + the cross-service Overview spark). No Orders table — that's the Billing tab. currentMtd sums
+// the current calendar month's orders (null when none, so the Overview skips Amazon vs charting 0).
+export const buildAmazonSummary = (orders: AmazonOrder[] | undefined | null): CapabilityResult => {
   const list = Array.isArray(orders) ? orders : []
   const ym = currentMonthKey()
   const mtd = list.filter((o) => o.date?.startsWith(ym)).reduce((sum, o) => sum + o.total, 0)
 
-  const result = billing.summary({
+  return billing.summary({
     currentMtd: mtd > 0 ? round2(mtd) : null,
     // currentMtd is the sum of orders placed this calendar month.
     mtdBasis: 'invoiced',
@@ -195,6 +194,13 @@ export const buildAmazonBilling = (orders: AmazonOrder[] | undefined | null): Ca
     invoices: list.map((o) => ({ date: o.date, amount: o.total, status: 'paid' })),
     stats: [{ key: 'orderCount', label: 'Orders', role: 'count', value: list.length }]
   })
+}
+
+// Pure transform — fixture-tested. The Billing tab: the downloadable Orders table. The invoice PDFs are NOT
+// fetched here — each row carries its popover URL and the host calls fetchFile only for the rows the user
+// actually downloads. Carries no spend summary — the Summary tab owns the headline.
+export const buildAmazonBilling = (orders: AmazonOrder[] | undefined | null): CapabilityResult => {
+  const list = Array.isArray(orders) ? orders : []
 
   const orders_ = table<OrderRow>({
     id: 'orders',
@@ -221,10 +227,7 @@ export const buildAmazonBilling = (orders: AmazonOrder[] | undefined | null): Ca
     key: 'orderId'
   }).fileTable({ title: 'Orders', name: 'name', source: { fetch: true }, ext: 'pdf', category: 'Invoices' })
 
-  result.datasets.push(orders_.dataset)
-  result.views = [...(result.views ?? []), orders_.view]
-
-  return result
+  return capabilityResult({ sections: [orders_] })
 }
 
 // ── collector ───────────────────────────────────────────────────────────────────────
@@ -411,6 +414,16 @@ export const amazonPlugin = definePlugin({
   },
   capabilities: [
     defineCapability({
+      id: 'summary',
+      label: 'Summary',
+      fetch: fetchAmazonBilling,
+      build: buildAmazonSummary,
+      sample: sampleAmazonBilling,
+      // The same incremental union as Billing, so build runs over the full order history and the spend chart
+      // stays whole even when a refresh only re-pulls the recent window.
+      incremental: { id: 'orderId', timestamp: 'date', window: { days: 60 } }
+    }),
+    defineCapability({
       id: 'billing',
       label: 'Billing',
       fetch: fetchAmazonBilling,
@@ -418,8 +431,8 @@ export const amazonPlugin = definePlugin({
       sample: sampleAmazonBilling,
       fetchFile: fetchAmazonInvoicePdf,
       // Incremental: a refresh re-pulls only the recent window + any newer orders; the kept union retains the
-      // full history, and build runs over all of it (so the spend chart + order count stay whole). 60d catches
-      // a late refund / return / status change on a recent order.
+      // full history, and build runs over all of it (so the order list stays whole). 60d catches a late refund /
+      // return / status change on a recent order.
       incremental: { id: 'orderId', timestamp: 'date', window: { days: 60 } }
     })
   ],

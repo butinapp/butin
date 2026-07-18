@@ -34,6 +34,9 @@ export type FxConfigDto = {
   rates: Record<string, number>
   source?: string
   fetchedAt?: string
+  // Set once the user fixes a base currency in Settings; until then the base auto-resolves to the dominant
+  // currency of the connected services.
+  baseExplicit?: boolean
 }
 
 // A column sort: which column, ascending or descending.

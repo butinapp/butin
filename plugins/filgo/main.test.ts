@@ -5,6 +5,7 @@ import { expect, test } from 'vitest'
 import {
   buildFilgoDeliveries,
   buildFilgoStatements,
+  buildFilgoSummary,
   buildFilgoTanks,
   filgoPlugin,
   normalizeStatement,
@@ -149,27 +150,38 @@ test('normalizeStatement reads accented metadata keys; number falls back to the 
   expect(normalizeStatement(noNumber).number).toBe('6548728')
 })
 
-test('buildFilgoStatements: spend summary from the newest statement + a downloadable statements table', () => {
-  const older: RawStatementDoc = {
-    ...STATEMENT_DOC,
-    name: 'ECOI_12345678_6428963',
-    metadataV2: [
-      { key: "Date de l'état de compte", value: '2026-02-28T00:00:00' },
-      { key: "Total de l'état de compte", value: 280.46 },
-      { key: 'No relevé', value: '6428963' }
-    ]
-  }
-  const result = buildFilgoStatements({ account: '12345678', statements: [older, STATEMENT_DOC] })
+const older: RawStatementDoc = {
+  ...STATEMENT_DOC,
+  name: 'ECOI_12345678_6428963',
+  metadataV2: [
+    { key: "Date de l'état de compte", value: '2026-02-28T00:00:00' },
+    { key: "Total de l'état de compte", value: 280.46 },
+    { key: 'No relevé', value: '6428963' }
+  ]
+}
+
+test('buildFilgoSummary: the Summary tab owns the spend headline (newest statement), no receipts table', () => {
+  const result = buildFilgoSummary({ account: '12345678', statements: [older, STATEMENT_DOC] })
 
   expect(validateCapabilityResult(result)).toEqual([])
   expect(result.summaries?.[0]).toMatchObject({ section: 'spend', value: 320.78, basis: 'lastInvoice' })
+  // The statements table lives on the Billing tab, not here.
+  expect(result.datasets.some((d) => d.id === 'statements')).toBe(false)
+})
+
+test('buildFilgoStatements: the Billing tab is the downloadable statements table, with no spend summary', () => {
+  const result = buildFilgoStatements({ account: '12345678', statements: [older, STATEMENT_DOC] })
+
+  expect(validateCapabilityResult(result)).toEqual([])
+  // One spend summary per service — it lives on Summary, so Billing carries none.
+  expect(result.summaries).toBeUndefined()
 
   const view = result.views?.find((v) => v.type === 'table' && v.dataset === 'statements') as { files?: unknown }
 
   expect(view.files).toMatchObject({ source: { url: 'url' }, name: 'name', ext: 'pdf', category: 'Relevés' })
 })
 
-test('buildFilgoStatements: no statements → valid result with no spend summary', () => {
+test('buildFilgoStatements: no statements → empty valid result (no statements table)', () => {
   const result = buildFilgoStatements({ account: null, statements: [] })
 
   expect(validateCapabilityResult(result)).toEqual([])

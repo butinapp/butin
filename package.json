@@ -44,6 +44,13 @@
     "turbo": "^2.9.18",
     "vitest": "catalog:"
   },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.18.0",
+      "onFail": "download"
+    }
+  },
   "engines": {
     "node": ">=24"
   },

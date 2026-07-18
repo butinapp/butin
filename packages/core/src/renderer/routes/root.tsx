@@ -1,5 +1,5 @@
 import { formatMoney } from '@butinapp/ui/dashboard'
-import { formatRelative, useLabels } from '@butinapp/ui/i18n'
+import { formatRelative, moneyLocale, useLabels } from '@butinapp/ui/i18n'
 import { Button } from '@butinapp/ui/primitives'
 import { AppShell, Sidebar, type SidebarTarget } from '@butinapp/ui/shell'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
@@ -164,7 +164,8 @@ const RootLayout = () => {
                 formatNotification(n, {
                   serviceName,
                   baseCurrency: fx?.baseCurrency ?? 'USD',
-                  money: (v, ccy) => formatMoney(v, ccy ?? fx?.baseCurrency ?? 'USD'),
+                  money: (v, ccy) =>
+                    formatMoney(v, ccy ?? fx?.baseCurrency ?? 'USD', moneyLocale(fx?.baseCurrency, t.intlLocale)),
                   pct: (f) => `${Math.round(f * 100)}%`,
                   labels: t.notifications
                 })

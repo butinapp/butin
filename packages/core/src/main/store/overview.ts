@@ -91,6 +91,21 @@ export const pickPrimarySummary = (entries: { summary?: Summary }[]): Summary | 
   )
 }
 
+// The currencies actually in play across installed services — each service's primary-summary currency (the one
+// its headline is denominated in), falling back to its static reportingCurrency. Drives the Overview's auto
+// base-currency pick and which foreign rates get fetched, matching the per-tile currency the rollup converts.
+export const installedCurrencies = async (): Promise<string[]> =>
+  Promise.all(
+    plugins
+      .filter((p) => getPluginInstalled(p.meta.id))
+      .map(async (p) => {
+        const reports = await Promise.all(p.capabilities.map((c) => readCurrent(p.meta.id, c.id)))
+        const entries = reports.flatMap((r) => summariesFrom(r?.data).map((summary) => ({ summary })))
+
+        return pickPrimarySummary(entries)?.currency ?? p.reportingCurrency
+      })
+  )
+
 // Read every plugin's cached capability data, pick its primary summary, and shape a home tile. Pure
 // IO glue over the tested selectors above — no collectors run.
 export const buildOverview = async (): Promise<OverviewTileDto[]> => {
