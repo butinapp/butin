@@ -77,6 +77,6 @@ describe('loadRunProfile', () => {
     const profile = await loadRunProfile(dir)
 
     expect(profile.auth.value).toBe('external')
-    expect(JSON.parse(readFileSync(join(dir, 'summary.json'), 'utf8')).version).toBe(1)
+    expect(JSON.parse(readFileSync(join(dir, 'summary.json'), 'utf8')).version).toBe(2)
   })
 })

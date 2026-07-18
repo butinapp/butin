@@ -1,5 +1,10 @@
-import type { Session, WebContents } from 'electron'
+import type { DownloadItem, Session, WebContents } from 'electron'
 import { createHash } from 'node:crypto'
+import { mkdirSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { classifyDownload, mergeDownloads } from '../../detect/downloads.js'
+import type { DetectedDownload } from '../../detect/types.js'
 
 import { shouldCapture } from './filters.js'
 import { extractGraphqlOperation } from './graphql.js'
@@ -11,6 +16,7 @@ import {
   appendNetworkMarker,
   appendRunLog,
   writeCookies,
+  writeDownloads,
   writeManifest,
   writeRequestFile,
   writeRunSummary,
@@ -135,6 +141,8 @@ export interface RecorderOptions {
   onProgress: (counts: { requests: number; websockets: number }) => void
   /** Emitted for every diagnostic log line (also persisted to log.jsonl). */
   onLog?: (line: RecorderLogLine) => void
+  /** Emitted when a browser-native download finishes and is saved into the run — for a UI confirmation. */
+  onDownload?: (info: { filename?: string; bytes?: number; savedAs: string }) => void
 }
 
 export class Recorder {
@@ -143,6 +151,7 @@ export class Recorder {
   private filters?: FilterConfig
   private onProgress: (counts: { requests: number; websockets: number }) => void
   private onLog?: (line: RecorderLogLine) => void
+  private onDownload?: (info: { filename?: string; bytes?: number; savedAs: string }) => void
   private autoPauseOnError: boolean
 
   private attachments = new Map<number, Attachment>()
@@ -181,6 +190,12 @@ export class Recorder {
   private pages = new Map<string, string>()
   private typeCounts: Record<string, number> = {}
   private endpoints = new Map<string, { count: number; lastStatus: number }>()
+  // Downloadable documents (PDF invoices/statements): passive ones classified off captured responses, native
+  // ones captured via the session's will-download (a browser navigation that became a download). Merged at stop.
+  private passiveDownloads: DetectedDownload[] = []
+  private nativeDownloads: DetectedDownload[] = []
+  private downloads: DetectedDownload[] = []
+  private downloadIndex = 0
 
   private session: Session | null = null
   private mainWc: WebContents | null = null
@@ -191,6 +206,7 @@ export class Recorder {
     this.filters = opts.filters
     this.onProgress = opts.onProgress
     this.onLog = opts.onLog
+    this.onDownload = opts.onDownload
     this.autoPauseOnError = opts.autoPauseOnError ?? false
     // "Auto-record" off ⇒ open paused; the user resumes from the toolbar.
     this.paused = !(opts.autoRecord ?? true)
@@ -253,6 +269,9 @@ export class Recorder {
     if (!this.mainWc) {
       this.mainWc = wc
       this.session = wc.session
+      // Capture browser-native downloads (a navigation that becomes a file) on the shared session — the one
+      // download shape that never leaves a retrievable Network body, so it's invisible without this hook.
+      this.session.on('will-download', this.onWillDownload)
     }
 
     const attachment: Attachment = {
@@ -363,8 +382,19 @@ export class Recorder {
       }
     }
 
+    this.session?.off('will-download', this.onWillDownload)
+
     await this.dumpStorage()
     await this.dumpCookies()
+
+    // Fold native downloads into the passively-classified ones (a native download inherits its captured request's
+    // headers by URL) → downloads.json + the summary section. Written only when a run actually produced downloads.
+    this.downloads = mergeDownloads(this.passiveDownloads, this.nativeDownloads)
+
+    if (this.downloads.length) {
+      await writeDownloads(this.runDir, this.downloads).catch((err) => this.warn('downloads write failed', err))
+    }
+
     // Drop an agent-oriented reading guide into the run so any LLM pointed at
     // the folder knows how to interpret the captured data.
     await writeSessionGuide(this.runDir)
@@ -1011,6 +1041,13 @@ export class Recorder {
       this.requestCount += 1
       this.countHost(p.url)
       this.tallyForSummary(p, record.response.status, opLabel)
+
+      const download = classifyDownload(record)
+
+      if (download) {
+        this.passiveDownloads.push(download)
+      }
+
       await appendNetworkLog(this.runDir, {
         index: idx,
         ts: record.timestamp,
@@ -1329,6 +1366,57 @@ export class Recorder {
     }
   }
 
+  // A browser-native download: save it straight into the run's downloads/ dir (no Save dialog) and record it as
+  // a native-navigation download (the shape a plugin must reproduce with ctx.browser, not a headless fetch). On
+  // completion `onDownload` fires so the UI can confirm what was saved and where — otherwise a headless save
+  // looks like nothing happened. Skipped while paused so an exploratory-click download isn't recorded.
+  private onWillDownload = (_e: unknown, item: DownloadItem): void => {
+    if (this.paused) {
+      return
+    }
+
+    this.downloadIndex += 1
+    const idx = this.downloadIndex
+    const url = item.getURL()
+    const filename = item.getFilename() || undefined
+    const safeName = (filename || `download-${idx}`).replace(/[^\w.-]+/g, '_')
+    const rel = `downloads/${String(idx).padStart(4, '0')}_${safeName}`
+
+    try {
+      mkdirSync(join(this.runDir, 'downloads'), { recursive: true })
+      item.setSavePath(join(this.runDir, rel))
+    } catch (err) {
+      this.warn('download save-path failed', err)
+    }
+
+    item.once('done', (_ev, state) => {
+      const mime = item.getMimeType() || undefined
+      const bytes = item.getReceivedBytes() || undefined
+      const savedAs = state === 'completed' ? rel : null
+
+      this.nativeDownloads.push({
+        mechanism: 'native-navigation',
+        confidence: 'high',
+        origin: 'native',
+        request: { url, method: 'GET', initiator: 'navigation' },
+        response: {
+          mime,
+          filename,
+          bytes,
+          pdfConfirmed: /pdf/i.test(mime ?? '') || /\.pdf$/i.test(filename ?? ''),
+          looksSigned: /expir|signature|x-amz-|token|jeton/i.test(url)
+        },
+        sourceFile: null,
+        savedAs
+      })
+      this.log('info', 'download', `Captured browser download — ${filename ?? url} (${state})`, { url, state })
+
+      if (savedAs) {
+        this.onDownload?.({ filename, bytes, savedAs })
+      }
+    })
+  }
+
   private tallyForSummary(p: Pending, status: number, opLabel?: string): void {
     this.typeCounts[p.type] = (this.typeCounts[p.type] ?? 0) + 1
 
@@ -1353,6 +1441,53 @@ export class Recorder {
     }
   }
 
+  // A prominent, up-front list of downloadable documents (PDF invoices/statements) and the mechanism each maps
+  // to — the thing that's otherwise slow to dig out when writing a plugin's files/fetchFile. Empty ⇒ no section.
+  private buildDownloadsSection(): string[] {
+    if (!this.downloads.length) {
+      return []
+    }
+
+    const lines = [
+      '## Detected downloads',
+      '',
+      `${this.downloads.length} downloadable document(s). Full detail in \`downloads.json\`.`,
+      ''
+    ]
+
+    for (const d of this.downloads) {
+      const parts = [`**${d.mechanism}** (${d.confidence})`, `${d.request.method} ${d.request.url}`]
+
+      if (d.request.accept) {
+        parts.push(`Accept: ${d.request.accept}`)
+      }
+
+      if (d.response.filename || d.response.bytes) {
+        parts.push(
+          [d.response.filename, d.response.bytes ? `${d.response.bytes} bytes` : null].filter(Boolean).join(' · ')
+        )
+      }
+
+      lines.push(`- ${parts.join(' — ')}`)
+
+      const notes = [
+        d.request.referer ? `referer: ${d.request.referer}` : null,
+        d.response.looksSigned ? 'one-time/signed URL — mint at download time' : null,
+        d.mechanism === 'native-navigation' ? 'browser navigation download — replay with ctx.browser' : null,
+        d.savedAs ? `saved: ${d.savedAs}` : null,
+        d.sourceFile ? `source: ${d.sourceFile}` : null
+      ].filter(Boolean)
+
+      for (const note of notes) {
+        lines.push(`  - ${note}`)
+      }
+    }
+
+    lines.push('')
+
+    return lines
+  }
+
   private buildSummaryMarkdown(manifest: RecordingManifest): string {
     const lines: string[] = [`# ${manifest.label} — Butin Recorder run summary`, '']
 
@@ -1367,6 +1502,8 @@ export class Recorder {
     }
 
     lines.push('', 'Read `AGENTS.md` in this folder for how to interpret the files.', '')
+
+    lines.push(...this.buildDownloadsSection())
 
     if (this.pages.size) {
       lines.push('## Pages visited', '')

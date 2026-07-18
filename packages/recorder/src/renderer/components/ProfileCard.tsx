@@ -4,6 +4,7 @@ import type { ComponentProps } from 'react'
 
 import type {
   Confidence,
+  DetectedDownload,
   DomainProfile,
   EndpointCategory,
   EndpointHint,
@@ -66,6 +67,25 @@ const ENDPOINT_LABELS: Record<EndpointCategory, string> = {
   totals: 'Totals'
 }
 const ENDPOINT_ORDER: EndpointCategory[] = ['members', 'api-keys', 'invoices', 'usage', 'totals']
+
+// A compact label for one download: its filename (or last path segment) with the flags that decide the plugin's
+// approach — a signed one-time URL, or a browser-only navigation download.
+const shortDownload = (d: DetectedDownload): string => {
+  const name =
+    d.response.filename ??
+    (() => {
+      try {
+        return new URL(d.request.url).pathname.split('/').filter(Boolean).at(-1) ?? d.request.url
+      } catch {
+        return d.request.url
+      }
+    })()
+  const flags = [d.response.looksSigned ? 'signed' : null, d.mechanism === 'native-navigation' ? 'ctx.browser' : null]
+    .filter(Boolean)
+    .join(', ')
+
+  return flags ? `${name} (${flags})` : name
+}
 
 // Drop scheme/host/query for a compact `METHOD /path` line — the host is shown once on the category header.
 const shortEndpoint = (e: EndpointHint): string => {
@@ -186,6 +206,40 @@ export const ProfileCard = ({ profile }: Props) => {
                               title={e.url}
                             >
                               {shortEndpoint(e)}
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {profile.downloads.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-baseline gap-2">
+                  <span className="w-24 shrink-0 text-xs font-medium text-muted-foreground">Downloads</span>
+                  <span className="min-w-0 flex-1 text-xs text-muted-foreground">
+                    documents to reproduce via <span className="font-mono">files</span>/
+                    <span className="font-mono">fetchFile</span>
+                  </span>
+                </div>
+                <div className="ml-[6.5rem] flex flex-col gap-2">
+                  {[...new Set(profile.downloads.map((d) => d.mechanism))].map((mechanism) => (
+                    <div key={mechanism} className="flex flex-col gap-0.5">
+                      <Badge variant="secondary" className="self-start font-mono">
+                        {mechanism}
+                      </Badge>
+                      <ul className="flex flex-col gap-0.5">
+                        {profile.downloads
+                          .filter((d) => d.mechanism === mechanism)
+                          .map((d, i) => (
+                            <li
+                              key={i}
+                              className="min-w-0 truncate font-mono text-[11px] text-muted-foreground"
+                              title={d.request.url}
+                            >
+                              {shortDownload(d)}
                             </li>
                           ))}
                       </ul>

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, readdir, readFile, rename, rm, writeFile, appendFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { domainLabel, requestFileName, runIdPrefix, runIdSlug, screenshotFileName, wsFileName } from './naming.js'
+import { domainLabel, requestRecordFileName, runIdPrefix, runIdSlug, screenshotFileName, wsFileName } from './naming.js'
 import sessionGuide from './session-guide.md?raw'
 import type {
   NavigationLogLine,
@@ -29,10 +29,7 @@ export async function ensureRunDir(root: string, runId: string): Promise<string>
 }
 
 export async function writeRequestFile(runDir: string, req: RecordedRequest): Promise<string> {
-  const extra =
-    req.request.graphqlOperation ??
-    (req.request.nextAction ? `action-${req.request.nextAction.slice(0, 8)}` : undefined)
-  const name = requestFileName(req.index, req.request.method, req.request.url, extra)
+  const name = requestRecordFileName(req)
   const requestsDir = join(runDir, 'requests')
 
   await mkdir(requestsDir, { recursive: true })
@@ -91,6 +88,12 @@ export async function writeRunSummary(runDir: string, markdown: string): Promise
 
 export async function writeManifest(runDir: string, manifest: RecordingManifest): Promise<void> {
   await writeFile(join(runDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8')
+}
+
+// The structured list of detected downloadable documents (PDF invoices/statements) for this run — the
+// machine-readable companion to the "Detected downloads" section of summary.md.
+export async function writeDownloads(runDir: string, downloads: unknown): Promise<void> {
+  await writeFile(join(runDir, 'downloads.json'), JSON.stringify(downloads, null, 2), 'utf8')
 }
 
 export async function writeCookies(runDir: string, cookies: unknown): Promise<void> {

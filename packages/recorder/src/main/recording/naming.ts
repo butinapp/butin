@@ -1,6 +1,8 @@
 // Filesystem-safe naming for run directories and per-request/per-WebSocket
 // files: run ids, request files, websocket files, and screenshots.
 
+import type { RecordedRequest } from './types.js'
+
 const MAX_SLUG_LEN = 120
 const MAX_LABEL_SLUG_LEN = 60
 
@@ -32,6 +34,16 @@ export function requestFileName(index: number, method: string, url: string, extr
   const suffix = extra ? `_${slugify(extra, 40)}` : ''
 
   return `${idx}_${method}_${host}_${pathSlug}${suffix}.json`
+}
+
+// The on-disk name of a record's `requests/` file — the same slug + operation/action suffix writeRequestFile uses,
+// so a detector can point a reader straight at the file without re-deriving the suffix logic.
+export function requestRecordFileName(req: RecordedRequest): string {
+  const extra =
+    req.request.graphqlOperation ??
+    (req.request.nextAction ? `action-${req.request.nextAction.slice(0, 8)}` : undefined)
+
+  return requestFileName(req.index, req.request.method, req.request.url, extra)
 }
 
 export function wsFileName(index: number, url: string): string {

@@ -2,11 +2,12 @@ import type { AuthKind } from '@butinapp/sdk'
 
 import { classifyAuth } from './auth.js'
 import { detectClearBeforeCapture } from './cookies.js'
+import { detectDownloads } from './downloads.js'
 import { classifyEndpoints } from './endpoints.js'
 import { detectLoginMode } from './login.js'
 import { classifyRender } from './render.js'
 import { classifyTransport } from './transport.js'
-import type { DomainProfile, EndpointHint, Guess, RenderGuess, RunData, RunProfile } from './types.js'
+import type { DetectedDownload, DomainProfile, EndpointHint, Guess, RenderGuess, RunData, RunProfile } from './types.js'
 
 const hasCookieHeader = (run: RunData): boolean =>
   run.requests.some((r) =>
@@ -20,6 +21,7 @@ export const profileRun = (run: RunData): RunProfile => ({
   login: detectLoginMode(run),
   endpoints: classifyEndpoints(run.requests),
   clearBeforeCapture: detectClearBeforeCapture(run),
+  downloads: detectDownloads(run.requests),
   hasCookieHeader: hasCookieHeader(run)
 })
 
@@ -82,6 +84,25 @@ const dedupeEndpoints = (lists: EndpointHint[][]): EndpointHint[] => {
   return [...byKey.values()]
 }
 
+// Union a surface's downloads across runs, deduped by URL + mechanism, keeping the highest-confidence sighting
+// of each (a later run may confirm a PDF a first run only guessed from the URL). Native-navigation downloads are
+// recorder-only (they never reach a persisted request file), so this axis reflects the passively-classified ones.
+const dedupeDownloads = (lists: DetectedDownload[][]): DetectedDownload[] => {
+  const order = { high: 3, medium: 2, low: 1 }
+  const byKey = new Map<string, DetectedDownload>()
+
+  for (const d of lists.flat()) {
+    const key = `${d.request.url}:${d.mechanism}`
+    const prev = byKey.get(key)
+
+    if (!prev || order[d.confidence] > order[prev.confidence]) {
+      byKey.set(key, d)
+    }
+  }
+
+  return [...byKey.values()]
+}
+
 // Fold a surface's per-run profiles into one. Works from RunProfile alone (no request bodies), so a cached
 // per-run summary folds without re-reading the run. The primary auth is the strongest guess; any other method
 // seen (a different kind across runs, or a Cookie riding alongside a Bearer) is surfaced as `authAlternatives`
@@ -113,6 +134,7 @@ export const foldProfiles = (surface: string, profiles: RunProfile[]): DomainPro
     login: bestGuess(profiles.map((p) => p.login)),
     endpoints: dedupeEndpoints(profiles.map((p) => p.endpoints)),
     clearBeforeCapture: mergeClearBeforeCapture(profiles.map((p) => p.clearBeforeCapture)),
+    downloads: dedupeDownloads(profiles.map((p) => p.downloads)),
     conflicts
   }
 }

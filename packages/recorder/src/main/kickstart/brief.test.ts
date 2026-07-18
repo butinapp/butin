@@ -49,6 +49,7 @@ const profile: DomainProfile = {
   login: { value: 'password', confidence: 'medium', evidence: [] },
   endpoints: [hint('invoices', 'https://acme.com/invoices')],
   clearBeforeCapture: { value: [], confidence: 'low', evidence: [] },
+  downloads: [],
   conflicts: []
 }
 

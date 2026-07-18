@@ -36,6 +36,14 @@ const renderProfile = (input: KickstartInput): string => {
     lines.push(`- **Render:** ${p.render.map((r) => `${r.host} — ${r.shape}`).join(', ')}`)
   }
 
+  if (p.downloads.length > 0) {
+    const mechanisms = [...new Set(p.downloads.map((d) => d.mechanism))].join(', ')
+
+    lines.push(
+      `- **Downloads:** ${p.downloads.length} document(s) — mechanism: ${mechanisms} — reproduce with a \`files\` table / \`fetchFile\` (\`native-navigation\` ⇒ \`ctx.browser\`). See each run's \`downloads.json\`.`
+    )
+  }
+
   return lines.join('\n')
 }
 

@@ -20,6 +20,7 @@ log.jsonl         diagnostic trace: {ts, level, event, message, data} — naviga
 requests/         one JSON per request: NNNN_METHOD_host_path[_operation].json  (NNNN = capture order)
 websockets/       one JSON per WebSocket connection, with every frame inline
 screenshots/      PNG per navigation (NNNN_<host-path>.png) — visual context only
+downloads.json    detected downloadable documents (PDF invoices/statements) + the mechanism each maps to — present ONLY when the run produced downloads. See summary.md "Detected downloads".
 cookies.json      cookies present at stop, filtered to hosts visited in this run
 storage.json      localStorage + sessionStorage per origin (often where auth tokens live)
 session.har       the same requests as standard HAR 1.2 — import into Postman/Insomnia/Chrome
@@ -149,6 +150,14 @@ the storage token or be re-done live.
 
 ## Special cases
 
+- **Downloadable documents (PDF invoices/statements)** → check `summary.md`'s **Detected downloads** section
+  and `downloads.json` first. Each entry names the `mechanism` a plugin's `files`/`fetchFile` must reproduce:
+  `direct-url-get` (GET a URL → PDF), `authed-post` (POST → PDF, often needs `Accept: application/pdf`),
+  `base64-in-json` (a `%PDF` base64-embedded in a JSON body), `url-in-json` (a JSON field carrying a signed PDF
+  URL), or `native-navigation` (a browser navigation that became a download — **not replayable headless; use
+  `ctx.browser`**). `looksSigned` flags a one-time URL that must be minted at download time, and `sourceFile`
+  points at the full request record. If a download you performed isn't listed, it was likely captured with a
+  `blob:` URL (filtered as noise) — repeat it and check `network.jsonl` for the underlying request.
 - **`context.kind` is not `"page"`** → the request came from a popup, iframe, or
   `service_worker`/`worker`. If you couldn't find a call on the main page, it likely ran in a
   worker — search across all `requests/` regardless of context.

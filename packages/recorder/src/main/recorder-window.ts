@@ -74,6 +74,23 @@ export interface CreateRecorderOptions {
   onClosed: (handle: RecordingHandle) => void
 }
 
+const formatBytes = (bytes: number): string => {
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+
+  const units = ['KB', 'MB', 'GB']
+  let value = bytes / 1024
+  let unit = 0
+
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024
+    unit += 1
+  }
+
+  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`
+}
+
 /** F12 / Ctrl+Shift+I that yields the recorder's debugger to DevTools first. */
 function bindDevToolsWithHandoff(contents: WebContents, recorder: Recorder): void {
   contents.on('before-input-event', (event, input) => {
@@ -156,6 +173,12 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
 
   let paused = !opts.autoRecord
 
+  // The status bar (load progress, title, hovered-link URL) — created before the recorder so a captured
+  // download can flash a confirmation on it.
+  const statusbar = createStatusBar()
+
+  wireStatusBar(site.webContents, statusbar)
+
   const recorder = new Recorder({
     runDir,
     captureAll: opts.captureAll,
@@ -166,7 +189,12 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
       opts.onProgress(counts)
       toolbar.setCounts(counts.requests, counts.websockets)
     },
-    onLog: opts.onLog
+    onLog: opts.onLog,
+    onDownload: ({ filename, bytes, savedAs }) => {
+      const size = bytes ? ` (${formatBytes(bytes)})` : ''
+
+      statusbar.flash(`⤓ Saved ${filename ?? 'file'}${size} → ${savedAs}`)
+    }
   })
 
   // --- debug aids (toggled live from the toolbar Debug panel) ---
@@ -243,10 +271,6 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
       applyBrowserIdentity(ses, { rewriteHeaders: on })
     }
   })
-
-  const statusbar = createStatusBar()
-
-  wireStatusBar(site.webContents, statusbar)
 
   window.contentView.addChildView(toolbar.view)
   window.contentView.addChildView(site)

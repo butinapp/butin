@@ -18,6 +18,7 @@ const baseProfile = (over: Partial<DomainProfile> = {}): DomainProfile => ({
   login: { value: 'password', confidence: 'low', evidence: [] },
   endpoints: [],
   clearBeforeCapture: { value: [], confidence: 'low', evidence: [] },
+  downloads: [],
   conflicts: [],
   ...over
 })

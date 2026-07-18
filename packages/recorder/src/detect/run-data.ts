@@ -30,7 +30,7 @@ export const loadRun = async (runDir: string): Promise<RunData> => {
 // beside the run and fold from that. `list-domains` / `get-domain` then read a tiny file per run instead of
 // every request body (hundreds of MB across a full history), which is what makes startup instant. Bump the
 // version to force a recompute when the classifiers change.
-const SUMMARY_VERSION = 1
+const SUMMARY_VERSION = 2
 
 interface RunSummary {
   version: number

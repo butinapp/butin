@@ -14,6 +14,7 @@ const profileWith = (endpoints: EndpointHint[]): DomainProfile => ({
   login: { value: 'password', confidence: 'low', evidence: [] },
   endpoints,
   clearBeforeCapture: { value: [], confidence: 'low', evidence: [] },
+  downloads: [],
   conflicts: []
 })
 

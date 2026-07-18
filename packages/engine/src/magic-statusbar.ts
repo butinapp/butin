@@ -33,6 +33,7 @@ const HTML_SOURCE = `<!doctype html>
       @keyframes sweep { 0% { left: -40% } 100% { left: 100% } }
       #text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
       #text.target { color: #d4d4d8; font-family: ui-monospace, SFMono-Regular, Menlo, monospace }
+      #text.flash { color: #4ade80 }
     </style>
   </head>
   <body>
@@ -40,18 +41,21 @@ const HTML_SOURCE = `<!doctype html>
     <div id="text"></div>
     <script>
       var textEl = document.getElementById('text')
-      var loading = false, loadingText = '', idleText = '', targetText = ''
+      var loading = false, loadingText = '', idleText = '', targetText = '', flashText = ''
 
-      // Hovered link wins (you want to see where a click goes); otherwise the loading line, else the idle title.
+      // A transient flash (e.g. "saved …") wins over everything while active; then the hovered link (you want to
+      // see where a click goes); otherwise the loading line, else the idle title.
       function render() {
         document.body.classList.toggle('loading', loading)
+        textEl.classList.remove('target', 'flash')
+        if (flashText) { textEl.classList.add('flash'); textEl.textContent = flashText; return }
         if (targetText) { textEl.classList.add('target'); textEl.textContent = targetText; return }
-        textEl.classList.remove('target')
         textEl.textContent = loading ? (loadingText || 'Loading…') : idleText
       }
       window.__setLoading = function (on, text) { loading = !!on; loadingText = text || ''; render() }
       window.__setIdle = function (text) { idleText = text || ''; render() }
       window.__setTarget = function (url) { targetText = url || ''; render() }
+      window.__setFlash = function (text) { flashText = text || ''; render() }
       render()
     </script>
   </body>
@@ -76,6 +80,8 @@ export interface StatusBar {
   setLoading: (on: boolean, text?: string) => void
   setIdle: (text: string) => void
   setTarget: (url: string) => void
+  // Show a transient message (highest priority) that auto-clears after `ms` — e.g. "saved invoice.pdf".
+  flash: (text: string, ms?: number) => void
 }
 
 export const createStatusBar = (): StatusBar => {
@@ -88,11 +94,14 @@ export const createStatusBar = (): StatusBar => {
   let loadingText = ''
   let idleText = ''
   let targetText = ''
+  let flashText = ''
+  let flashTimer: ReturnType<typeof setTimeout> | undefined
 
   view.webContents.on('did-finish-load', () => {
     loaded = true
     exec(`window.__setIdle(${JSON.stringify(idleText)})`)
     exec(`window.__setTarget(${JSON.stringify(targetText)})`)
+    exec(`window.__setFlash(${JSON.stringify(flashText)})`)
     exec(`window.__setLoading(${JSON.stringify(loading)}, ${JSON.stringify(loadingText)})`)
   })
 
@@ -121,6 +130,20 @@ export const createStatusBar = (): StatusBar => {
       if (loaded) {
         exec(`window.__setTarget(${JSON.stringify(url)})`)
       }
+    },
+    flash: (text, ms = 6000) => {
+      clearTimeout(flashTimer)
+
+      const push = (value: string) => {
+        flashText = value
+
+        if (loaded) {
+          exec(`window.__setFlash(${JSON.stringify(value)})`)
+        }
+      }
+
+      push(text)
+      flashTimer = setTimeout(() => push(''), ms)
     }
   }
 }
