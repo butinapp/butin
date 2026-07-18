@@ -298,13 +298,16 @@ interface StatementRow {
   name: string
 }
 
-// Pure transform — fixture-tested. The billing.summary preset (headline stat + monthly chart + spend
-// summary) with the newest statement total as the headline, plus the downloadable statements table (the
-// Laserfiche PDF per row). One tab carries both the glance and the receipts.
-export const buildFilgoStatements = (raw: FilgoStatementsRaw): CapabilityResult => {
-  const statements = raw.statements.map(normalizeStatement).sort((a, b) => b.date.localeCompare(a.date))
+const sortedStatements = (raw: FilgoStatementsRaw): FilgoStatement[] =>
+  raw.statements.map(normalizeStatement).sort((a, b) => b.date.localeCompare(a.date))
 
-  const result = billing.summary({
+// Pure transform — fixture-tested. The Summary tab: the newest statement total as the headline stat, the
+// monthly-statements chart, and the spend summary that feeds the cross-service Overview. No receipts table —
+// that's the Billing tab.
+export const buildFilgoSummary = (raw: FilgoStatementsRaw): CapabilityResult => {
+  const statements = sortedStatements(raw)
+
+  return billing.summary({
     currentMtd: statements[0]?.total ?? null,
     currentMtdLabel: 'Dernier relevé',
     // The total of the most recent account statement — a consumer utility figure, not a live accrual.
@@ -322,32 +325,37 @@ export const buildFilgoStatements = (raw: FilgoStatementsRaw): CapabilityResult 
       { key: 'count', label: 'Relevés', role: 'count', value: statements.length }
     ]
   })
+}
 
-  if (statements.length) {
-    const statementTable = table<StatementRow>({
-      id: 'statements',
-      columns: [
-        { key: 'date', label: 'Date', role: 'timestamp' },
-        { key: 'number', label: 'No relevé', role: 'identifier' },
-        { key: 'total', label: 'Total', role: 'money', currency: CURRENCY },
-        { key: 'url', label: 'PDF', role: 'url' },
-        { key: 'name', role: 'label', hidden: true }
-      ],
-      rows: statements.map((s) => ({
-        date: s.date || null,
-        number: s.number,
-        total: s.total,
-        url: s.url,
-        name: s.docName
-      })),
-      key: 'number'
-    }).fileTable({ title: 'Relevés', name: 'name', source: { url: 'url' }, ext: 'pdf', category: 'Relevés' })
+// Pure transform — fixture-tested. The Billing tab: the downloadable account statements (the Laserfiche PDF per
+// row), newest-first. Carries no spend summary — the Summary tab owns the headline.
+export const buildFilgoStatements = (raw: FilgoStatementsRaw): CapabilityResult => {
+  const statements = sortedStatements(raw)
 
-    result.datasets.push(statementTable.dataset)
-    result.views = [...(result.views ?? []), statementTable.view]
+  if (!statements.length) {
+    return capabilityResult({ sections: [] })
   }
 
-  return result
+  const statementTable = table<StatementRow>({
+    id: 'statements',
+    columns: [
+      { key: 'date', label: 'Date', role: 'timestamp' },
+      { key: 'number', label: 'No relevé', role: 'identifier' },
+      { key: 'total', label: 'Total', role: 'money', currency: CURRENCY },
+      { key: 'url', label: 'PDF', role: 'url' },
+      { key: 'name', role: 'label', hidden: true }
+    ],
+    rows: statements.map((s) => ({
+      date: s.date || null,
+      number: s.number,
+      total: s.total,
+      url: s.url,
+      name: s.docName
+    })),
+    key: 'number'
+  }).fileTable({ title: 'Relevés', name: 'name', source: { url: 'url' }, ext: 'pdf', category: 'Relevés' })
+
+  return capabilityResult({ sections: [statementTable] })
 }
 
 const fetchStatements = async (ctx: CollectContext): Promise<FilgoStatementsRaw> => {
@@ -486,8 +494,15 @@ export const filgoPlugin = definePlugin({
   },
   capabilities: [
     defineCapability({
+      id: 'summary',
+      label: 'Summary',
+      fetch: fetchStatements,
+      build: buildFilgoSummary,
+      sample: sampleFilgoStatements
+    }),
+    defineCapability({
       id: 'statements',
-      label: 'Relevés',
+      label: 'Billing',
       fetch: fetchStatements,
       build: buildFilgoStatements,
       sample: sampleFilgoStatements

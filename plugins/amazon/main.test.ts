@@ -6,6 +6,7 @@ import { expect, test } from 'vitest'
 import {
   amazonPlugin,
   buildAmazonBilling,
+  buildAmazonSummary,
   isAmazonSignedOut,
   parseAmazonDate,
   parseInvoicePopover,
@@ -50,13 +51,13 @@ const POPOVER_TWO =
 const POPOVER_NONE =
   '<ul class="invoice-list"><li><a class="a-link-normal" href="/gp/css/summary/print.html?orderID=777-8888888-9999999">Printable Order Summary</a></li></ul>'
 
-test('amazon plugin is a cookie-session scrape with one CAD billing capability', () => {
+test('amazon plugin is a cookie-session scrape with Summary + Billing tabs', () => {
   expect(amazonPlugin.meta.id).toBe('amazon')
   expect(amazonPlugin.reportingCurrency).toBe('CAD')
   expect(amazonPlugin.auth.kind).toBe('cookie')
   expect(amazonPlugin.session?.requiredCookie).toBe('at-acbca')
   expect(amazonPlugin.transport?.requiresBrowserEngine).toBe(true)
-  expect(amazonPlugin.capabilities.map((c) => c.id)).toEqual(['billing'])
+  expect(amazonPlugin.capabilities.map((c) => c.id)).toEqual(['summary', 'billing'])
 })
 
 // --- isAmazonSignedOut (the probe's signal) ---
@@ -130,9 +131,38 @@ test('parseInvoicePopover keeps only invoice PDFs, dropping the summary and cont
   expect(parseInvoicePopover('')).toEqual([])
 })
 
-// --- buildAmazonBilling ---
+// --- buildAmazonSummary (the Summary tab: spend rollup) ---
 
-test('buildAmazonBilling builds the spend rollup + a lazily-downloadable Orders table', () => {
+test('buildAmazonSummary builds the current-month spend rollup + the cross-service spend summary', () => {
+  const ym = currentMonthKey()
+  const result = buildAmazonSummary([
+    { orderId: '111-2223334-5556667', date: `${ym}-15`, total: 238.88, items: ['Anker USB-C Cable'] },
+    { orderId: 'D01-8794964-0377844', date: '2024-12-01', total: 25.28 }
+  ])
+
+  expect(validateCapabilityResult(result)).toEqual([])
+
+  const account = result.datasets.find((d) => d.id === 'account') as unknown as { value: Record<string, unknown> }
+
+  expect(account.value.currentMtd).toBe(238.88)
+  expect(result.summaries?.[0]).toMatchObject({ section: 'spend', value: 238.88 })
+  // No Orders table here — that's the Billing tab.
+  expect(result.datasets.some((d) => d.id === 'orders')).toBe(false)
+})
+
+test('buildAmazonSummary tolerates empty/missing input and reports no current spend', () => {
+  expect(validateCapabilityResult(buildAmazonSummary(null))).toEqual([])
+
+  const account = buildAmazonSummary([]).datasets.find((d) => d.id === 'account') as unknown as {
+    value: Record<string, unknown>
+  }
+
+  expect(account.value.currentMtd).toBeNull()
+})
+
+// --- buildAmazonBilling (the Billing tab: downloadable Orders table) ---
+
+test('buildAmazonBilling is the lazily-downloadable Orders table, with no spend summary', () => {
   const ym = currentMonthKey()
   const result = buildAmazonBilling([
     {
@@ -146,12 +176,8 @@ test('buildAmazonBilling builds the spend rollup + a lazily-downloadable Orders 
   ])
 
   expect(validateCapabilityResult(result)).toEqual([])
-
-  // Spend rollup: current-month total + the cross-service spend summary.
-  const account = result.datasets.find((d) => d.id === 'account') as unknown as { value: Record<string, unknown> }
-
-  expect(account.value.currentMtd).toBe(238.88)
-  expect(result.summaries?.[0]).toMatchObject({ section: 'spend', value: 238.88 })
+  // One spend summary per service — it lives on Summary, so Billing carries none.
+  expect(result.summaries).toBeUndefined()
 
   // The Orders table downloads PER ROW via fetchFile (no eager PDF URLs), carrying the popover URL hidden.
   const view = result.views?.find((v) => v.type === 'table' && v.dataset === 'orders') as { files?: unknown }
@@ -173,22 +199,14 @@ test('buildAmazonBilling builds the spend rollup + a lazily-downloadable Orders 
   expect(subscription?.items).toBe('')
 })
 
-test('buildAmazonBilling tolerates empty/missing input and reports no current spend', () => {
-  expect(validateCapabilityResult(buildAmazonBilling(null))).toEqual([])
-
-  const account = buildAmazonBilling([]).datasets.find((d) => d.id === 'account') as unknown as {
-    value: Record<string, unknown>
-  }
-
-  expect(account.value.currentMtd).toBeNull()
-})
-
 // --- incremental fetch ---
 
-test('billing is incremental — a keyed orders table + an orderId/date watermark', () => {
-  const billing = amazonPlugin.capabilities.find((c) => c.id === 'billing')!
+test('both tabs are incremental over the same orders union — a keyed orders table + an orderId/date watermark', () => {
+  for (const id of ['summary', 'billing']) {
+    const cap = amazonPlugin.capabilities.find((c) => c.id === id)!
 
-  expect(billing.incremental).toMatchObject({ id: 'orderId', timestamp: 'date', window: { days: 60 } })
+    expect(cap.incremental, id).toMatchObject({ id: 'orderId', timestamp: 'date', window: { days: 60 } })
+  }
 
   // The orders table is keyed so the ledger accumulates (keeps orders the service ages out) instead of replacing.
   const orders = buildAmazonBilling([]).datasets.find((d) => d.id === 'orders') as unknown as { key?: string }
@@ -196,7 +214,7 @@ test('billing is incremental — a keyed orders table + an orderId/date watermar
   expect(orders.key).toBe('orderId')
 })
 
-test('buildAmazonBilling over a merged union spans retained-old + updated + new orders', () => {
+test('build over a merged union spans retained-old + updated + new orders', () => {
   // The union after a window re-fetch: an old order the service no longer returns is RETAINED, a recent order's
   // total was revised down (a refund — the fresher copy), and a brand-new order arrived. build sees them all.
   const ym = currentMonthKey()
@@ -206,16 +224,16 @@ test('buildAmazonBilling over a merged union spans retained-old + updated + new 
     { orderId: 'NEW-1', date: `${ym}-20`, total: 30 }
   ]
 
-  const result = buildAmazonBilling(union)
-
-  expect(validateCapabilityResult(result)).toEqual([])
-
-  // The whole union renders (the aged-out 2019 order included), and current-month spend sums only this month.
-  const rows = (result.datasets.find((d) => d.id === 'orders') as unknown as { rows: OrderRow[] }).rows
+  // Billing lists the whole union (the aged-out 2019 order included) …
+  const rows = (buildAmazonBilling(union).datasets.find((d) => d.id === 'orders') as unknown as { rows: OrderRow[] })
+    .rows
 
   expect(rows.map((r) => r.orderId).sort()).toEqual(['NEW-1', 'OLD-1', 'REC-1'])
 
-  const account = result.datasets.find((d) => d.id === 'account') as unknown as { value: Record<string, unknown> }
+  // … and Summary sums only this month across that same union.
+  const account = buildAmazonSummary(union).datasets.find((d) => d.id === 'account') as unknown as {
+    value: Record<string, unknown>
+  }
 
   expect(account.value.currentMtd).toBe(37)
 })
