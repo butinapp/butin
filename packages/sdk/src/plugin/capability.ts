@@ -24,6 +24,11 @@ export type CollectContext<TConfig = Record<string, unknown>> = {
   // means fetch everything — the first run, a forced full refetch, or a non-incremental capability. Core derives
   // it from the stored row union (newest kept timestamp, minus the declared re-fetch window). See `incremental`.
   since?: string
+  // The resolved `Authorization` header value for this session (e.g. `Bearer <jwt>` for a minted/SPA bearer), for
+  // the rare case a collector must attach the SAME auth to a browser-side fetch (`ctx.browser`) — priming a
+  // stateful portal's server session before its pages will render. Cached by `client`, so a normal `client` call
+  // must have run first; `undefined` when the session is cookie-only.
+  authToken?: () => string | undefined
   log: (message: string, extra?: Record<string, unknown>) => void
 }
 

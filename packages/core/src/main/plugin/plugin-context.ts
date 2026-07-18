@@ -2,6 +2,7 @@ import type { ButinClient, ButinPlugin, Capability, CollectContext } from '@buti
 
 import { createBrowserSession } from '../browser/browser-session.js'
 import { createLogger } from '../log.js'
+import { getCachedBearer } from '../session/spa-session.js'
 import { createCredentialStore } from '../store/credentials.js'
 import { getPluginConfig } from '../store/plugin-config.js'
 import { createBackendClient, createClient } from '../transport/client.js'
@@ -75,6 +76,9 @@ export const buildContext = (plugin: ButinPlugin, scope: string): CollectContext
     creds,
     config,
     browser: createBrowserSession(plugin),
+    // The minted SPA bearer, once a `client` call has cached it — for a collector that must attach it to a
+    // browser-side fetch (priming a stateful portal). Undefined for cookie-only sessions.
+    authToken: () => getCachedBearer(plugin.meta.id),
     log: createLogger({ plugin: plugin.meta.id, action: scope }).info
   }
 }

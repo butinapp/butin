@@ -1,0 +1,580 @@
+{
+  "demandeur": "0100000001",
+  "relations": [
+    {
+      "noPartenaireDemandeur": "0100000001",
+      "nom1Demandeur": "Alex",
+      "nom2Demandeur": "Tremblay",
+      "noPartenaireTitulaire": "0100000001",
+      "nom1Titulaire": "Alex",
+      "nom2Titulaire": "Tremblay",
+      "typeRelation": "",
+      "indEcActif": true,
+      "nickname": ""
+    },
+    {
+      "noPartenaireDemandeur": "0100000001",
+      "nom1Demandeur": "Alex",
+      "nom2Demandeur": "Tremblay",
+      "noPartenaireTitulaire": "0100000002",
+      "nom1Titulaire": "Alex Tremblay",
+      "nom2Titulaire": "Sam Gagnon",
+      "typeRelation": "BUR003",
+      "indEcActif": true,
+      "nickname": ""
+    }
+  ],
+  "accounts": [
+    {
+      "titulaire": "0100000001",
+      "relationName": "Alex Tremblay",
+      "compte": {
+        "noCompteContrat": "290000000001",
+        "titulaire": "0100000001",
+        "nomTitulaire": "Tremblay",
+        "prenomTitulaire": "Alex",
+        "adresse": " 1-100 rue Exemple Quebec QC  G1R 0A0",
+        "adresseFacturation": " 1-100 rue Exemple Quebec QC  G1R 0A0",
+        "montant": 50.41,
+        "solde": 0.0,
+        "soldeEnSouffrance": 0.0,
+        "montantEchu": 0.0,
+        "dateEmission": "2026-06-25",
+        "dateEcheance": "2026-07-16",
+        "dateProchaineFacture": "2026-07-27",
+        "listeNoContrat": ["0300000001"],
+        "indicateurPA": true,
+        "libelle": "Banque Exemple",
+        "segmentation": "RES",
+        "surConsommationMVE": true,
+        "sousConsommationMVE": false
+      }
+    },
+    {
+      "titulaire": "0100000001",
+      "relationName": "Alex Tremblay",
+      "compte": {
+        "noCompteContrat": "290000000002",
+        "titulaire": "0100000001",
+        "nomTitulaire": "Tremblay",
+        "prenomTitulaire": "Alex",
+        "adresse": " 2-200 rue Exemple Montreal QC  H2M 0A0",
+        "adresseFacturation": " 2-200 rue Exemple Montreal QC  H2M 0A0",
+        "montant": 160.94,
+        "solde": 160.94,
+        "soldeEnSouffrance": 0.0,
+        "montantEchu": 0.0,
+        "dateEmission": "2026-07-02",
+        "dateEcheance": "2026-07-23",
+        "dateProchaineFacture": "2026-08-04",
+        "listeNoContrat": ["0300000002"],
+        "indicateurPA": true,
+        "libelle": "Banque Exemple",
+        "segmentation": "RES",
+        "surConsommationMVE": false,
+        "sousConsommationMVE": false
+      }
+    },
+    {
+      "titulaire": "0100000002",
+      "relationName": "Alex Tremblay / Sam Gagnon",
+      "compte": {
+        "noCompteContrat": "290000000003",
+        "titulaire": "0100000002",
+        "nomTitulaire": "Tremblay",
+        "prenomTitulaire": "Alex",
+        "adresse": " 3-300 boul Exemple Laval QC  H7N 0A0",
+        "adresseFacturation": " 3-300 boul Exemple Laval QC  H7N 0A0",
+        "montant": 89.12,
+        "solde": 89.12,
+        "soldeEnSouffrance": 12.0,
+        "montantEchu": 12.0,
+        "dateEmission": "2026-06-20",
+        "dateEcheance": "2026-07-30",
+        "dateProchaineFacture": "2026-08-12",
+        "listeNoContrat": ["0300000003"],
+        "indicateurPA": false,
+        "libelle": "",
+        "segmentation": "AFF",
+        "surConsommationMVE": false,
+        "sousConsommationMVE": false
+      }
+    }
+  ],
+  "contracts": [
+    {
+      "titulaire": "0100000001",
+      "contrat": {
+        "noContrat": "0300000001",
+        "adresseConsommation": " 1-100 rue Exemple Quebec QC  G1R 0A0",
+        "idLieuConsommation": "0500000001",
+        "noCompteContrat": "290000000001",
+        "noInstallation": "0400000001",
+        "noCompteur": "G9SJ0000001",
+        "tarifActuel": "D",
+        "dateDebutContrat": "2020-05-31T04:00:00.000+00:00",
+        "numeroTelephone": "514 0000000",
+        "indicateurMVE": false,
+        "codeAdhesionCPC": "N"
+      }
+    },
+    {
+      "titulaire": "0100000001",
+      "contrat": {
+        "noContrat": "0300000002",
+        "adresseConsommation": " 2-200 rue Exemple Montreal QC  H2M 0A0",
+        "idLieuConsommation": "0500000002",
+        "noCompteContrat": "290000000002",
+        "noInstallation": "0400000002",
+        "noCompteur": "G9SJ0000002",
+        "tarifActuel": "D",
+        "dateDebutContrat": "2025-07-31T04:00:00.000+00:00",
+        "numeroTelephone": "514 0000000",
+        "indicateurMVE": true,
+        "codeAdhesionCPC": "N"
+      }
+    },
+    {
+      "titulaire": "0100000002",
+      "contrat": {
+        "noContrat": "0300000003",
+        "adresseConsommation": " 3-300 boul Exemple Laval QC  H7N 0A0",
+        "idLieuConsommation": "0500000003",
+        "noCompteContrat": "290000000003",
+        "noInstallation": "0400000003",
+        "noCompteur": "G9SJ0000003",
+        "tarifActuel": "DPC",
+        "dateDebutContrat": "2019-01-15T05:00:00.000+00:00",
+        "numeroTelephone": "450 0000000",
+        "indicateurMVE": false,
+        "codeAdhesionCPC": "O"
+      }
+    }
+  ],
+  "billingPeriods": [
+    {
+      "noContrat": "0300000001",
+      "periods": [
+        {
+          "dateDebut": "2026-06-02",
+          "dateFin": "2026-08-03",
+          "totalConso": 879,
+          "montantFacture": 95.81,
+          "montantVenteFraisAccesReseau": 21.23,
+          "montantCreditCPC": 0.0,
+          "montantTaxes": 12.48,
+          "montantConsommation": 62.1
+        },
+        {
+          "dateDebut": "2026-04-02",
+          "dateFin": "2026-06-01",
+          "totalConso": 1651,
+          "montantFacture": 166.47,
+          "montantVenteFraisAccesReseau": 28.15,
+          "montantCreditCPC": 0.0,
+          "montantTaxes": 21.68,
+          "montantConsommation": 116.64
+        },
+        {
+          "dateDebut": "2026-02-02",
+          "dateFin": "2026-04-01",
+          "totalConso": 2210,
+          "montantFacture": 238.12,
+          "montantVenteFraisAccesReseau": 30.1,
+          "montantCreditCPC": 0.0,
+          "montantTaxes": 31.02,
+          "montantConsommation": 177.0
+        },
+        {
+          "dateDebut": "2025-12-02",
+          "dateFin": "2026-02-01",
+          "totalConso": 2560,
+          "montantFacture": 271.44,
+          "montantVenteFraisAccesReseau": 31.0,
+          "montantCreditCPC": 0.0,
+          "montantTaxes": 35.36,
+          "montantConsommation": 205.08
+        }
+      ]
+    },
+    {
+      "noContrat": "0300000002",
+      "periods": [
+        {
+          "dateDebut": "2026-05-20",
+          "dateFin": "2026-07-18",
+          "totalConso": 1240,
+          "montantFacture": 138.4,
+          "montantVenteFraisAccesReseau": 25.3,
+          "montantCreditCPC": 0.0,
+          "montantTaxes": 20.94,
+          "montantConsommation": 92.16
+        },
+        {
+          "dateDebut": "2026-03-20",
+          "dateFin": "2026-05-19",
+          "totalConso": 1520,
+          "montantFacture": 150.1,
+          "montantVenteFraisAccesReseau": 26.1,
+          "montantCreditCPC": 0.0,
+          "montantTaxes": 22.5,
+          "montantConsommation": 101.5
+        },
+        {
+          "dateDebut": "2026-01-20",
+          "dateFin": "2026-03-19",
+          "totalConso": 1980,
+          "montantFacture": 205.6,
+          "montantVenteFraisAccesReseau": 28.4,
+          "montantCreditCPC": 0.0,
+          "montantTaxes": 30.1,
+          "montantConsommation": 147.1
+        }
+      ]
+    },
+    {
+      "noContrat": "0300000003",
+      "periods": [
+        {
+          "dateDebut": "2026-06-01",
+          "dateFin": "2026-07-31",
+          "totalConso": 640,
+          "montantFacture": 77.5,
+          "montantVenteFraisAccesReseau": 15.2,
+          "montantCreditCPC": 5.0,
+          "montantTaxes": 11.6,
+          "montantConsommation": 50.7
+        },
+        {
+          "dateDebut": "2026-04-01",
+          "dateFin": "2026-05-31",
+          "totalConso": 760,
+          "montantFacture": 70.0,
+          "montantVenteFraisAccesReseau": 15.2,
+          "montantCreditCPC": 0.0,
+          "montantTaxes": 10.5,
+          "montantConsommation": 44.3
+        },
+        {
+          "dateDebut": "2026-02-01",
+          "dateFin": "2026-03-31",
+          "totalConso": 1120,
+          "montantFacture": 118.2,
+          "montantVenteFraisAccesReseau": 17.0,
+          "montantCreditCPC": 0.0,
+          "montantTaxes": 15.4,
+          "montantConsommation": 85.8
+        }
+      ]
+    }
+  ],
+  "invoiceDocs": [
+    {
+      "noCompteContrat": "290000000001",
+      "docs": [
+        {
+          "noFacture": "760000000001",
+          "idFacturePDF": "000000000000000000000212DA971003",
+          "date": "2026-06-25",
+          "amount": 50.41,
+          "demandeur": "0100000001",
+          "titulaire": "0100000001"
+        },
+        {
+          "noFacture": "760000000011",
+          "idFacturePDF": "0000000000000000000002C3CE1EC02C",
+          "date": "2026-04-25",
+          "amount": 166.47,
+          "demandeur": "0100000001",
+          "titulaire": "0100000001"
+        },
+        {
+          "noFacture": "760000000012",
+          "idFacturePDF": "000000000000000000000374C1A6703C",
+          "date": "2026-02-25",
+          "amount": 238.12,
+          "demandeur": "0100000001",
+          "titulaire": "0100000001"
+        },
+        {
+          "noFacture": "760000000013",
+          "idFacturePDF": "000000000000000000000425B52E204E",
+          "date": "2025-12-25",
+          "amount": 271.44,
+          "demandeur": "0100000001",
+          "titulaire": "0100000001"
+        }
+      ]
+    },
+    {
+      "noCompteContrat": "290000000002",
+      "docs": [
+        {
+          "noFacture": "770000000002",
+          "idFacturePDF": "000000000000000000000219D6BABC06",
+          "date": "2026-07-02",
+          "amount": 160.94,
+          "demandeur": "0100000001",
+          "titulaire": "0100000001"
+        },
+        {
+          "noFacture": "770000000021",
+          "idFacturePDF": "0000000000000000000002CD1E4E5054",
+          "date": "2026-05-02",
+          "amount": 150.1,
+          "demandeur": "0100000001",
+          "titulaire": "0100000001"
+        },
+        {
+          "noFacture": "770000000022",
+          "idFacturePDF": "00000000000000000000038065E1E46E",
+          "date": "2026-03-02",
+          "amount": 205.6,
+          "demandeur": "0100000001",
+          "titulaire": "0100000001"
+        }
+      ]
+    },
+    {
+      "noCompteContrat": "290000000003",
+      "docs": [
+        {
+          "noFacture": "740000000003",
+          "idFacturePDF": "000000000000000000000204E24FB809",
+          "date": "2026-06-20",
+          "amount": 89.12,
+          "demandeur": "0100000001",
+          "titulaire": "0100000002"
+        },
+        {
+          "noFacture": "740000000031",
+          "idFacturePDF": "0000000000000000000002B12DBFA07C",
+          "date": "2026-04-20",
+          "amount": 70.0,
+          "demandeur": "0100000001",
+          "titulaire": "0100000002"
+        },
+        {
+          "noFacture": "740000000032",
+          "idFacturePDF": "00000000000000000000035D792F88A0",
+          "date": "2026-02-20",
+          "amount": 118.2,
+          "demandeur": "0100000001",
+          "titulaire": "0100000002"
+        }
+      ]
+    }
+  ],
+  "portraits": [
+    {
+      "titulaire": "0100000001",
+      "portrait": {
+        "noContrat": "0300000001",
+        "adresseLieuConsoPartie1": " 1-100 rue Exemple",
+        "adresseLieuConsoPartie2": "Quebec QC  G1R 0A0",
+        "tarifActuel": "D",
+        "codeTarif": "D",
+        "modeChauffage": "E",
+        "listeDonneesConsommationPeriode": [
+          {
+            "dateDebutPeriode": "2026-03-26T04:00:00.000Z",
+            "dateFinPeriode": "2026-05-25T04:00:00.000Z",
+            "dateDerniereLecturePeriode": "2026-05-24T04:00:00.000Z",
+            "nbJourLecturePeriode": 60,
+            "nbJourPrevuPeriode": 60,
+            "consoTotalPeriode": 980,
+            "consoTotalProjetePeriode": 1010,
+            "consoRegPeriode": 980,
+            "consoHautPeriode": 0,
+            "montantVente": 88.2,
+            "montantTaxes": 13.2,
+            "montantFacturePeriode": 101.4,
+            "moyenneKwhJourPeriode": 16.3,
+            "moyenneDollarsJourPeriode": 1.69,
+            "indMVEPeriode": true
+          },
+          {
+            "dateDebutPeriode": "2026-05-26T04:00:00.000Z",
+            "dateFinPeriode": "2026-07-24T04:00:00.000Z",
+            "dateDerniereLecturePeriode": "2026-07-17T04:00:00.000Z",
+            "nbJourLecturePeriode": 53,
+            "nbJourPrevuPeriode": 60,
+            "consoTotalPeriode": 488,
+            "consoTotalProjetePeriode": 585,
+            "consoRegPeriode": 488,
+            "consoHautPeriode": 0,
+            "montantVente": 58.94,
+            "montantTaxes": 8.83,
+            "montantFacturePeriode": 67.77,
+            "moyenneKwhJourPeriode": 9.2,
+            "moyenneDollarsJourPeriode": 1.28,
+            "indMVEPeriode": true
+          }
+        ],
+        "listeDonneesConsommationMensuelles": [
+          {
+            "dateDebutMois": "2026-04-01T04:00:00.000Z",
+            "dateFinMois": "2026-04-30T04:00:00.000Z",
+            "consoTotalMoisDecimal": 410.0,
+            "moyenneKwhJourMois": 13.7,
+            "tempMoyenneMois": 5
+          },
+          {
+            "dateDebutMois": "2026-05-01T04:00:00.000Z",
+            "dateFinMois": "2026-05-31T04:00:00.000Z",
+            "consoTotalMoisDecimal": 300.5,
+            "moyenneKwhJourMois": 10.0,
+            "tempMoyenneMois": 5
+          },
+          {
+            "dateDebutMois": "2026-06-01T04:00:00.000Z",
+            "dateFinMois": "2026-06-30T04:00:00.000Z",
+            "consoTotalMoisDecimal": 257.09,
+            "moyenneKwhJourMois": 8.6,
+            "tempMoyenneMois": 5
+          }
+        ]
+      }
+    },
+    {
+      "titulaire": "0100000001",
+      "portrait": {
+        "noContrat": "0300000002",
+        "adresseLieuConsoPartie1": " 2-200 rue Exemple",
+        "adresseLieuConsoPartie2": "Montreal QC  H2M 0A0",
+        "tarifActuel": "D",
+        "codeTarif": "D",
+        "modeChauffage": "G",
+        "listeDonneesConsommationPeriode": [
+          {
+            "dateDebutPeriode": "2026-03-20T04:00:00.000Z",
+            "dateFinPeriode": "2026-05-19T04:00:00.000Z",
+            "dateDerniereLecturePeriode": "2026-05-18T04:00:00.000Z",
+            "nbJourLecturePeriode": 60,
+            "nbJourPrevuPeriode": 60,
+            "consoTotalPeriode": 1520,
+            "consoTotalProjetePeriode": 1560,
+            "consoRegPeriode": 1520,
+            "consoHautPeriode": 0,
+            "montantVente": 150.1,
+            "montantTaxes": 22.5,
+            "montantFacturePeriode": 172.6,
+            "moyenneKwhJourPeriode": 25.3,
+            "moyenneDollarsJourPeriode": 2.87,
+            "indMVEPeriode": true
+          },
+          {
+            "dateDebutPeriode": "2026-05-20T04:00:00.000Z",
+            "dateFinPeriode": "2026-07-18T04:00:00.000Z",
+            "dateDerniereLecturePeriode": "2026-07-17T04:00:00.000Z",
+            "nbJourLecturePeriode": 58,
+            "nbJourPrevuPeriode": 60,
+            "consoTotalPeriode": 1240,
+            "consoTotalProjetePeriode": 1300,
+            "consoRegPeriode": 1240,
+            "consoHautPeriode": 0,
+            "montantVente": 138.4,
+            "montantTaxes": 20.94,
+            "montantFacturePeriode": 159.34,
+            "moyenneKwhJourPeriode": 20.6,
+            "moyenneDollarsJourPeriode": 2.66,
+            "indMVEPeriode": true
+          }
+        ],
+        "listeDonneesConsommationMensuelles": [
+          {
+            "dateDebutMois": "2026-04-01T04:00:00.000Z",
+            "dateFinMois": "2026-04-30T04:00:00.000Z",
+            "consoTotalMoisDecimal": 720.0,
+            "moyenneKwhJourMois": 24.0,
+            "tempMoyenneMois": 5
+          },
+          {
+            "dateDebutMois": "2026-05-01T04:00:00.000Z",
+            "dateFinMois": "2026-05-31T04:00:00.000Z",
+            "consoTotalMoisDecimal": 640.0,
+            "moyenneKwhJourMois": 21.3,
+            "tempMoyenneMois": 5
+          },
+          {
+            "dateDebutMois": "2026-06-01T04:00:00.000Z",
+            "dateFinMois": "2026-06-30T04:00:00.000Z",
+            "consoTotalMoisDecimal": 600.0,
+            "moyenneKwhJourMois": 20.0,
+            "tempMoyenneMois": 5
+          }
+        ]
+      }
+    },
+    {
+      "titulaire": "0100000002",
+      "portrait": {
+        "noContrat": "0300000003",
+        "adresseLieuConsoPartie1": " 3-300 boul Exemple",
+        "adresseLieuConsoPartie2": "Laval QC  H7N 0A0",
+        "tarifActuel": "DPC",
+        "codeTarif": "DPC",
+        "modeChauffage": "E",
+        "listeDonneesConsommationPeriode": [
+          {
+            "dateDebutPeriode": "2026-04-01T04:00:00.000Z",
+            "dateFinPeriode": "2026-05-31T04:00:00.000Z",
+            "dateDerniereLecturePeriode": "2026-05-30T04:00:00.000Z",
+            "nbJourLecturePeriode": 60,
+            "nbJourPrevuPeriode": 60,
+            "consoTotalPeriode": 760,
+            "consoTotalProjetePeriode": 800,
+            "consoRegPeriode": 760,
+            "consoHautPeriode": 0,
+            "montantVente": 70.0,
+            "montantTaxes": 10.5,
+            "montantFacturePeriode": 80.5,
+            "moyenneKwhJourPeriode": 12.4,
+            "moyenneDollarsJourPeriode": 1.34,
+            "indMVEPeriode": true
+          },
+          {
+            "dateDebutPeriode": "2026-06-01T04:00:00.000Z",
+            "dateFinPeriode": "2026-07-31T04:00:00.000Z",
+            "dateDerniereLecturePeriode": "2026-07-17T04:00:00.000Z",
+            "nbJourLecturePeriode": 46,
+            "nbJourPrevuPeriode": 60,
+            "consoTotalPeriode": 640,
+            "consoTotalProjetePeriode": 700,
+            "consoRegPeriode": 640,
+            "consoHautPeriode": 0,
+            "montantVente": 77.5,
+            "montantTaxes": 11.6,
+            "montantFacturePeriode": 89.1,
+            "moyenneKwhJourPeriode": 10.7,
+            "moyenneDollarsJourPeriode": 1.48,
+            "indMVEPeriode": true
+          }
+        ],
+        "listeDonneesConsommationMensuelles": [
+          {
+            "dateDebutMois": "2026-04-01T04:00:00.000Z",
+            "dateFinMois": "2026-04-30T04:00:00.000Z",
+            "consoTotalMoisDecimal": 395.0,
+            "moyenneKwhJourMois": 13.2,
+            "tempMoyenneMois": 5
+          },
+          {
+            "dateDebutMois": "2026-05-01T04:00:00.000Z",
+            "dateFinMois": "2026-05-31T04:00:00.000Z",
+            "consoTotalMoisDecimal": 365.0,
+            "moyenneKwhJourMois": 12.2,
+            "tempMoyenneMois": 5
+          },
+          {
+            "dateDebutMois": "2026-06-01T04:00:00.000Z",
+            "dateFinMois": "2026-06-30T04:00:00.000Z",
+            "consoTotalMoisDecimal": 320.0,
+            "moyenneKwhJourMois": 10.7,
+            "tempMoyenneMois": 5
+          }
+        ]
+      }
+    }
+  ]
+}

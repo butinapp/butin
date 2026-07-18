@@ -1,4 +1,4 @@
-import type { DownloadItem, Session, WebContents } from 'electron'
+import type { DownloadItem, Session, WebContents, WebFrameMain } from 'electron'
 import { createHash } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -15,8 +15,10 @@ import {
   appendNetworkLog,
   appendNetworkMarker,
   appendRunLog,
+  writeCookieJournal,
   writeCookies,
   writeDownloads,
+  writeStartCookies,
   writeManifest,
   writeRequestFile,
   writeRunSummary,
@@ -126,6 +128,7 @@ interface Attachment {
   onWillNavigate: (event: unknown, url: string) => void
   onTitleUpdated: (event: unknown, title: string) => void
   onDidFinishLoad: () => void
+  onDidFrameFinishLoad: () => void
   suspended: boolean
 }
 
@@ -190,6 +193,14 @@ export class Recorder {
   private pages = new Map<string, string>()
   private typeCounts: Record<string, number> = {}
   private endpoints = new Map<string, { count: number; lastStatus: number }>()
+  // Every Set-Cookie a response issued, in order — recorded as it arrives (not at record-write) so a cookie set
+  // on a redirect hop or a dropped record still shows. Traces where a session cookie is minted, which the final
+  // jar can't reveal for a cookie already present before the recording. See cookie-journal.json.
+  private cookieJournal: Array<{ url?: string; status?: number; setCookie: string; kind: string }> = []
+  // The cookie jar snapshotted the moment capture attaches — so a session cookie ALREADY present (minted in an
+  // earlier browsing session, its birth therefore uncapturable this run) is distinguishable from one minted during
+  // the run. A session-like name here but absent from the journal ⇒ re-record with it cleared to see its mint.
+  private cookiesAtStart: Array<{ name: string; domain?: string; path?: string }> = []
   // Downloadable documents (PDF invoices/statements): passive ones classified off captured responses, native
   // ones captured via the session's will-download (a browser navigation that became a download). Merged at stop.
   private passiveDownloads: DetectedDownload[] = []
@@ -272,6 +283,8 @@ export class Recorder {
       // Capture browser-native downloads (a navigation that becomes a file) on the shared session — the one
       // download shape that never leaves a retrievable Network body, so it's invisible without this hook.
       this.session.on('will-download', this.onWillDownload)
+      // Snapshot the jar now so pre-existing session cookies are told apart from ones minted during the run.
+      void this.snapshotStartCookies()
     }
 
     const attachment: Attachment = {
@@ -291,7 +304,10 @@ export class Recorder {
           a.currentTitle = title
         }
       },
-      onDidFinishLoad: () => void this.onDidFinishLoad(wc)
+      onDidFinishLoad: () => void this.flushDeferredDocs(wc),
+      // A subframe finishes on its own event (after the top page's did-finish-load), so flush again to catch a
+      // late cross-origin frame (a framed portal list) the page-level flush was too early to see.
+      onDidFrameFinishLoad: () => void this.flushDeferredDocs(wc)
     }
 
     this.attachments.set(wc.id, attachment)
@@ -308,6 +324,7 @@ export class Recorder {
     wc.on('will-navigate', attachment.onWillNavigate)
     wc.on('page-title-updated', attachment.onTitleUpdated)
     wc.on('did-finish-load', attachment.onDidFinishLoad)
+    wc.on('did-frame-finish-load', attachment.onDidFrameFinishLoad)
     wc.once('destroyed', () => this.detach(wc.id))
     // When DevTools closes on this contents, resume capture (see suspendForDevTools).
     wc.on('devtools-closed', () => this.resume(wc.id))
@@ -353,13 +370,15 @@ export class Recorder {
       }
     }
 
-    // Flush any main-document records still waiting on their did-finish-load HTML snapshot (a page open at stop
-    // time, or one whose load event never fired). Snapshot the DOM if that page is still the current one.
-    for (const [key, p] of this.docsAwaitingHtml) {
-      const a = this.attachments.get(p.wcId)
-      const html = a && !a.wc.isDestroyed() && a.currentUrl === p.url ? await this.captureRenderedHtml(a.wc) : null
+    // Flush any document records still waiting on their frame's HTML snapshot (a page/frame open at stop time, or
+    // one whose load event never fired): snapshot from the frame tree for any frame still present, then write the
+    // rest body-less (frame gone / never loaded).
+    for (const a of this.attachments.values()) {
+      await this.flushDeferredDocs(a.wc)
+    }
 
-      await this.writeRecord(key, p, false, html)
+    for (const [key, p] of this.docsAwaitingHtml) {
+      await this.writeRecord(key, p, false)
     }
 
     this.docsAwaitingHtml.clear()
@@ -379,6 +398,7 @@ export class Recorder {
         a.wc.off('will-navigate', a.onWillNavigate)
         a.wc.off('page-title-updated', a.onTitleUpdated)
         a.wc.off('did-finish-load', a.onDidFinishLoad)
+        a.wc.off('did-frame-finish-load', a.onDidFrameFinishLoad)
       }
     }
 
@@ -386,6 +406,18 @@ export class Recorder {
 
     await this.dumpStorage()
     await this.dumpCookies()
+
+    if (this.cookieJournal.length) {
+      await writeCookieJournal(this.runDir, this.cookieJournal).catch((err) =>
+        this.warn('cookie journal write failed', err)
+      )
+    }
+
+    if (this.cookiesAtStart.length) {
+      await writeStartCookies(this.runDir, this.cookiesAtStart).catch((err) =>
+        this.warn('start cookies write failed', err)
+      )
+    }
 
     // Fold native downloads into the passively-classified ones (a native download inherits its captured request's
     // headers by URL) → downloads.json + the summary section. Written only when a run actually produced downloads.
@@ -492,6 +524,7 @@ export class Recorder {
 
     if (!a.wc.isDestroyed()) {
       a.wc.off('did-finish-load', a.onDidFinishLoad)
+      a.wc.off('did-frame-finish-load', a.onDidFrameFinishLoad)
     }
 
     // The contents is gone, so its deferred documents can no longer be snapshotted — write them body-less.
@@ -796,6 +829,12 @@ export class Recorder {
 
     if (sc) {
       p.setCookie = String(sc).split('\n')
+
+      // Journal each Set-Cookie as it arrives — even a redirect hop or a record later dropped contributes, so the
+      // exact request that mints a session cookie is always traceable.
+      for (const line of p.setCookie) {
+        this.cookieJournal.push({ url: p.url || undefined, status: p.status, setCookie: line, kind: p.kind })
+      }
     }
   }
 
@@ -822,9 +861,10 @@ export class Recorder {
 
     this.pending.delete(key)
 
-    // A main-frame document's raw body isn't retrievable (the renderer consumes it, the network service doesn't
-    // retain it), so hold the record until the page settles and snapshot the rendered DOM in onDidFinishLoad.
-    if (this.isMainDocument(p)) {
+    // A navigation document's raw body isn't retrievable (the renderer consumes it, the network service doesn't
+    // retain it) — for the main frame AND every subframe, including a cross-origin iframe (a legacy portal view
+    // embedded in an SPA). Hold the record until its frame settles, then snapshot that frame's rendered DOM.
+    if (this.isSnapshotDocument(p)) {
       this.docsAwaitingHtml.set(key, p)
 
       return
@@ -833,43 +873,54 @@ export class Recorder {
     await this.writeRecord(key, p, false)
   }
 
-  // A top-level navigation document (page/popup, non-redirect). Network.getResponseBody returns nothing for
-  // these, so they're captured as a rendered-DOM snapshot at did-finish-load instead.
-  private isMainDocument(p: Pending): boolean {
+  // A navigation document (any frame, non-redirect, 2xx). getResponseBody returns nothing for these, so they're
+  // captured as a rendered-DOM snapshot once their frame finishes loading (see flushDeferredDocs).
+  private isSnapshotDocument(p: Pending): boolean {
     const status = p.status ?? 0
 
-    return p.type === 'Document' && (p.kind === 'page' || p.kind === 'popup') && status >= 200 && status < 300
+    return p.type === 'Document' && status >= 200 && status < 300
   }
 
-  // When a page finishes loading, flush the deferred document record for whatever URL is now current, using the
-  // rendered DOM as its body. Multiple navigations each settle in turn, so only the just-loaded URL is matched.
-  private async onDidFinishLoad(wc: WebContents): Promise<void> {
-    const a = this.attachments.get(wc.id)
-
-    if (!a) {
+  // Snapshot every deferred document whose frame has now loaded, reading each frame's OWN rendered DOM from the
+  // frame tree — so a cross-origin subframe (unreadable from the top frame's JS, e.g. a framed legacy portal
+  // list) is captured through Electron's frame API, which is above the same-origin policy. Fires on every page /
+  // subframe load; a doc whose frame isn't present yet waits for a later load (or the stop flush). First
+  // URL-matching frame wins (duplicate-URL frames are rare).
+  private async flushDeferredDocs(wc: WebContents): Promise<void> {
+    if (wc.isDestroyed()) {
       return
     }
 
+    let frames: WebFrameMain[] = []
+
+    try {
+      frames = wc.mainFrame?.framesInSubtree ?? []
+    } catch {
+      return // frame tree gone (contents torn down mid-flush)
+    }
+
     for (const [key, p] of this.docsAwaitingHtml) {
-      if (p.wcId !== wc.id || p.url !== a.currentUrl) {
+      if (p.wcId !== wc.id) {
         continue
       }
 
+      const frame = frames.find((f) => f.url === p.url)
+
+      if (!frame) {
+        continue // its frame isn't present/loaded yet — a later load event retries
+      }
+
       this.docsAwaitingHtml.delete(key)
-      await this.writeRecord(key, p, false, await this.captureRenderedHtml(wc))
+      await this.writeRecord(key, p, false, await this.captureRenderedHtml(frame))
     }
   }
 
-  // The page's rendered HTML (`document.documentElement.outerHTML`), DOCTYPE-prefixed, or null on failure. This
-  // is post-hydration DOM, not the raw response bytes — but for a server-rendered page it carries the same data
-  // an HTML-scrape collector reads, and for an SPA it's strictly more (the data the client rendered in).
-  private async captureRenderedHtml(wc: WebContents): Promise<string | null> {
+  // A frame's rendered HTML (`document.documentElement.outerHTML`), DOCTYPE-prefixed, or null on failure. Post-
+  // hydration DOM, not the raw response bytes — but for a server-rendered page it carries the same data an
+  // HTML-scrape collector reads, and for an SPA it's strictly more (the data the client rendered in).
+  private async captureRenderedHtml(frame: WebFrameMain): Promise<string | null> {
     try {
-      if (wc.isDestroyed()) {
-        return null
-      }
-
-      const html = await wc.executeJavaScript('document.documentElement ? document.documentElement.outerHTML : ""')
+      const html = await frame.executeJavaScript('document.documentElement ? document.documentElement.outerHTML : ""')
 
       return typeof html === 'string' && html ? `<!DOCTYPE html>\n${html}` : null
     } catch {
@@ -952,14 +1003,14 @@ export class Recorder {
       if (partialStream) {
         bodyNote = 'stream still open when recording stopped — body is partial'
       }
-    } else if (this.isMainDocument(p)) {
-      // The raw navigation body isn't retrievable; the rendered DOM snapshot taken at did-finish-load stands in.
+    } else if (this.isSnapshotDocument(p)) {
+      // The raw navigation body isn't retrievable; the rendered DOM snapshot taken at frame-load stands in.
       if (renderedHtml) {
         body = renderedHtml
         bodyNote =
-          'rendered DOM snapshot (document.documentElement.outerHTML after load) — the browser does not retain the raw main-document response body for retrieval'
+          'rendered DOM snapshot (document.documentElement.outerHTML after load) — the browser does not retain the raw navigation-document response body for retrieval'
       } else {
-        bodyNote = 'main-document body unavailable — the page did not settle for a DOM snapshot before the run ended'
+        bodyNote = 'document body unavailable — the frame did not settle for a DOM snapshot before the run ended'
       }
     } else if (p.status !== undefined) {
       try {
@@ -1317,6 +1368,22 @@ export class Recorder {
     }
   }
 
+  private async snapshotStartCookies(): Promise<void> {
+    if (!this.session) {
+      return
+    }
+
+    try {
+      this.cookiesAtStart = (await this.session.cookies.get({})).map((c) => ({
+        name: c.name,
+        domain: c.domain,
+        path: c.path
+      }))
+    } catch (err) {
+      this.warn('start cookie snapshot failed', err)
+    }
+  }
+
   private async dumpCookies(): Promise<void> {
     if (!this.session) {
       return
@@ -1488,6 +1555,54 @@ export class Recorder {
     return lines
   }
 
+  // Every Set-Cookie the run observed, in order — the session cookies (SESSION/JSESSIONID/auth) first, so the
+  // request that mints a stateful-portal session is obvious. A session-like cookie present at start but never Set
+  // here is flagged as pre-existing: its mint can't be seen without re-recording with it cleared.
+  private buildCookieJournalSection(): string[] {
+    const name = (line: string): string => line.split('=', 1)[0]!.trim()
+    const sessionLike = (n: string): boolean => /session|jsessionid|auth|token|sso/i.test(n)
+    const mintedNames = new Set(this.cookieJournal.map((c) => name(c.setCookie)))
+    const preExisting = this.cookiesAtStart.filter((c) => sessionLike(c.name) && !mintedNames.has(c.name))
+
+    if (!this.cookieJournal.length && !preExisting.length) {
+      return []
+    }
+
+    const lines = ['## Set-Cookie journal (session establishment)', '']
+
+    if (preExisting.length) {
+      lines.push(
+        '⚠ **Pre-existing session cookies** — present when recording began, NOT minted during this run, so their establishment is NOT captured. To see how each is minted, clear it and re-record:',
+        ...preExisting.map((c) => `- **${c.name}** (${c.domain ?? '?'}; ${c.path ?? '/'})`),
+        ''
+      )
+    }
+
+    if (this.cookieJournal.length) {
+      const ordered = [...this.cookieJournal].sort(
+        (a, b) => Number(sessionLike(name(b.setCookie))) - Number(sessionLike(name(a.setCookie)))
+      )
+
+      lines.push(
+        `${this.cookieJournal.length} Set-Cookie(s) observed, session-like names first. Detail in \`cookie-journal.json\`.`,
+        ''
+      )
+
+      for (const c of ordered.slice(0, 60)) {
+        const attrs = c.setCookie
+          .slice(name(c.setCookie).length)
+          .replace(/^=[^;]*/, '')
+          .trim()
+
+        lines.push(`- **${name(c.setCookie)}** ${attrs} — ${c.status ?? '?'} ${c.url ?? '(pending)'} [${c.kind}]`)
+      }
+
+      lines.push('')
+    }
+
+    return lines
+  }
+
   private buildSummaryMarkdown(manifest: RecordingManifest): string {
     const lines: string[] = [`# ${manifest.label} — Butin Recorder run summary`, '']
 
@@ -1504,6 +1619,7 @@ export class Recorder {
     lines.push('', 'Read `AGENTS.md` in this folder for how to interpret the files.', '')
 
     lines.push(...this.buildDownloadsSection())
+    lines.push(...this.buildCookieJournalSection())
 
     if (this.pages.size) {
       lines.push('## Pages visited', '')

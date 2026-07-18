@@ -22,6 +22,7 @@ websockets/       one JSON per WebSocket connection, with every frame inline
 screenshots/      PNG per navigation (NNNN_<host-path>.png) — visual context only
 downloads.json    detected downloadable documents (PDF invoices/statements) + the mechanism each maps to — present ONLY when the run produced downloads. See summary.md "Detected downloads".
 cookies.json      cookies present at stop, filtered to hosts visited in this run
+cookie-journal.json  every Set-Cookie a response issued DURING the run, in order — present ONLY when a cookie was set. Shows where a session cookie is MINTED (which cookies.json can't, for a cookie that already existed). See summary.md "Set-Cookie journal". If a session cookie you need isn't here, it predated the recording — re-record with it cleared.
 storage.json      localStorage + sessionStorage per origin (often where auth tokens live)
 session.har       the same requests as standard HAR 1.2 — import into Postman/Insomnia/Chrome
 ```
@@ -160,7 +161,10 @@ the storage token or be re-done live.
   `blob:` URL (filtered as noise) — repeat it and check `network.jsonl` for the underlying request.
 - **`context.kind` is not `"page"`** → the request came from a popup, iframe, or
   `service_worker`/`worker`. If you couldn't find a call on the main page, it likely ran in a
-  worker — search across all `requests/` regardless of context.
+  worker — search across all `requests/` regardless of context. When the data-bearing HTML
+  comes from an **iframe on a different origin than the top page** (and its body carries a
+  framebust `<script>`), see **"SPA wrapping a legacy portal"** below — it needs a same-origin
+  read, not a top-level navigation.
 - **WebSockets** → realtime data is in `websockets/`, not `requests/`. Each file has the
   handshake headers and an ordered `frames[]` (text inline, binary base64).
 - **Server-Sent Events / streams** → `response.streamed: true`; the body is the concatenated
@@ -170,6 +174,53 @@ the storage token or be re-done live.
 - **Empty `response.body`** → read `bodyNote`. Common reasons: `204/304`, served from cache
   (`fromDiskCache`), binary that wasn't retrievable, or the request was still in flight at
   stop. A `base64Encoded: true` body is binary — decode before reading.
+
+## SPA wrapping a legacy portal (framebust + same-origin reads)
+
+A recurring, easy-to-misread shape: the top window is a modern SPA on origin **A**
+(`session.host.com`), but the pages that actually hold the data (invoice lists,
+statements) are served from a **different** origin **B** (`services-cl.host.com`) and
+embedded as a **cross-origin iframe**. Spot it in the recording when a data-bearing
+`Document`/HTML response has `context.kind: "iframe"` (or `sec-fetch-dest: iframe`) and
+its `response.body` opens with a **framebust `<script>`** like
+`if (top === self) { window.location = 'https://session.host.com' + ... }`.
+
+**Why the obvious replay fails — and what works:**
+
+- **Do NOT navigate your headless window straight to the origin-B page.** Rendered
+  top-level, its framebust script fires (`top === self`) and redirects you to the SPA
+  shell on origin A — you capture the Angular HTML, not the invoice list. Driving the
+  **SPA's own route** instead often triggers an OAuth `/authorize` redirect that
+  **aborts** headless (`ERR_ABORTED`).
+- **Anchor on origin B, then read same-origin.** Open the offscreen window
+  (`ctx.browser`) on a **static asset of origin B** — a JS/CSS file like
+  `.../hq/libs/jquery.min.js`, which has no auth and no framebust — then issue every
+  call with `fetchText`/`fetchBytes` from that page. Same-origin ⇒ no CORS, the session
+  cookies ride along, and the framebust `<script>` is **inert** (a `fetch` body is just
+  text, never a rendered page). This one move sidesteps framebust, CORS, and the OAuth
+  dance at once.
+
+**Prime the stateful session in the right order.** These portals gate on server-side
+session cookies (e.g. `JSESSIONID`, `SESSION`) that specific XHRs **mint** — not the
+durable login cookie. Read `cookie-journal.json` to see which response first Set each
+one and in what order, then reproduce that sequence before the read (typically: an
+analytics/telemetry call mints one, a session/select call mints the other and sets the
+"acting context"). A call that **403s despite a valid bearer** almost always means a
+prerequisite priming cookie wasn't minted yet — not that the token is wrong.
+
+**CORS allow-headers differ per endpoint — check each `OPTIONS`.** For a cross-origin
+XHR the browser sends an `OPTIONS` preflight; its response's
+`access-control-allow-headers` lists **exactly** which request headers that endpoint
+accepts, and **different endpoints on the same host allow different sets**. Attaching a
+header an endpoint doesn't list makes the real `fetch` **throw / get blocked** (a network
+error, not a 4xx you can read) — a silent failure. Open the matching `OPTIONS` record per
+endpoint and send only its allowed headers. (Anchoring same-origin per above avoids
+preflight entirely — another reason to prefer it.)
+
+**Stateful selection.** Such portals hold a "current account/context" server-side. Set it
+with a select/activate call **before** the read, and mirror the UI's order (load the list
+page, then select the item, then read its detail) — skipping the list-load step can leave
+the detail page empty.
 
 ## A reproduce recipe
 

@@ -1,5 +1,5 @@
 import type { BrowserContext, BrowserFetchInit, BrowserPage, BrowserSession, ButinPlugin } from '@butinapp/sdk'
-import { BrowserWindow, type DownloadItem, type Event } from 'electron'
+import { BrowserWindow, type DownloadItem, type Event, type WebFrameMain } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -79,6 +79,35 @@ export const createBrowserSession = (plugin: ButinPlugin): BrowserSession => ({
     const evaluate = <R>(expression: string, label: string): Promise<R> =>
       withTimeout(win.webContents.executeJavaScript(expression, true) as Promise<R>, label)
 
+    // A read+fetch context bound to a specific WebFrameMain — used for a CROSS-ORIGIN child frame the page
+    // loaded itself, which the top-level `window`/element read can't reach. `executeJavaScript` runs INSIDE
+    // the frame, so `window`/`document` are the frame's own (frame=false expressions) and its fetches are
+    // same-origin to the frame's origin.
+    const frameContextFor = (frame: WebFrameMain): BrowserContext => {
+      const run = <R>(expression: string, label: string): Promise<R> =>
+        withTimeout(frame.executeJavaScript(expression, true) as Promise<R>, label)
+
+      return {
+        html: () => run<string>(htmlExpression(false), 'subframe html()'),
+        fetchText: async (u, init) => {
+          const r = await run<{ status: number; body: string }>(
+            fetchExpression(u, init, false, false),
+            `subframe fetchText(${u})`
+          )
+
+          return { status: r.status, text: r.body }
+        },
+        fetchBytes: async (u, init) => {
+          const r = await run<{ status: number; body: string }>(
+            fetchExpression(u, init, true, false),
+            `subframe fetchBytes(${u})`
+          )
+
+          return { status: r.status, bytes: new Uint8Array(Buffer.from(r.body, 'base64')) }
+        }
+      }
+    }
+
     // A read+fetch context bound to the top-level page (frame=false) or the child frame (frame=true).
     const contextFor = (frame: boolean): BrowserContext => ({
       html: () => evaluate<string>(htmlExpression(frame), 'html()'),
@@ -149,6 +178,11 @@ export const createBrowserSession = (plugin: ButinPlugin): BrowserSession => ({
           await evaluate<boolean>(loadFrameExpression(u), `loadFrame(${u})`)
 
           return contextFor(true)
+        },
+        subframe: async (urlIncludes: string) => {
+          const frame = win.webContents.mainFrame?.framesInSubtree.find((f) => f.url.includes(urlIncludes))
+
+          return frame ? frameContextFor(frame) : null
         },
         download
       }

@@ -23,6 +23,8 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    // Pinned off Vite's default 5173 to stop dev-server collisions with other local apps that also claim it.
+    server: { port: 5817, strictPort: true },
     resolve: { alias: { '@': resolve(import.meta.dirname, 'src/renderer') } },
     plugins: [react(), tailwindcss()],
     build: { sourcemap: true, rollupOptions: { input: { index: 'src/renderer/index.html' } } }

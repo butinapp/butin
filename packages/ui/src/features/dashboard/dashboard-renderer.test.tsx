@@ -127,6 +127,24 @@ test('short scalar columns get noWrap; free-text columns wrap', () => {
   expect(container.querySelectorAll('td.whitespace-nowrap').length).toBe(1)
 })
 
+test('name (label) and enum (category) columns stay on one line, not wrapped to min-content', () => {
+  const svc = rawTable(
+    'svc',
+    [
+      { key: 'holder', label: 'Holder', role: 'label' },
+      { key: 'kind', label: 'Kind', role: 'category' },
+      { key: 'note', label: 'Note', role: 'text' }
+    ],
+    [{ holder: 'Alex Tremblay / Sam Gagnon', kind: 'propane', note: 'a long free-text note that may wrap' }]
+  )
+  const { container } = render(
+    <DashboardRenderer result={{ datasets: [svc], views: [{ type: 'table', dataset: 'svc' }] }} />
+  )
+
+  // holder + kind stay single-line; only the free-text note wraps.
+  expect(container.querySelectorAll('td.whitespace-nowrap').length).toBe(2)
+})
+
 test('a status column auto-tones from the lexicon, with a badges entry overriding', () => {
   const invoices = rawTable(
     'invoices',

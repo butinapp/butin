@@ -100,6 +100,20 @@ export async function writeCookies(runDir: string, cookies: unknown): Promise<vo
   await writeFile(join(runDir, 'cookies.json'), JSON.stringify(cookies, null, 2), 'utf8')
 }
 
+// Every Set-Cookie a response issued during the run, in order — the machine-readable companion to the
+// "Set-Cookie journal" section of summary.md. Traces where a session cookie (SESSION/JSESSIONID/…) is minted,
+// which the final cookie jar (cookies.json) can't show for a cookie that already existed before the recording.
+export async function writeCookieJournal(runDir: string, journal: unknown): Promise<void> {
+  await writeFile(join(runDir, 'cookie-journal.json'), JSON.stringify(journal, null, 2), 'utf8')
+}
+
+// The cookie jar as it stood when capture attached (names/domains/paths only). A session cookie present here but
+// never Set in cookie-journal.json was minted before this run — its establishment can't be seen without clearing
+// it and re-recording.
+export async function writeStartCookies(runDir: string, cookies: unknown): Promise<void> {
+  await writeFile(join(runDir, 'cookies-at-start.json'), JSON.stringify(cookies, null, 2), 'utf8')
+}
+
 export async function writeStorageSnapshot(runDir: string, storage: unknown): Promise<void> {
   await writeFile(join(runDir, 'storage.json'), JSON.stringify(storage, null, 2), 'utf8')
 }

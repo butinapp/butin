@@ -33,6 +33,12 @@ export type BrowserPage = BrowserContext & {
   // for pages that must be FRAMED (Sec-Fetch-Dest: iframe) — a legacy modale page that framebusts/logs-off
   // when opened top-level — so its document + same-origin fetches carry the framed context. Same-origin only.
   loadFrame: (url: string) => Promise<BrowserContext>
+  // Find an EXISTING child frame the PAGE loaded itself (matched by a substring of its URL) and return a
+  // context scoped to it — readable even when it's CROSS-ORIGIN to the top page (where loadFrame/an element
+  // read is opaque). For a page (a portal SPA) that embeds another origin's rendered content you must read:
+  // let the page boot and load its frame, then read that frame's document + issue its own same-origin fetches.
+  // Resolves null while no matching frame has loaded yet (poll until it appears).
+  subframe: (urlIncludes: string) => Promise<BrowserContext | null>
   // Download `url` as a REAL navigation (Sec-Fetch-Dest: document) on the live session and return its bytes.
   // For files a server only streams to a navigation — not an XHR (which it answers with an HTML page) —
   // because `fetch` can't set the forbidden `Sec-Fetch-*` headers. Optional `referer` matches the page that

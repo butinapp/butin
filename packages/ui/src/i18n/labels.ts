@@ -782,6 +782,7 @@ export const en: ButinLabels = {
     devtools: 'Dev tools',
     productivity: 'Productivity',
     rental: 'Rentals',
+    utilities: 'Utilities',
     other: 'Other'
   },
   serviceDisabledBanner: 'This service is disabled — enable it to fetch data.',
@@ -1250,6 +1251,7 @@ export const fr: ButinLabels = {
     devtools: 'Outils dev',
     productivity: 'Productivité',
     rental: 'Locations',
+    utilities: 'Services publics',
     other: 'Autres'
   },
   serviceDisabledBanner: 'Ce service est désactivé — activez-le pour récupérer les données.',

@@ -9,6 +9,7 @@ export const CATEGORY_ORDER: PluginCategory[] = [
   'devtools',
   'productivity',
   'rental',
+  'utilities',
   'other'
 ]
 

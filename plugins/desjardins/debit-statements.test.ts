@@ -54,6 +54,7 @@ const fakeBrowserCtx = (opts: {
 
       return frame
     },
+    subframe: async () => null,
     // The PDF download is a real navigation (page.download), not a frame fetch.
     download: async (u: string, init) => {
       downloads.push({ url: u, referer: init?.referer })

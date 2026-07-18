@@ -290,8 +290,10 @@ const TableView = ({
     key: c.key,
     label: t.s(c.label ?? c.key),
     align: c.role === 'money' || c.role === 'count' || c.role === 'percent' ? 'right' : 'left',
-    // Short fixed-width roles stay on one line; free text (label/text/url) wraps + absorbs the slack.
-    noWrap: ['timestamp', 'money', 'count', 'percent', 'status', 'identifier'].includes(c.role),
+    // Short-value roles stay on one line; only genuine free text (text/url) wraps + absorbs the slack. Names
+    // (label) and enum tags (category) are short and single-line — wrapping them to min-content while a greedy
+    // column hoards the row's slack is the failure this prevents.
+    noWrap: ['timestamp', 'money', 'count', 'percent', 'status', 'identifier', 'label', 'category'].includes(c.role),
     // A truncated column is the greedy one — it fills the leftover row width and ellipsizes there.
     grow: c.truncate,
     // Floor the amount columns so the greedy column can't squeeze them below a comfortable width. Dates don't

@@ -8,7 +8,11 @@
 // (`stripe`); a vendor with 2+ surfaces qualifies every one (`anthropic-console`, `openai-platform`). `vendor`
 // is the exact canonical brand string (identical across that vendor's surfaces, for exact-match grouping);
 // `name` is the user-recognizable surface label that disambiguates them (`Anthropic Console` vs `Claude`).
-export type PluginCategory = 'finance' | 'cloud' | 'ai' | 'devtools' | 'productivity' | 'rental' | 'other'
+// The sidebar/overview grouping buckets. Not a fixed taxonomy — add a new category freely whenever an existing
+// one genuinely doesn't fit AND more than one plugin would live under it (a category of one is noise; use 'other').
+// Adding a value is a one-pass change: extend this union, then the exhaustive sites follow it — `CATEGORY_ORDER`
+// (core's group-by-category) and the en/fr `category` label maps (ui i18n).
+export type PluginCategory = 'finance' | 'cloud' | 'ai' | 'devtools' | 'productivity' | 'rental' | 'utilities' | 'other'
 
 // The recognized failure causes the app's error panel maps onto. The single source for the union: core's
 // failure classifier and the UI's error panel both import it, so the set can't drift between layers.
