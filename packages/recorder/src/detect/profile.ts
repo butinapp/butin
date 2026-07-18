@@ -8,13 +8,19 @@ import { classifyRender } from './render.js'
 import { classifyTransport } from './transport.js'
 import type { DomainProfile, EndpointHint, Guess, RenderGuess, RunData, RunProfile } from './types.js'
 
+const hasCookieHeader = (run: RunData): boolean =>
+  run.requests.some((r) =>
+    Object.keys({ ...r.request.headers, ...(r.request.wireHeaders ?? {}) }).some((k) => k.toLowerCase() === 'cookie')
+  )
+
 export const profileRun = (run: RunData): RunProfile => ({
   transport: classifyTransport(run.requests),
   auth: classifyAuth(run.requests),
   render: classifyRender(run.requests),
   login: detectLoginMode(run),
   endpoints: classifyEndpoints(run.requests),
-  clearBeforeCapture: detectClearBeforeCapture(run)
+  clearBeforeCapture: detectClearBeforeCapture(run),
+  hasCookieHeader: hasCookieHeader(run)
 })
 
 // Union the per-run cookie suggestions across a surface — more recordings surface more of the auth handshake,
@@ -36,11 +42,6 @@ const mergeClearBeforeCapture = (guesses: Guess<string[]>[]): Guess<string[]> =>
 // Auth kinds that imply a Bearer is in play — when one of these is the primary, a Cookie header alongside it
 // usually means the service web-auths by cookie and API-auths by token (a second method worth surfacing).
 const BEARER_KINDS = new Set<AuthKind>(['minted-jwt', 'bearer-token', 'spa-bearer'])
-
-const hasCookieHeader = (run: RunData): boolean =>
-  run.requests.some((r) =>
-    Object.keys({ ...r.request.headers, ...(r.request.wireHeaders ?? {}) }).some((k) => k.toLowerCase() === 'cookie')
-  )
 
 const bestGuess = <T>(guesses: Guess<T>[]): Guess<T> => {
   const ranked = [...guesses].sort((a, b) => {
@@ -81,11 +82,11 @@ const dedupeEndpoints = (lists: EndpointHint[][]): EndpointHint[] => {
   return [...byKey.values()]
 }
 
-// Fold every recorded session of a surface into one profile. The primary auth is the strongest guess; any
-// other method seen (a different kind across runs, or a Cookie riding alongside a Bearer) is surfaced as
-// `authAlternatives` so a dual web+API auth scheme is visible rather than silently dropped.
-export const aggregateProfile = (surface: string, runs: RunData[]): DomainProfile => {
-  const profiles = runs.map(profileRun)
+// Fold a surface's per-run profiles into one. Works from RunProfile alone (no request bodies), so a cached
+// per-run summary folds without re-reading the run. The primary auth is the strongest guess; any other method
+// seen (a different kind across runs, or a Cookie riding alongside a Bearer) is surfaced as `authAlternatives`
+// so a dual web+API auth scheme is visible rather than silently dropped.
+export const foldProfiles = (surface: string, profiles: RunProfile[]): DomainProfile => {
   const conflicts: string[] = []
 
   const auth = bestGuess(profiles.map((p) => p.auth))
@@ -98,13 +99,13 @@ export const aggregateProfile = (surface: string, runs: RunData[]): DomainProfil
     }
   }
 
-  if (BEARER_KINDS.has(auth.value) && auth.value !== 'cookie' && runs.some(hasCookieHeader)) {
+  if (BEARER_KINDS.has(auth.value) && auth.value !== 'cookie' && profiles.some((p) => p.hasCookieHeader)) {
     alternatives.add('cookie')
   }
 
   return {
     surface,
-    runCount: runs.length,
+    runCount: profiles.length,
     auth,
     authAlternatives: [...alternatives],
     transport: bestGuess(profiles.map((p) => p.transport)),
@@ -115,3 +116,8 @@ export const aggregateProfile = (surface: string, runs: RunData[]): DomainProfil
     conflicts
   }
 }
+
+// Fold every recorded session of a surface into one profile, computing each run's profile from its full
+// request set. The path for callers that hold RunData (kickstart/suggest — they need the requests anyway).
+export const aggregateProfile = (surface: string, runs: RunData[]): DomainProfile =>
+  foldProfiles(surface, runs.map(profileRun))

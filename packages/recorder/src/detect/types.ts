@@ -30,6 +30,8 @@ export type RunProfile = {
   endpoints: EndpointHint[]
   /** Cookie names to list in `session.clearCookiesBeforeCapture` (IdP session / rotating OAuth-state cookies). */
   clearBeforeCapture: Guess<string[]>
+  /** Whether any request carried a Cookie header — folds a dual web+API auth scheme without re-reading requests. */
+  hasCookieHeader: boolean
 }
 export type DomainProfile = {
   surface: string

@@ -1,9 +1,9 @@
-import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { loadRun } from './run-data.js'
+import { loadRun, loadRunProfile } from './run-data.js'
 
 const writeRun = (): string => {
   const dir = mkdtempSync(join(tmpdir(), 'run-'))
@@ -46,5 +46,37 @@ describe('loadRun', () => {
     expect(run.manifest.startUrl).toBe('https://a.com')
     expect(run.requests).toHaveLength(1)
     expect(run.requests[0].request.url).toBe('https://a.com/api')
+  })
+})
+
+describe('loadRunProfile', () => {
+  it('computes and caches summary.json on first read, then folds from the cache', async () => {
+    const dir = writeRun()
+
+    expect(existsSync(join(dir, 'summary.json'))).toBe(false)
+
+    const first = await loadRunProfile(dir)
+
+    // The write-back cache now exists and holds the same classification.
+    expect(existsSync(join(dir, 'summary.json'))).toBe(true)
+    expect(first.auth.value).toBe('external')
+
+    // Second read serves the cache — proven by deleting the requests so a recompute could not succeed.
+    rmSync(join(dir, 'requests'), { recursive: true, force: true })
+
+    const cached = await loadRunProfile(dir)
+
+    expect(cached.auth.value).toBe('external')
+  })
+
+  it('recomputes when the cached summary is a stale version', async () => {
+    const dir = writeRun()
+
+    writeFileSync(join(dir, 'summary.json'), JSON.stringify({ version: 0, profile: { auth: { value: 'bogus' } } }))
+
+    const profile = await loadRunProfile(dir)
+
+    expect(profile.auth.value).toBe('external')
+    expect(JSON.parse(readFileSync(join(dir, 'summary.json'), 'utf8')).version).toBe(1)
   })
 })

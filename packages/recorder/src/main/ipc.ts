@@ -5,8 +5,8 @@ import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { primaryHost, resolveSurface } from '../detect/domains.js'
-import { aggregateProfile } from '../detect/profile.js'
-import { loadRun } from '../detect/run-data.js'
+import { aggregateProfile, foldProfiles } from '../detect/profile.js'
+import { loadRun, loadRunProfile } from '../detect/run-data.js'
 import type { DomainProfile, EndpointCategory, RunData } from '../detect/types.js'
 
 import { readAppLock, type AppLockStatus } from './app-lock.js'
@@ -15,6 +15,7 @@ import { createRecorderWindow } from './recorder-window.js'
 import { defaultFilters } from './recording/filters.js'
 import { domainLabel } from './recording/naming.js'
 import { deleteRecording } from './recording/storage.js'
+import type { RecordingManifest } from './recording/types.js'
 import { resolveRepoRoot } from './repo-root.js'
 import { domainsFile, profilesRegistry, recorderPrefsFile, recordingsRoot } from './store.js'
 
@@ -109,9 +110,9 @@ const listRunDirs = async (): Promise<string[]> => {
   return dirs
 }
 
-// Load every run (full RunData) for one surface within one profile's partition — the shared resolution
-// behind get-domain, suggest-plugin, and kickstart-plugin.
-const loadSurfaceRuns = async (surface: string, partition: string): Promise<RunData[]> => {
+// The run dirs whose recording resolves to one surface within one profile's partition. Reads only the tiny
+// manifest per run — the shared filter behind loadSurfaceRuns (full requests) and get-domain (cached profiles).
+const matchingSurfaceDirs = async (surface: string, partition: string): Promise<string[]> => {
   const [runDirs, merges] = await Promise.all([listRunDirs(), readMerges()])
   const matching: string[] = []
 
@@ -133,8 +134,13 @@ const loadSurfaceRuns = async (surface: string, partition: string): Promise<RunD
     }
   }
 
-  return Promise.all(matching.map(loadRun))
+  return matching
 }
+
+// Load every run (full RunData, with request bodies) for one surface — the source suggest-plugin and
+// kickstart-plugin need to mine evidence from. get-domain does NOT use this; it folds from cached profiles.
+const loadSurfaceRuns = async (surface: string, partition: string): Promise<RunData[]> =>
+  Promise.all((await matchingSurfaceDirs(surface, partition)).map(loadRun))
 
 // ---- handlers ---------------------------------------------------------------
 
@@ -190,15 +196,18 @@ export const registerRecorderHandlers = (): void => {
   ipcMain.handle('recorder:list-domains', async (_event, partition: string): Promise<DomainSummary[]> => {
     const [runDirs, merges] = await Promise.all([listRunDirs(), readMerges()])
 
-    // Group run dirs by their resolved surface, keeping only runs recorded in the requested partition.
-    const bySurface = new Map<string, string[]>()
+    // Group run dirs by their resolved surface, keeping only runs recorded in the requested partition. The
+    // grouping reads only the tiny manifest per run; the classification folds from each run's cached summary.
+    const bySurface = new Map<string, { dir: string; startedAt: string }[]>()
 
     for (const dir of runDirs) {
       try {
-        const manifestPath = join(dir, 'manifest.json')
-        const manifest = await readJson<{ startUrl: string; partition?: string; hostCounts?: Record<string, number> }>(
-          manifestPath
-        )
+        const manifest = await readJson<{
+          startUrl: string
+          partition?: string
+          startedAt?: string
+          hostCounts?: Record<string, number>
+        }>(join(dir, 'manifest.json'))
 
         if (manifest.partition !== partition) {
           continue
@@ -208,7 +217,7 @@ export const registerRecorderHandlers = (): void => {
 
         const existing = bySurface.get(surface) ?? []
 
-        existing.push(dir)
+        existing.push({ dir, startedAt: manifest.startedAt ?? '' })
         bySurface.set(surface, existing)
       } catch {
         // skip unreadable manifests
@@ -217,12 +226,12 @@ export const registerRecorderHandlers = (): void => {
 
     const summaries: DomainSummary[] = []
 
-    for (const [surface, dirs] of bySurface) {
+    for (const [surface, entries] of bySurface) {
       try {
-        const runs = await Promise.all(dirs.map(loadRun))
-        const profile = aggregateProfile(surface, runs)
-        const lastRecordedAt = runs
-          .map((r) => r.manifest.startedAt)
+        const profiles = await Promise.all(entries.map((e) => loadRunProfile(e.dir)))
+        const profile = foldProfiles(surface, profiles)
+        const lastRecordedAt = entries
+          .map((e) => e.startedAt)
           .filter(Boolean)
           .sort()
           .at(-1)
@@ -255,20 +264,28 @@ export const registerRecorderHandlers = (): void => {
       profile: DomainProfile
       runs: { runId: string; label: string; startUrl: string; startedAt: string; requestCount: number }[]
     }> => {
-      const runDataList = await loadSurfaceRuns(surface, partition)
-      const profile = aggregateProfile(surface, runDataList)
+      // Fold from each run's cached summary + its tiny manifest — no request bodies read, so opening a domain
+      // is as fast as the sidebar. suggest/kickstart, which need the full requests, still load them on demand.
+      const dirs = await matchingSurfaceDirs(surface, partition)
+      const loaded = await Promise.all(
+        dirs.map(async (dir) => ({
+          manifest: await readJson<RecordingManifest>(join(dir, 'manifest.json')),
+          profile: await loadRunProfile(dir)
+        }))
+      )
 
-      const runs = runDataList.map((rd) => {
-        const m = rd.manifest
+      const profile = foldProfiles(
+        surface,
+        loaded.map((l) => l.profile)
+      )
 
-        return {
-          runId: m.runId,
-          label: m.label ?? '',
-          startUrl: m.startUrl ?? '',
-          startedAt: m.startedAt ?? '',
-          requestCount: m.requestCount ?? rd.requests.length
-        }
-      })
+      const runs = loaded.map(({ manifest: m }) => ({
+        runId: m.runId,
+        label: m.label ?? '',
+        startUrl: m.startUrl ?? '',
+        startedAt: m.startedAt ?? '',
+        requestCount: m.requestCount ?? 0
+      }))
 
       runs.sort((a, b) => b.startedAt.localeCompare(a.startedAt))
 
