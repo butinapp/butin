@@ -13,30 +13,65 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# check / build / test run as independent parallel jobs so a fast failure (lint, typecheck) surfaces without
+# waiting on the long test suite, and the wall-clock is the slowest single job rather than their sum. The test
+# suite — the long pole — is itself sharded across runners (see the matrix). Every job runs on Linux: faster,
+# and it checks out our LF-committed files as LF (no autocrlf rewrite) so oxfmt's endOfLine:lf check passes.
+# oxfmt/oxlint pull their linux-x64-gnu bindings via their own optionalDependencies; the win32 bindings pinned
+# in package.json (for local Windows dev) are skipped here on os/cpu mismatch.
 jobs:
   check:
-    # Linux runner: faster, and it checks out our LF-committed files as LF (no autocrlf rewrite), so
-    # oxfmt's endOfLine:lf check passes. oxfmt/oxlint pull their linux-x64-gnu bindings via their own
-    # optionalDependencies; the win32 bindings pinned in package.json (for local Windows dev) are skipped
-    # here on os/cpu mismatch. .gitattributes keeps the EOL pinned regardless.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22.15.0
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # Restore Turbo's cache across runs so unchanged typecheck/test/build tasks replay instead of
-      # re-executing on every fresh runner. Keyed per-sha (a fresh save each run) with a prefix restore-key
-      # so the latest prior cache is always pulled; Turbo's content hashing then decides the real hits.
+      - uses: ./.github/actions/setup
       - name: Turbo cache
         uses: actions/cache@v6
         with:
           path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+          key: ${{ runner.os }}-turbo-check-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-check-
       - run: pnpm check
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Turbo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-build-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-build-
       - run: pnpm build
-      - run: pnpm test
+
+  test:
+    name: test (${{ matrix.shard.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      # One shard failing shouldn't cancel the others — report every failure in a single run.
+      fail-fast: false
+      # Shards partition the test packages disjointly (verified: their union is the whole workspace). The
+      # ~40-plugin package is the bulk of the suite, so it's split in half with vitest's own file-level
+      # `--shard`; core and the remaining libs each get a runner.
+      matrix:
+        shard:
+          - { name: plugins-1, args: --filter=@butinapp/plugins -- --shard=1/2 }
+          - { name: plugins-2, args: --filter=@butinapp/plugins -- --shard=2/2 }
+          - { name: core, args: --filter=@butinapp/core }
+          - { name: rest, args: --filter=!@butinapp/plugins --filter=!@butinapp/core }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      # Restore Turbo's cache so an unchanged package's tests replay instead of re-executing on a fresh runner.
+      # Keyed per-sha (a fresh save each run) with a per-shard prefix restore-key, so each shard keeps its own
+      # warm lineage and the parallel jobs don't clobber each other's cache; Turbo's content hashing then
+      # decides the real hits.
+      - name: Turbo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-test-${{ matrix.shard.name }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-test-${{ matrix.shard.name }}-
+      - run: pnpm exec turbo run test ${{ matrix.shard.args }}

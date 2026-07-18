@@ -1,0 +1,12 @@
+name: Setup
+description: Install pnpm + Node and restore the workspace dependencies. Assumes the repo is already checked out.
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+      shell: bash

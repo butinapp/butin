@@ -19,7 +19,7 @@ synthetic or redacted.
 
 ## Setup
 
-Butin is a pnpm workspace. Node `>=20` (the repo pins `22.15.0` via `.nvmrc`).
+Butin is a pnpm workspace. Node `>=24` — the exact version is pinned once in `.nvmrc` (your version manager and CI both read it).
 
 ```bash
 pnpm install        # if Electron won't launch, run `node node_modules/electron/install.js` once

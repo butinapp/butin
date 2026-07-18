@@ -2,8 +2,6 @@ packages:
   - 'packages/*'
   - 'plugins'
 
-useNodeVersion: 22.15.0
-
 overrides:
   react: 'catalog:'
   react-dom: 'catalog:'
