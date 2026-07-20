@@ -2,16 +2,16 @@
 
 Butin is split across two licenses. Which one applies depends on where in the tree you are.
 
-| Path              | Package               | License    |
-| ----------------- | --------------------- | ---------- |
-| `packages/sdk`    | `@butinapp/sdk`       | MIT        |
-| `packages/ui`     | `@butinapp/ui`        | MIT        |
-| `packages/shapes` | `@butinapp/shapes`    | MIT        |
-| `packages/core`   | `@butinapp/core`      | Apache-2.0 |
-| `packages/engine` | `@butinapp/engine`    | Apache-2.0 |
+| Path                | Package              | License    |
+| ------------------- | -------------------- | ---------- |
+| `packages/sdk`      | `@butinapp/sdk`      | MIT        |
+| `packages/ui`       | `@butinapp/ui`       | MIT        |
+| `packages/shapes`   | `@butinapp/shapes`   | MIT        |
+| `packages/core`     | `@butinapp/core`     | Apache-2.0 |
+| `packages/engine`   | `@butinapp/engine`   | Apache-2.0 |
 | `packages/recorder` | `@butinapp/recorder` | Apache-2.0 |
-| `packages/website` | `butin-website`      | Apache-2.0 |
-| `plugins/`        | `@butinapp/plugins`   | MIT        |
+| `packages/website`  | `butin-website`      | Apache-2.0 |
+| `plugins/`          | `@butinapp/plugins`  | MIT        |
 
 The root `LICENSE` is Apache-2.0 and governs everything that does not carry its own `LICENSE` file. The four MIT packages each ship one.
 
