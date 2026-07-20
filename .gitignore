@@ -27,6 +27,19 @@ CLAUDE.local.md
 # data — it must never be committed. Start from .pii-denylist.example.
 .pii-denylist
 
+# Environment files. Nothing here has ever held one, and it stays that way.
+.env
+.env.*
+!.env.example
+
+# Planning artifacts (design specs, implementation plans) are kept out of the public tree. The dot-prefixed
+# .superpowers/ rule above does not match this path.
+docs/superpowers/
+
+# Raw HTTP captures. A recording carries live session data verbatim — it is never committed, only read from
+# ~/butin/.recordings/ while authoring a plugin.
+*.har
+
 .claude/settings.json
 .claude/statusline.cjs
 cldp.cmd
