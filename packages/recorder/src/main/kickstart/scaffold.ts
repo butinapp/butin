@@ -76,7 +76,7 @@ const transportBlock = (input: KickstartInput): string => {
   const t = input.profile.transport.value
 
   if (t.requiresBrowserEngine) {
-    return `  // Detected a browser-engine signal — replay on Electron net.request so JA3/Cloudflare checks pass.
+    return `  // Detected a browser-engine signal — this edge only accepts a real browser, so replay on Electron net.request (real browser TLS identity).
   transport: { engine: 'electron', requiresBrowserEngine: true },
 `
   }
