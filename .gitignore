@@ -23,6 +23,10 @@ coverage/
 .agents/
 CLAUDE.local.md
 
+# Each developer's own personal values, fed to the pre-commit privacy gate. By construction this file IS personal
+# data — it must never be committed. Start from .pii-denylist.example.
+.pii-denylist
+
 .claude/settings.json
 .claude/statusline.cjs
 cldp.cmd

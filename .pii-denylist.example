@@ -1,0 +1,34 @@
+# Personal values that must never reach a commit. Copy this file and fill in your own:
+#
+#     cp .pii-denylist.example .pii-denylist
+#
+# One value per line; blank lines and lines starting with # are ignored. Matching is case-insensitive substring
+# over every staged line, so entries must be specific enough not to fire on ordinary code — six characters is a
+# sensible floor. A first name would match a variable; a house number plus street name would not.
+#
+# This is the layer that catches REPEATS with certainty. The semantic pass in scripts/pii-scan.mjs catches novel
+# values it has never been told about. Both run from .githooks/pre-commit.
+#
+# Your real `.pii-denylist` is gitignored precisely because it is, by construction, a file of your own personal
+# data. Never commit it, and never paste its contents into an issue, a PR, or a bug report.
+#
+# Fill in the values that appear in YOUR captures — the plugins you connect are the ones whose recordings you
+# transcribe into fixtures, and those recordings carry your real account.
+
+# Residence — street address, unit, postal code
+# 1234 RUE DE L'EXEMPLE
+# H1A 1A1
+
+# Government and utility account identifiers — property roll number, dossier, policy, licence
+# 00000000000000000000000
+# 50-00000000
+
+# Personal access codes and portal handles
+# MYACCESSCODE
+
+# Real email addresses and phone numbers used to sign in
+# me@my-real-domain.com
+# 514-555-0100
+
+# Real account, customer, or host identifiers assigned to you by a service
+# 000000000

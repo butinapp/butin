@@ -18,3 +18,8 @@ if [ -n "$files" ]; then
     exit "$lint_rc"
   fi
 fi
+
+# Privacy gate: fixtures and samples are transcribed from real recordings, so a real address, account number, or
+# access code can ride along into a file that reads as synthetic. Blocks on a denylist hit (deterministic) or a
+# semantic finding (headless Claude, fixture-shaped files only). Skip with BUTIN_SKIP_PII_SCAN=1.
+node scripts/pii-scan.mjs
