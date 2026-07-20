@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Butin — a local-first desktop app that brings your own data home. Each plugin connects one service: you sign in once, then it fetches your data headless and keeps it encrypted on your machine.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "Butin",
   "type": "module",
   "scripts": {

@@ -3,6 +3,7 @@
   "version": "0.1.1",
   "private": true,
   "description": "Butin — a local-first desktop app that brings your own data home.",
+  "license": "Apache-2.0",
   "author": "Butin",
   "type": "module",
   "main": "out/main/index.js",
