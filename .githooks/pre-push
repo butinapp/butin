@@ -1,0 +1,30 @@
+#!/bin/sh
+set -e
+
+# The gate that matters. Once a commit reaches a remote it is public and permanent — a pull-request ref pins it even
+# after the branch is deleted and the history force-pushed — so catching personal data at review time is already too
+# late. This scans every commit in the outgoing range, including ones pre-commit never saw: authored before the hook
+# existed, committed with --no-verify, or made in a clone where `pnpm install` never wired core.hooksPath.
+# Installed via the package.json "prepare" script. Skip with BUTIN_SKIP_PII_SCAN=1 or `git push --no-verify`.
+#
+# git feeds us one line per ref being pushed: <local ref> <local sha> <remote ref> <remote sha>.
+
+remote="$1"
+zero=$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')
+
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  # A zero local sha means the ref is being deleted — nothing is being published.
+  if [ "$local_sha" = "$zero" ]; then
+    continue
+  fi
+
+  if [ "$remote_sha" = "$zero" ]; then
+    # Branch is new to the remote, so there is no prior tip to diff against. Everything not already reachable from
+    # some other ref on this remote is what we are about to publish.
+    set -- "$local_sha" --not --remotes="$remote"
+  else
+    set -- "$remote_sha..$local_sha"
+  fi
+
+  node scripts/pii-scan.mjs --range "$@"
+done

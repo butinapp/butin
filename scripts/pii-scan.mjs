@@ -3,16 +3,22 @@
 // synthetic. Two layers, cheapest first:
 //
 //   1. Denylist — literal matches against `.pii-denylist` (gitignored; each developer fills in the values they know
-//      appear in their own captures). Runs over EVERY staged line. Deterministic, instant, and catches repeats.
+//      appear in their own captures). Runs over EVERY scanned line. Deterministic, instant, and catches repeats.
 //   2. Semantic — a headless Claude pass over added lines in fixture-shaped files, for what no pattern can describe:
 //      a street address inside an HTML cell, a property roll number that is just twenty-three anonymous digits.
 //
 // Layer 1 blocks. Layer 2 blocks on findings but FAILS OPEN when the CLI is missing, offline, or slow — a hook that
-// breaks commits on a plane gets disabled, and CI runs the same scan as the backstop.
+// breaks commits on a plane gets disabled, and layer 1 still ran. pre-push re-scans the whole outgoing range, so a
+// commit that slipped past layer 2 while offline gets a second look before it can leave the machine.
 //
 // Usage:
-//   node scripts/pii-scan.mjs           # scan the staged diff — what .githooks/pre-commit runs
-//   node scripts/pii-scan.mjs --all     # sweep every tracked file instead, for a one-off audit
+//   node scripts/pii-scan.mjs                    # scan the staged diff — what .githooks/pre-commit runs
+//   node scripts/pii-scan.mjs --range <revs...>  # scan every commit in a range — what .githooks/pre-push runs
+//   node scripts/pii-scan.mjs --all              # sweep every tracked file instead, for a one-off audit
+//
+// pre-commit is the cheap feedback loop; pre-push is the gate that matters. Once a commit reaches a remote it is
+// public and permanent — a pull-request ref pins it even after the branch is deleted and the history force-pushed.
+// So pre-push scans the whole outgoing range, including commits pre-commit never saw.
 //
 // Env:
 //   BUTIN_SKIP_PII_SCAN=1   Skip entirely. `git commit --no-verify` bypasses it too.
@@ -64,12 +70,11 @@ value present was recognisably synthetic.`
 
 const git = (args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
 
-// Added lines only. Re-scanning whole files would re-flag settled content on every commit and make the gate noisy.
-const stagedAdditions = () => {
+const parseDiff = (diff) => {
   const added = []
   let file = null
 
-  for (const line of git(['diff', '--cached', '-U0', '--diff-filter=ACM']).split('\n')) {
+  for (const line of diff.split('\n')) {
     if (line.startsWith('+++ b/')) {
       file = line.slice(6)
     } else if (file && line.startsWith('+') && !line.startsWith('+++')) {
@@ -79,6 +84,14 @@ const stagedAdditions = () => {
 
   return added
 }
+
+// Added lines only. Re-scanning whole files would re-flag settled content on every commit and make the gate noisy.
+const stagedAdditions = () => parseDiff(git(['diff', '--cached', '-U0', '--diff-filter=ACM']))
+
+// EVERY commit's own patch across the range, not the range's net diff. A commit that adds personal data and a later
+// one that removes it cancel out in a net diff, so the net diff of a branch that was cleaned up at the tip reads
+// clean while the data still sits in an ancestor — which is exactly what gets pinned forever once it is pushed.
+const rangeAdditions = (revs) => parseDiff(git(['log', '-p', '-U0', '--no-merges', ...revs]))
 
 const trackedLines = () =>
   git(['ls-files'])
@@ -110,13 +123,12 @@ const denylistFindings = (lines, terms) =>
 
 const semanticFindings = (lines) => {
   if (!lines.length) {
-    return { findings: [], skipped: null }
+    return { findings: [], skipped: null, truncated: false }
   }
 
-  const payload = lines
-    .map(({ file, text }) => `${file}: ${text}`)
-    .join('\n')
-    .slice(0, MAX_PAYLOAD)
+  const whole = lines.map(({ file, text }) => `${file}: ${text}`).join('\n')
+  const payload = whole.slice(0, MAX_PAYLOAD)
+  const truncated = whole.length > MAX_PAYLOAD
 
   try {
     const out = execFileSync('claude', ['-p', '--model', MODEL], {
@@ -128,20 +140,30 @@ const semanticFindings = (lines) => {
     })
     const json = out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1)
 
-    return { findings: JSON.parse(json).findings ?? [], skipped: null }
+    return { findings: JSON.parse(json).findings ?? [], skipped: null, truncated }
   } catch (err) {
-    return { findings: [], skipped: (err.message ?? String(err)).split('\n')[0] }
+    return { findings: [], skipped: (err.message ?? String(err)).split('\n')[0], truncated }
   }
 }
 
 const dedupe = (findings) => [...new Map(findings.map((f) => [`${f.file}::${f.snippet}`, f])).values()]
+
+const collectLines = () => {
+  const rangeAt = process.argv.indexOf('--range')
+
+  if (rangeAt !== -1) {
+    return rangeAdditions(process.argv.slice(rangeAt + 1))
+  }
+
+  return process.argv.includes('--all') ? trackedLines() : stagedAdditions()
+}
 
 const main = () => {
   if (process.env.BUTIN_SKIP_PII_SCAN === '1') {
     return
   }
 
-  const lines = process.argv.includes('--all') ? trackedLines() : stagedAdditions()
+  const lines = collectLines()
 
   if (!lines.length) {
     return
@@ -156,7 +178,13 @@ const main = () => {
   }
 
   if (semantic.skipped) {
-    console.warn(`  PII guard: semantic pass skipped (${semantic.skipped}). CI still runs it.`)
+    console.warn(`  PII guard: semantic pass skipped (${semantic.skipped}). The denylist pass still ran.`)
+  }
+
+  if (semantic.truncated) {
+    console.warn(
+      `  PII guard: range too large to review at once — the semantic pass saw the first ${MAX_PAYLOAD} characters.`
+    )
   }
 
   if (!findings.length) {
