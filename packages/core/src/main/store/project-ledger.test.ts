@@ -8,6 +8,7 @@ import {
   primarySeries,
   projectCurrent,
   projectUnion,
+  rowDailyOf,
   seriesPoints
 } from './project-ledger.js'
 
@@ -239,4 +240,48 @@ test('dailyByColumn differences a cumulative column per row from its versions', 
   }
 
   expect(dailyByColumn(log, 'cost', 'monthly')).toEqual({ alice: [{ date: '2026-06-15', value: 15 }] })
+})
+
+const cumulativeRow: DatasetLog['rows'][number] = {
+  id: 'member1',
+  firstSeen: 'T1',
+  seenTo: 'T2',
+  versions: [
+    { from: '2026-06-14T23:00:00Z', to: '2026-06-15T23:00:00Z', data: { id: 'member1', cost: 10 } },
+    { from: '2026-06-15T23:00:00Z', data: { id: 'member1', cost: 25 } }
+  ]
+}
+
+test('rowDailyOf differences the first keyed dataset with a cumulative column, keyed by that dataset id', () => {
+  const l: Ledger = {
+    schemaVersion: 1,
+    datasets: [
+      // A plain keyed dataset (no cumulative column) is skipped in favour of the members log below.
+      { id: 'invoices', key: 'id', columns: [{ key: 'id', role: 'identifier' }], rows: [] },
+      {
+        id: 'members',
+        key: 'id',
+        columns: [{ key: 'cost', role: 'money', accrual: 'cumulative', resetPeriod: 'monthly' }],
+        rows: [cumulativeRow]
+      }
+    ],
+    series: []
+  }
+
+  expect(rowDailyOf(l)).toEqual({ members: { member1: [{ date: '2026-06-15', value: 15 }] } })
+})
+
+test('rowDailyOf returns undefined without a keyed cumulative column', () => {
+  // A cumulative column on an UNKEYED table, plus a keyed table with none — neither qualifies.
+  const l: Ledger = {
+    schemaVersion: 1,
+    datasets: [
+      { id: 'unkeyed', columns: [{ key: 'cost', role: 'money', accrual: 'cumulative' }], rows: [cumulativeRow] },
+      { id: 'invoices', key: 'id', columns: [{ key: 'id', role: 'identifier' }], rows: [] }
+    ],
+    series: []
+  }
+
+  expect(rowDailyOf(l)).toBeUndefined()
+  expect(rowDailyOf({ schemaVersion: 1, datasets: [], series: [] })).toBeUndefined()
 })

@@ -5,8 +5,10 @@ import { app } from 'electron'
 import type { OverviewTileDto } from '../../shared/ipc.js'
 import { plugins } from '../plugin/plugins.js'
 import { getPluginEnabled } from '../store/config-file.js'
+import { readLedger } from '../store/ledger.js'
 import { buildOverview } from '../store/overview.js'
 import { listProfiles } from '../store/profiles.js'
+import { dailySpend, rowDailyOf } from '../store/project-ledger.js'
 import { readCurrent, reconstructResult } from '../store/store.js'
 
 // Map one home tile (the IPC DTO core assembles) onto the @butinapp/ui Overview input, so the export bundle and
@@ -32,15 +34,21 @@ export const toOverviewPlugin = (d: OverviewTileDto): OverviewPlugin => ({
 const toExportPlugin = async (p: (typeof plugins)[number]): Promise<ExportPlugin | null> => {
   const capabilities = await Promise.all(
     p.capabilities.map(async (c) => {
-      const report = await readCurrent(p.meta.id, c.id)
+      const [report, led] = await Promise.all([readCurrent(p.meta.id, c.id), readLedger(p.meta.id, c.id)])
 
       // Reconstruct the stored projection + manifest into a full CapabilityResult so @butinapp/viewer renders the
       // bundle directly (labels/spark/views reattached). A non-conforming payload passes through unchanged.
+      // `daily`/`rowDaily` carry the per-day detail derived from the ledger (the same series the live service
+      // page fetches over IPC) so the drilldown + Trend sparklines render off the bundle alone.
+      const daily = led ? dailySpend(led) : []
+
       return {
         id: c.id,
         label: c.label,
         result: report ? (reconstructResult(report.data) ?? report.data) : undefined,
-        lastRunAt: report?.lastRunAt
+        lastRunAt: report?.lastRunAt,
+        daily: daily.length > 0 ? daily : undefined,
+        rowDaily: led ? rowDailyOf(led) : undefined
       }
     })
   )

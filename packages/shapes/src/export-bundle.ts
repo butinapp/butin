@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { DailyPointSchema } from './daily.js'
 import { OverviewPluginSchema } from './overview.js'
 
 // The portable export artifact — Butin's normalized data lifted out as ONE self-contained JSON blob, so a
@@ -15,13 +16,18 @@ export const EXPORT_BUNDLE_FORMAT_VERSION = 1
 
 // One capability's cached state at export time. `result` is the stored CapabilityResult (datasets/views/
 // summary) — whatever the generic renderer received live. `error` carries a failed last run so the viewer
-// can surface it instead of an empty tab.
+// can surface it instead of an empty tab. `daily`/`rowDaily` are the per-day detail pre-derived from the
+// capability's ledger — `daily` the per-day spend series, `rowDaily` the per-row cumulative-column series
+// keyed datasetId → rowId → series (the renderer's rowDaily prop shape) — so a viewer draws the service-page
+// daily drilldown + Trend sparklines with no ledger. All optional + additive → formatVersion-safe.
 export const ExportBundleCapabilitySchema = z.object({
   id: z.string(),
   label: z.string(),
   result: z.unknown().optional(),
   lastRunAt: z.string().optional(),
-  error: z.string().optional()
+  error: z.string().optional(),
+  daily: z.array(DailyPointSchema).optional(),
+  rowDaily: z.record(z.string(), z.record(z.string(), z.array(DailyPointSchema))).optional()
 })
 export type ExportBundleCapability = z.infer<typeof ExportBundleCapabilitySchema>
 
