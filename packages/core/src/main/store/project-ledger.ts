@@ -178,3 +178,23 @@ export const dailyByColumn = (
 
   return deriveDailyByRow(readingsByRow, resetPeriod)
 }
+
+// The per-row daily trend a renderer's `rowDaily` prop expects, straight from the ledger: the first KEYED
+// dataset-log carrying a cumulative column, differenced per row and keyed datasetId → rowId → series. undefined
+// when no dataset has one (most capabilities). The headless peer of the UI's findCumulativeColumn, so main
+// derives this without importing the renderer.
+export const rowDailyOf = (led: Ledger): Record<string, Record<string, DailyPoint[]>> | undefined => {
+  for (const d of led.datasets) {
+    if (d.key === undefined) {
+      continue
+    }
+
+    const col = d.columns.find((c) => c.accrual === 'cumulative')
+
+    if (col) {
+      return { [d.id]: dailyByColumn(d, col.key, col.resetPeriod) }
+    }
+  }
+
+  return undefined
+}

@@ -95,6 +95,39 @@ describe('parseExportBundle', () => {
     expect(result.errors.some((e) => e.startsWith('generatedAt'))).toBe(true)
   })
 
+  it('keeps a capability carrying pre-derived daily + rowDaily, and one carrying neither', () => {
+    const withDaily = {
+      meta: { id: 'anthropic-console', name: 'Anthropic Console', capabilities: [{ id: 'usage', label: 'Usage' }] },
+      capabilities: [
+        {
+          id: 'usage',
+          label: 'Usage',
+          daily: [
+            { date: '2026-07-01', value: 12 },
+            { date: '2026-07-02', value: 3, estimated: true }
+          ],
+          rowDaily: { members: { member1: [{ date: '2026-07-01', value: 12 }] } }
+        }
+      ]
+    }
+
+    const result = parseExportBundle({ ...baseBundle(), plugins: [validPlugin('stripe'), withDaily] })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      return
+    }
+
+    expect(result.warnings).toEqual([])
+    const cap = result.bundle.plugins.find((p) => p.meta.id === 'anthropic-console')!.capabilities[0]!
+
+    expect(cap.daily).toHaveLength(2)
+    expect(cap.rowDaily?.members?.member1).toEqual([{ date: '2026-07-01', value: 12 }])
+    // The stripe plugin's capability list is empty — the fields are optional, so it parses unchanged.
+    expect(result.bundle.plugins.find((p) => p.meta.id === 'stripe')!.capabilities).toEqual([])
+  })
+
   it('rejects a bundle from a newer format version with a clear message', () => {
     const result = parseExportBundle({ ...baseBundle(), formatVersion: EXPORT_BUNDLE_FORMAT_VERSION + 1 })
 
