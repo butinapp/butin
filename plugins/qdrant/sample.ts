@@ -4,55 +4,28 @@
 
 import type { SampleConfig, SampleGen } from '@butinapp/sdk/testing'
 
-import type { QdrantBillingInput, QdrantKeysInput, QdrantMembersInput } from './main.js'
+import type { QdrantInvoicesInput, QdrantKeysInput, QdrantMembersInput } from './main.js'
 
-// A 1-based {year, month} from a fixed month-back offset.
-const monthYM = (g: SampleGen, n: number): { year: number; month: number } => {
-  const [y, m] = g.monthsAgo(n).yearMonth.split('-')
-
-  return { year: Number(y), month: Number(m) }
-}
-
-// Twelve months of metered history (ascending) — amounts in MILLICENTS, ramping up. The current month's
-// per-cluster breakdown sums to the open-period MTD (spend.mtd rollup).
-export const sampleQdrantBilling = (g: SampleGen, config: SampleConfig): QdrantBillingInput => {
-  const span = Math.min(config.documents, 36)
-  const base = g.int(150_000_000, 200_000_000)
-  const current = monthYM(g, 0)
+// A committed monthly plan: one flat invoice per past month (newest first), amount in MILLICENTS, each with a
+// synthetic PDF link. `documents` caps how far back the history runs.
+export const sampleQdrantInvoices = (g: SampleGen, config: SampleConfig): QdrantInvoicesInput => {
+  const span = Math.min(config.documents, 24)
+  const amount = String(g.int(300_000_000, 350_000_000))
+  const account = g.int(10_000_000, 99_999_999)
 
   return {
-    monthly: g.repeat(span, (i) => ({
-      ...monthYM(g, span - 1 - i),
-      amountMillicents: String(base + i * 2_000_000),
-      currency: 'USD'
-    })),
-    current: {
-      year: current.year,
-      month: current.month,
-      items: [
-        {
-          clusterId: 'c1',
-          clusterName: 'prod',
-          billableEntityType: 'Cluster',
-          amountMillicents: String(g.int(20_000_000, 40_000_000)),
-          currency: 'USD'
-        },
-        {
-          clusterId: 'c1',
-          clusterName: 'prod',
-          billableEntityType: 'Backup',
-          amountMillicents: String(g.int(3_000_000, 7_000_000)),
-          currency: 'USD'
-        },
-        {
-          clusterId: 'c2',
-          clusterName: 'staging',
-          billableEntityType: 'Cluster',
-          amountMillicents: String(g.int(5_000_000, 11_000_000)),
-          currency: 'USD'
-        }
-      ]
-    }
+    items: g.repeat(span, (i) => {
+      const ym = g.monthsAgo(i + 1).yearMonth
+
+      return {
+        id: g.id('in'),
+        number: `${account}-${1000 + span - i}`,
+        totalAmount: amount,
+        createdAt: `${ym}-24T07:00:00Z`,
+        status: 'INVOICE_STATUS_PAID',
+        pdfUrl: `https://invoices.example.invalid/${ym}.pdf`
+      }
+    })
   }
 }
 

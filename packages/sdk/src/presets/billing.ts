@@ -131,10 +131,6 @@ export interface BillingSummaryInput {
   // different things (e.g. a live open-period figure against overlapping multi-month invoices) so the delta
   // would compare incomparable bases.
   showDelta?: boolean
-  // Whether the monthly source is authoritative for its key-range (default true: a re-dated or vanished bucket
-  // is corrected on the next fetch). Set false for a source that returns an unstable partial set of months per
-  // fetch, so months a fetch omits accumulate (append) instead of being dropped.
-  monthlyRollup?: boolean
 }
 
 // The invoices table row. `id` + `name` ride hidden: `id` keys the dataset so invoices accumulate past the
@@ -148,7 +144,7 @@ type InvoiceRow = {
   name: string
 }
 
-const monthlyTable = (months: MonthPoint[], currency?: string, rollup = true) =>
+const monthlyTable = (months: MonthPoint[], currency?: string) =>
   table<MonthPoint>({
     id: 'monthly',
     columns: [
@@ -159,9 +155,7 @@ const monthlyTable = (months: MonthPoint[], currency?: string, rollup = true) =>
     key: 'month',
     // A re-derived rollup: each fetch recomputes the recent months from the invoice window, so a re-dated or
     // vanished bucket is corrected rather than retained. Months below the fetched range persist (deep history).
-    // A source that returns an unstable partial set each fetch passes rollup:false, so a month it omits
-    // accumulates (append) instead of being dropped.
-    rollup
+    rollup: true
   })
 
 // The Summary preset: a headline `account` stat (currentMtd + optional plan + caller
@@ -217,7 +211,7 @@ export const billingSummaryResult = (input: BillingSummaryInput): CapabilityResu
   }
 
   const account = record.fromColumns({ id: 'account', fields, value })
-  const monthly = monthlyTable(months, input.currency, input.monthlyRollup ?? true)
+  const monthly = monthlyTable(months, input.currency)
 
   const s =
     input.currentMtd != null

@@ -9,10 +9,10 @@ import {
   type ConfigOption
 } from '@butinapp/sdk'
 import { capabilityResult, table, type CapabilityResult } from '@butinapp/sdk/data'
-import { billing, members, type MemberInput } from '@butinapp/sdk/presets'
-import { currentMonthKey, isoDay, millicentsToMajor, monthKey, round2, startCase } from '@butinapp/sdk/util'
+import { billing, members, type BillingInvoiceInput, type MemberInput } from '@butinapp/sdk/presets'
+import { currentMonthKey, isoDay, millicentsToMajor, startCase } from '@butinapp/sdk/util'
 
-import { sampleQdrantBilling, sampleQdrantKeys, sampleQdrantMembers } from './sample.js'
+import { sampleQdrantInvoices, sampleQdrantKeys, sampleQdrantMembers } from './sample.js'
 
 // Qdrant — rotating-refresh auth. cloud.qdrant.io is an Auth0 SPA, not a cookie session: API calls carry a
 // short-lived (60s) Bearer minted from a refresh token kept in localStorage. Magic Login captures that
@@ -32,31 +32,17 @@ interface TokenResponse {
   refresh_token?: string
 }
 
-interface RawMetering {
-  clusterId?: string
-  clusterName?: string
-  billableEntityType?: string
-  amountMillicents?: string
-  currency?: string
+interface RawInvoice {
+  id?: string
+  number?: string
+  totalAmount?: string // millicents
+  createdAt?: string
+  status?: string
+  pdfUrl?: string
 }
 
-interface RawMonthlyMetering {
-  year?: number
-  month?: number // 1-based
-  amountMillicents?: string
-  currency?: string
-}
-
-export interface QdrantBillingInput {
-  monthly: RawMonthlyMetering[]
-  current: { year: number; month: number; items: RawMetering[] }
-}
-
-interface QdrantMetering {
-  currency: string
-  months: { month: string; total: number }[]
-  clusters: { cluster: string; total: number }[]
-  currentTotal: number
+export interface QdrantInvoicesInput {
+  items: RawInvoice[]
 }
 
 interface RawRole {
@@ -154,12 +140,12 @@ const accountIdOf = (ctx: CollectContext<QdrantConfig>): string => {
 const connect = <T>(ctx: CollectContext<QdrantConfig>, rpc: string, body: unknown): Promise<T> =>
   ctx.client.post<T>(`${API_ORIGIN}/connect/${rpc}`, body, { Origin: API_ORIGIN })
 
-// The metering gateway runs a multi-second query server-side on a busy account and intermittently answers a
-// transient 5xx — the same call succeeds moments later. Retry a 5xx (each attempt is host-paced, so the retries
-// are already spaced); surface auth/argument errors (401/4xx) immediately so a dead session still re-prompts.
-const METERING_MAX_ATTEMPTS = 3
+// The connect-RPC gateway intermittently answers a transient 5xx on a busy account — the same call succeeds
+// moments later. Retry a 5xx (each attempt is host-paced, so the retries are already spaced); surface
+// auth/argument errors (401/4xx) immediately so a dead session still re-prompts.
+const GATEWAY_MAX_ATTEMPTS = 3
 
-export const retryOn5xx = async <T>(fn: () => Promise<T>, attempts = METERING_MAX_ATTEMPTS): Promise<T> => {
+export const retryOn5xx = async <T>(fn: () => Promise<T>, attempts = GATEWAY_MAX_ATTEMPTS): Promise<T> => {
   for (let attempt = 1; ; attempt++) {
     try {
       return await fn()
@@ -212,168 +198,100 @@ const fetchQdrantAccounts = async (ctx: CollectContext): Promise<RawAccount[]> =
   }
 }
 
-// --- billing: usage-based metered spend (no subscription concept). Money is MILLICENTS. ---
-// Shared parse: millicents→USD, the monthly history (ascending) + the current month's per-cluster
-// breakdown (descending) + the current-month total (the MTD). Fixture-tested via the two builders below.
-const parseQdrantMetering = (input: QdrantBillingInput): QdrantMetering => {
-  let currency = 'USD'
+// --- billing: the account's actual invoices (a committed monthly plan). Money is MILLICENTS. ---
+// The Stripe-backed ListInvoices is the reliable, complete billing history — one call, every month present,
+// each with a downloadable PDF. Summary reads it for the monthly-spend chart + the Overview spend rollup;
+// Billing lists the individual invoices with their PDFs.
+const invoiceStatus = (status?: string): string =>
+  (status ?? '').replace(/^INVOICE_STATUS_/, '').toLowerCase() || 'unknown'
 
-  const byMonth = new Map<string, number>()
+// Pure transform — fixture-tested. Raw invoices → the billing preset's invoice input (millicents→USD, the issue
+// day, a lowercase status the renderer auto-tones, the Stripe PDF link). Undated invoices can't bucket, so skip.
+export const toBillingInvoices = (items: RawInvoice[]): BillingInvoiceInput[] =>
+  items
+    .filter((i) => i.createdAt)
+    .map((i) => ({
+      id: i.id ?? i.number,
+      date: isoDay(i.createdAt),
+      amount: millicentsToMajor(i.totalAmount),
+      status: invoiceStatus(i.status),
+      pdfUrl: i.pdfUrl ?? null
+    }))
 
-  for (const m of input.monthly) {
-    if (m.year == null || m.month == null) {
-      continue
-    }
+// --- Summary tab (its spend summary is what the cross-service Overview rolls up) ---
+// The monthly-spend chart + headline from the invoices. "This month" is the current month's invoice once it
+// posts, else the latest invoice — the recurring charge you're on.
+export const buildQdrantSummary = (input: QdrantInvoicesInput): CapabilityResult => {
+  const invoices = toBillingInvoices(input.items)
+  const newestFirst = [...invoices].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  const thisMonth = currentMonthKey()
+  const current = newestFirst.find((i) => i.date?.startsWith(thisMonth)) ?? newestFirst[0]
 
-    if (m.currency) {
-      currency = m.currency
-    }
-
-    byMonth.set(monthKey(m.year, m.month), millicentsToMajor(m.amountMillicents))
-  }
-
-  const byCluster = new Map<string, { cluster: string; total: number }>()
-  let currentTotal = 0
-
-  for (const item of input.current.items) {
-    const amount = millicentsToMajor(item.amountMillicents)
-
-    currentTotal += amount
-
-    if (item.currency) {
-      currency = item.currency
-    }
-
-    const id = item.clusterId ?? 'unknown'
-    const existing = byCluster.get(id) ?? { cluster: item.clusterName ?? id, total: 0 }
-
-    existing.total += amount
-    byCluster.set(id, existing)
-  }
-
-  // The monthly rollup lags for the open month (its bucket trails real-time) while the current-period line items
-  // are the live accrued total, so the open month reads from the accrued sum — both tabs and the chart then show
-  // real MTD instead of the trailing bucket. An empty current fetch leaves the bucket as-is.
-  if (input.current.items.length > 0) {
-    byMonth.set(monthKey(input.current.year, input.current.month), round2(currentTotal))
-  }
-
-  const months = [...byMonth.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, total]) => ({ month, total }))
-
-  const clusters = [...byCluster.values()]
-    .map((c) => ({ cluster: c.cluster, total: round2(c.total) }))
-    .sort((a, b) => b.total - a.total)
-
-  return { currency, months, clusters, currentTotal: round2(currentTotal) }
-}
-
-interface ClusterRow {
-  cluster: string
-  total: number
-}
-
-// --- Summary tab (its spend.mtd summary is what the cross-service Overview rolls up) ---
-// Metered spend has no subscription/invoice concept, so the monthly history is synthesized as dated
-// 'metered' rows that feed billing.summary's monthly-spend chart + spend.mtd summary; we append the
-// this-month-by-cluster breakdown (the top-N) onto the preset result.
-export const buildQdrantSummary = (input: QdrantBillingInput): CapabilityResult => {
-  const { currency, months, clusters, currentTotal } = parseQdrantMetering(input)
-
-  const result = billing.summary({
-    currentMtd: currentTotal,
-    // Pure metered spend accruing live over the open period (no subscription floor).
-    mtdBasis: 'accrued',
-    currency,
-    // ListMonthlyMeterings returns an unstable partial set of months per fetch, so the series accumulates
-    // (append) rather than treating each fetch as authoritative for its range — otherwise a month a fetch omits
-    // gets dropped from the chart.
-    monthlyRollup: false,
-    // The open month is a live accrued MTD, not a closed total, so a month-over-month delta against a full prior
-    // month would compare incomparable bases — suppress it.
-    showDelta: false,
-    invoices: months.map((m) => ({ date: `${m.month}-01`, amount: m.total, status: 'metered' }))
+  return billing.summary({
+    currentMtd: current?.amount ?? null,
+    mtdBasis: 'invoiced',
+    currency: 'USD',
+    invoices
   })
-
-  if (clusters.length) {
-    const clusterSection = table<ClusterRow>({
-      id: 'currentClusters',
-      columns: [
-        { key: 'cluster', label: 'Cluster', role: 'label' },
-        { key: 'total', label: 'This month', role: 'money', currency }
-      ],
-      rows: clusters
-    }).table({ title: 'This month by cluster' })
-
-    result.datasets.push(clusterSection.dataset)
-    result.views = [...(result.views ?? []), clusterSection.view]
-  }
-
-  return result
-}
-
-interface MeteringRow {
-  month: string
-  amount: number
-  status: string
 }
 
 // --- Billing tab (renders via the generic renderer; emits no summary, so it's NOT the Overview rollup) ---
-// The granular billing records: the monthly metered totals as a table. The headline + chart live on Summary.
-export const buildQdrantBilling = (input: QdrantBillingInput): CapabilityResult => {
-  const { currency, months } = parseQdrantMetering(input)
+// The itemized invoice list (newest first) with a downloadable PDF per row. The headline + chart live on Summary.
+interface QdrantInvoiceRow {
+  id: string
+  number: string
+  date: string | null
+  amount: number
+  status: string
+  pdfUrl: string | null
+  name: string
+}
+
+export const buildQdrantBilling = (input: QdrantInvoicesInput): CapabilityResult => {
+  const rows: QdrantInvoiceRow[] = input.items
+    .filter((i) => i.createdAt)
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
+    .map((i) => ({
+      id: i.id ?? i.number ?? String(i.createdAt),
+      number: i.number ?? '—',
+      date: isoDay(i.createdAt) ?? null,
+      amount: millicentsToMajor(i.totalAmount),
+      status: invoiceStatus(i.status),
+      pdfUrl: i.pdfUrl ?? null,
+      name: `Qdrant invoice ${i.number ?? isoDay(i.createdAt) ?? ''}`.trim()
+    }))
 
   return capabilityResult({
     sections: [
-      table<MeteringRow>({
-        id: 'meterings',
+      table<QdrantInvoiceRow>({
+        id: 'invoices',
         columns: [
-          { key: 'month', label: 'Month', role: 'timestamp' },
-          { key: 'amount', label: 'Metered', role: 'money', currency },
-          { key: 'status', label: 'Status', role: 'status' }
+          { key: 'number', label: 'Invoice #', role: 'identifier' },
+          { key: 'amount', label: 'Amount', role: 'money', currency: 'USD' },
+          { key: 'date', label: 'Date', role: 'timestamp' },
+          { key: 'status', label: 'Status', role: 'status' },
+          { key: 'id', role: 'identifier', hidden: true },
+          { key: 'pdfUrl', role: 'url', hidden: true },
+          { key: 'name', role: 'label', hidden: true }
         ],
-        rows: [...months].reverse().map((m) => ({ month: m.month, amount: m.total, status: 'metered' })),
-        // One row per calendar month ('YYYY-MM') → keyed by month so the metering history accumulates.
-        key: 'month'
-      }).table({ title: 'Monthly meterings' })
+        rows,
+        // one row per invoice → keyed by id so the invoice history accumulates.
+        key: 'id'
+      }).fileTable({ title: 'Invoices', name: 'name', source: { url: 'pdfUrl' }, ext: 'pdf', category: 'Invoices' })
     ]
   })
 }
 
-// Summary + Billing both read the same two metering RPCs (monthly history + current month). Both collects
-// call loadQdrantMetering; the core query cache dedupes the underlying reads (keyed by account id via the
-// call site).
-const loadQdrantMetering = async (
-  ctx: CollectContext<QdrantConfig>,
-  accountId: string
-): Promise<QdrantBillingInput> => {
-  const [year, month] = currentMonthKey().split('-').map(Number)
+// Summary + Billing both read ListInvoices; the core query cache dedupes the underlying call across the two tabs.
+const fetchQdrantInvoices = async (ctx: CollectContext<QdrantConfig>): Promise<QdrantInvoicesInput> => {
+  const res = await retryOn5xx(() =>
+    connect<{ items?: RawInvoice[] }>(ctx, 'qdrant.cloud.billing.v1.BillingService/ListInvoices', {
+      accountId: accountIdOf(ctx)
+    })
+  )
 
-  // Both metering RPCs share the gateway's transient-5xx behaviour, so both go through retryOn5xx — an
-  // un-retried current-month call would sink the whole billing+summary fetch on a single transient 500.
-  const [monthly, current] = await Promise.all([
-    retryOn5xx(() =>
-      connect<{ items?: RawMonthlyMetering[] }>(ctx, 'qdrant.cloud.metering.v1.MeteringService/ListMonthlyMeterings', {
-        accountId
-      })
-    ).then((r) => r?.items ?? []),
-    retryOn5xx(() =>
-      connect<{ items?: RawMetering[] }>(ctx, 'qdrant.cloud.metering.v1.MeteringService/ListMeterings', {
-        accountId,
-        year,
-        month
-      })
-    )
-  ])
-
-  return { monthly, current: { year, month, items: current?.items ?? [] } }
+  return { items: res?.items ?? [] }
 }
-
-// Summary + Billing both fetch the same two metering RPCs; this is their shared network half (the core
-// query cache dedupes the underlying reads across the two tabs).
-const fetchQdrantMetering = (ctx: CollectContext<QdrantConfig>): Promise<QdrantBillingInput> =>
-  loadQdrantMetering(ctx, accountIdOf(ctx))
 
 // --- members: who has access to the account (the dashboard's /cloud-access "all users" page). ---
 // The UI reads an aggregation RPC (NOT a flat user list) that joins each user with their account roles. The
@@ -546,16 +464,16 @@ export const qdrantPlugin = definePlugin({
     defineCapability({
       id: 'summary',
       label: 'Summary',
-      fetch: fetchQdrantMetering,
+      fetch: fetchQdrantInvoices,
       build: buildQdrantSummary,
-      sample: sampleQdrantBilling
+      sample: sampleQdrantInvoices
     }),
     defineCapability({
       id: 'billing',
       label: 'Billing',
-      fetch: fetchQdrantMetering,
+      fetch: fetchQdrantInvoices,
       build: buildQdrantBilling,
-      sample: sampleQdrantBilling
+      sample: sampleQdrantInvoices
     }),
     defineCapability({
       id: 'members',
