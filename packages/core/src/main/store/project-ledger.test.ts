@@ -242,6 +242,35 @@ test('dailyByColumn differences a cumulative column per row from its versions', 
   expect(dailyByColumn(log, 'cost', 'monthly')).toEqual({ alice: [{ date: '2026-06-15', value: 15 }] })
 })
 
+test('dailyByColumn carries an unchanged row forward to seenTo as known-zero days', () => {
+  const log: DatasetLog = {
+    id: 'm',
+    key: 'id',
+    columns: [{ key: 'cost', role: 'money', accrual: 'cumulative' }],
+    rows: [
+      {
+        id: 'alice',
+        firstSeen: '2026-07-15T23:00:00Z',
+        // Last fetched Jul 18, but the meter last CHANGED (→25) on Jul 16 — so no version exists past Jul 16.
+        seenTo: '2026-07-18T23:00:00Z',
+        versions: [
+          { from: '2026-07-15T23:00:00Z', to: '2026-07-16T23:00:00Z', data: { id: 'alice', cost: 10 } },
+          { from: '2026-07-16T23:00:00Z', data: { id: 'alice', cost: 25 } }
+        ]
+      }
+    ]
+  }
+
+  // The trend runs to the last refresh (Jul 18), not the last change (Jul 16): the flat tail is known zeros.
+  expect(dailyByColumn(log, 'cost', 'monthly')).toEqual({
+    alice: [
+      { date: '2026-07-16', value: 15 },
+      { date: '2026-07-17', value: 0 },
+      { date: '2026-07-18', value: 0 }
+    ]
+  })
+})
+
 const cumulativeRow: DatasetLog['rows'][number] = {
   id: 'member1',
   firstSeen: 'T1',

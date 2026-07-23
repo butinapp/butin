@@ -81,9 +81,12 @@ export const deriveDailySpend = (points: DailySource[], resetPeriod?: ResetPerio
     }
 
     const per = delta / gap.length
+    // A flat span (no change across the gap) is a known zero on every day, not an interpolation — so it carries
+    // no estimated flag. Only a non-zero delta, whose day-by-day split we didn't sample, is genuinely estimated.
+    const estimated = delta !== 0
 
     for (const date of gap) {
-      out.push({ date, value: per, estimated: true })
+      out.push(estimated ? { date, value: per, estimated } : { date, value: per })
     }
   }
 

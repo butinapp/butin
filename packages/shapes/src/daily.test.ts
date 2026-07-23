@@ -34,6 +34,18 @@ test('deriveDailySpend spreads a multi-day gap evenly and flags it estimated', (
   ])
 })
 
+test('deriveDailySpend fills a zero-delta gap with known zeros, not estimates', () => {
+  // A flat meter across the gap means no spend on any of those days — that is certain, not interpolated, so the
+  // days are plain zeros. (Contrast the non-zero gap above, where the day-by-day split is genuinely unknown.)
+  const daily = deriveDailySpend([pt('2026-07-20', 50), pt('2026-07-23', 50)])
+
+  expect(daily).toEqual([
+    { date: '2026-07-21', value: 0 },
+    { date: '2026-07-22', value: 0 },
+    { date: '2026-07-23', value: 0 }
+  ])
+})
+
 test('deriveDailySpend emits the value itself for a lone first-of-month point', () => {
   expect(deriveDailySpend([pt('2026-06-01', 4)])).toEqual([{ date: '2026-06-01', value: 4 }])
 })
