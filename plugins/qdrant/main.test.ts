@@ -172,6 +172,41 @@ test('qdrant Billing detail: the monthly metering records table (newest first), 
   expect(result.datasets.some((d) => d.id === 'currentClusters')).toBe(false)
 })
 
+test('qdrant open month reads the accrued current-period total, not the lagging monthly bucket', () => {
+  // monthly 2026-06 bucket = 476268416 millicents ($4762.68); current (2026-06) line items sum = $5262.68.
+  const summary = buildQdrantSummary(meteringInput)
+  const summaryMonthly = summary.datasets.find((d) => d.id === 'monthly') as unknown as {
+    rows: Array<{ month: string; amount: number }>
+  }
+
+  // the open month is overwritten with the accrued line-item total, matching the headline
+  expect(summaryMonthly.rows.find((r) => r.month === '2026-06')?.amount).toBe(5262.68)
+  expect(summary.summaries?.[0]).toMatchObject({ section: 'spend', value: 5262.68 })
+
+  // the Billing detail table shows the same accrued open-month figure, so the two tabs agree
+  const billing = buildQdrantBilling(meteringInput)
+  const meterings = billing.datasets.find((d) => d.id === 'meterings') as unknown as {
+    rows: Array<{ month: string; amount: number }>
+  }
+
+  expect(meterings.rows.find((r) => r.month === '2026-06')?.amount).toBe(5262.68)
+})
+
+test('qdrant Summary accumulates months (append, not rollup) and drops the incomparable delta', () => {
+  const summary = buildQdrantSummary(meteringInput)
+
+  // the monthly metering endpoint returns unstable partial sets, so the series must NOT be authoritative for its
+  // range (a rollup would erase a month a fetch omitted); an append-log carries no `rollup` flag.
+  const monthly = summary.datasets.find((d) => d.id === 'monthly') as unknown as { rollup?: boolean }
+
+  expect(monthly.rollup).toBeUndefined()
+
+  // a live accrued MTD vs a full prior month is an incomparable base → no delta cell
+  const account = summary.datasets.find((d) => d.id === 'account') as unknown as { fields: Array<{ key: string }> }
+
+  expect(account.fields.some((f) => f.key === 'momDelta')).toBe(false)
+})
+
 test('qdrant Summary tolerates empty meterings', () => {
   const result = buildQdrantSummary({ monthly: [], current: { year: 2026, month: 6, items: [] } })
 

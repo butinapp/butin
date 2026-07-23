@@ -172,6 +172,25 @@ test('billingSummaryResult: account stat + monthly chart + spend.mtd summary, NO
   })
 })
 
+test('billingSummaryResult: monthly is a rollup by default; monthlyRollup:false makes it an append-log', () => {
+  const invoices = [{ date: '2026-05-10', amount: 5, status: 'paid' }]
+  const monthlyOf = (r: ReturnType<typeof billingSummaryResult>) => {
+    const d = r.datasets.find((x) => x.id === 'monthly')!
+
+    if (d.shape !== 'table') {
+      throw new Error('monthly should be a table')
+    }
+
+    return d
+  }
+
+  expect(monthlyOf(billingSummaryResult({ currentMtd: 5, currency: 'USD', invoices })).rollup).toBe(true)
+  // false is omitted by the table builder → an append-log, so a month a fetch omits accumulates instead of dropping
+  expect(
+    monthlyOf(billingSummaryResult({ currentMtd: 5, currency: 'USD', monthlyRollup: false, invoices })).rollup
+  ).toBeUndefined()
+})
+
 test('billingSummaryResult: a label override drives the currentMtd field + summary label', () => {
   const r = billingSummaryResult({ currentMtd: 5, currentMtdLabel: 'Montant dû', currency: 'CAD', invoices: [] })
   const account = r.datasets.find((d) => d.id === 'account')!

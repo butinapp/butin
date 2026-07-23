@@ -218,16 +218,19 @@ const fetchQdrantAccounts = async (ctx: CollectContext): Promise<RawAccount[]> =
 const parseQdrantMetering = (input: QdrantBillingInput): QdrantMetering => {
   let currency = 'USD'
 
-  const months = [...input.monthly]
-    .filter((m) => m.year != null && m.month != null)
-    .sort((a, b) => a.year! * 12 + a.month! - (b.year! * 12 + b.month!))
-    .map((m) => {
-      if (m.currency) {
-        currency = m.currency
-      }
+  const byMonth = new Map<string, number>()
 
-      return { month: monthKey(m.year!, m.month!), total: millicentsToMajor(m.amountMillicents) }
-    })
+  for (const m of input.monthly) {
+    if (m.year == null || m.month == null) {
+      continue
+    }
+
+    if (m.currency) {
+      currency = m.currency
+    }
+
+    byMonth.set(monthKey(m.year, m.month), millicentsToMajor(m.amountMillicents))
+  }
 
   const byCluster = new Map<string, { cluster: string; total: number }>()
   let currentTotal = 0
@@ -247,6 +250,17 @@ const parseQdrantMetering = (input: QdrantBillingInput): QdrantMetering => {
     existing.total += amount
     byCluster.set(id, existing)
   }
+
+  // The monthly rollup lags for the open month (its bucket trails real-time) while the current-period line items
+  // are the live accrued total, so the open month reads from the accrued sum — both tabs and the chart then show
+  // real MTD instead of the trailing bucket. An empty current fetch leaves the bucket as-is.
+  if (input.current.items.length > 0) {
+    byMonth.set(monthKey(input.current.year, input.current.month), round2(currentTotal))
+  }
+
+  const months = [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, total]) => ({ month, total }))
 
   const clusters = [...byCluster.values()]
     .map((c) => ({ cluster: c.cluster, total: round2(c.total) }))
@@ -272,6 +286,13 @@ export const buildQdrantSummary = (input: QdrantBillingInput): CapabilityResult 
     // Pure metered spend accruing live over the open period (no subscription floor).
     mtdBasis: 'accrued',
     currency,
+    // ListMonthlyMeterings returns an unstable partial set of months per fetch, so the series accumulates
+    // (append) rather than treating each fetch as authoritative for its range — otherwise a month a fetch omits
+    // gets dropped from the chart.
+    monthlyRollup: false,
+    // The open month is a live accrued MTD, not a closed total, so a month-over-month delta against a full prior
+    // month would compare incomparable bases — suppress it.
+    showDelta: false,
     invoices: months.map((m) => ({ date: `${m.month}-01`, amount: m.total, status: 'metered' }))
   })
 
