@@ -607,11 +607,14 @@ export const buildChatgptUsageResult = (report: CodexReport): CapabilityResult =
         { key: 'name', label: 'Member', role: 'label' },
         { key: 'email', label: 'Email', role: 'identifier' },
         { key: 'seatType', label: 'Seat', role: 'category' },
-        { key: 'codexUsd', label: 'Codex usage', role: 'money' },
+        // The dollar Codex spend is the meaningful per-member metric, so IT owns the trend (not the token or
+        // credit counts). Cumulative on a keyed table → the renderer adds a per-member Trend sparkline + a
+        // per-day drilldown of Codex $, from the readings recorded across refreshes. Caveat: the leaderboard
+        // reports a rolling window (see USAGE_WINDOW), so the day-over-day deltas are approximate, not a true
+        // daily spend — the total and the ranking are exact; the per-day breakdown is indicative.
+        { key: 'codexUsd', label: 'Codex usage', role: 'money', accrual: 'cumulative', resetPeriod: 'monthly' },
         { key: 'credits', label: 'Credits', role: 'count' },
-        // Cumulative on a keyed table → the renderer auto-adds a per-member Trend sparkline of tokens used
-        // each day (the day-over-day delta of this rolling-window figure), recorded across refreshes.
-        { key: 'tokens', label: 'Tokens', role: 'count', accrual: 'cumulative', resetPeriod: 'monthly' },
+        { key: 'tokens', label: 'Tokens', role: 'count' },
         { key: 'linesOfCode', label: 'Lines', role: 'count' }
       ],
       rows: rows.map((m) => ({
@@ -837,25 +840,28 @@ const AGENT_OBS = '/api/agent-observability-v3'
 // The leaderboard is scoped by a repeated `products` list (org-wide across every surface); `product=all` is
 // no longer accepted. Omitting `workspace_ids` returns every workspace the admin sees.
 const USAGE_PRODUCTS = 'products=chatgpt&products=agents&products=codex&products=work'
+// The leaderboard window. '1m' is a ROLLING one-month total per member (not a calendar month-to-date), so its
+// value rises and falls as days age out of the window — which is why the per-member day-over-day trend is
+// approximate rather than a true daily spend.
+const USAGE_WINDOW = '1m'
 
 // The usage fetch: the Codex leaderboard (admin.openai.com) + the workspace seat roster (chatgpt.com) it
 // joins on. Each degrades to an empty shape so the tab renders zeroed org totals rather than throwing when
 // the admin surface isn't authed on the shared partition (the full roster is the Members tab).
 const fetchChatgptUsage = async (ctx: CollectContext): Promise<RawChatgptUsage> => {
-  const window = '1m'
   const admin = ctx.clientFor('admin')
 
   const [roster, leaderboard, freshness] = await Promise.all([
     fetchWorkspaceMembers(ctx).catch(() => [] as WorkspaceMember[]),
     admin
       .get<RawLeaderboard>(
-        `${AGENT_OBS}/leaderboards/user-token-usage?limit=100&${USAGE_PRODUCTS}&window=${window}&sort_by=credits&sort_direction=desc`
+        `${AGENT_OBS}/leaderboards/user-token-usage?limit=100&${USAGE_PRODUCTS}&window=${USAGE_WINDOW}&sort_by=credits&sort_direction=desc`
       )
       .catch(() => ({}) as RawLeaderboard),
     admin.get<RawFreshness>(`/api/analytics/data-freshness?use_case=leaderboard_page`).catch(() => ({}) as RawFreshness)
   ])
 
-  return { leaderboard, freshness, roster, capturedAt: new Date().toISOString(), window }
+  return { leaderboard, freshness, roster, capturedAt: new Date().toISOString(), window: USAGE_WINDOW }
 }
 
 // ── descriptor ──────────────────────────────────────────────────────────────────────
