@@ -11,6 +11,7 @@ import {
   buildQdrantKeys,
   buildQdrantMembers,
   buildQdrantSummary,
+  buildQdrantUsage,
   displayMemberRole,
   humanizeAccess,
   qdrantPlugin,
@@ -201,6 +202,44 @@ test('qdrant Summary tolerates no invoices (null currentMtd → no spend summary
   const result = buildQdrantSummary({ items: [] })
 
   expect(validateCapabilityResult(result)).toEqual([])
+  expect(result.summaries).toBeUndefined()
+})
+
+test('qdrant Usage: metered line items (amount desc) + gross total, emits no spend rollup', () => {
+  const result = buildQdrantUsage({
+    items: [
+      {
+        clusterName: 'prod',
+        billableEntityType: 'Cluster',
+        startTime: '2026-06-30T21:30:07Z',
+        endTime: '2026-07-22T14:49:38Z',
+        amountMillicents: '334355154'
+      },
+      {
+        clusterName: 'staging',
+        billableEntityType: 'Cluster',
+        startTime: '2026-06-30T21:30:07Z',
+        endTime: '2026-07-22T14:49:38Z',
+        amountMillicents: '2659942'
+      }
+    ]
+  })
+
+  expect(validateCapabilityResult(result)).toEqual([])
+
+  const usage = result.datasets.find((d) => d.id === 'usage') as unknown as {
+    rows: Array<{ item: string; cluster: string; period: string; amount: number }>
+  }
+
+  // amount-descending, day-precision period, 2-decimal money (Qdrant's raw values carry 4+ decimals)
+  expect(usage.rows.map((r) => r.cluster)).toEqual(['prod', 'staging'])
+  expect(usage.rows[0]).toMatchObject({ item: 'Cluster', amount: 3343.55, period: '2026-06-30 → 2026-07-22' })
+
+  const totalRec = result.datasets.find((d) => d.id === 'usageTotal') as unknown as { value: { total: number } }
+
+  expect(totalRec.value.total).toBe(3370.15) // 3343.55 + 26.60
+
+  // gross usage, not billed → no spend summary, so the Overview rollup stays the invoice on Summary
   expect(result.summaries).toBeUndefined()
 })
 

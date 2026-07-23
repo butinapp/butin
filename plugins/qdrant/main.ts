@@ -8,11 +8,11 @@ import {
   type ConfigOf,
   type ConfigOption
 } from '@butinapp/sdk'
-import { capabilityResult, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, type BillingInvoiceInput, type MemberInput } from '@butinapp/sdk/presets'
-import { currentMonthKey, isoDay, millicentsToMajor, startCase } from '@butinapp/sdk/util'
+import { currentMonthKey, isoDay, millicentsToMajor, round2, startCase } from '@butinapp/sdk/util'
 
-import { sampleQdrantInvoices, sampleQdrantKeys, sampleQdrantMembers } from './sample.js'
+import { sampleQdrantInvoices, sampleQdrantKeys, sampleQdrantMembers, sampleQdrantUsage } from './sample.js'
 
 // Qdrant — rotating-refresh auth. cloud.qdrant.io is an Auth0 SPA, not a cookie session: API calls carry a
 // short-lived (60s) Bearer minted from a refresh token kept in localStorage. Magic Login captures that
@@ -43,6 +43,22 @@ interface RawInvoice {
 
 export interface QdrantInvoicesInput {
   items: RawInvoice[]
+}
+
+// A raw metered line item (one billable entity over one period) from ListMeterings — gross usage, distinct
+// from the invoiced amount.
+interface RawMetering {
+  clusterId?: string
+  clusterName?: string
+  billableEntityType?: string
+  startTime?: string
+  endTime?: string
+  amountMillicents?: string
+  currency?: string
+}
+
+export interface QdrantUsageInput {
+  items: RawMetering[]
 }
 
 interface RawRole {
@@ -293,6 +309,65 @@ const fetchQdrantInvoices = async (ctx: CollectContext<QdrantConfig>): Promise<Q
   return { items: res?.items ?? [] }
 }
 
+// --- usage: the current billing cycle's metered consumption, per billable item (gross usage). ---
+// ListMeterings for the open month returns one line item per (cluster, billable entity, period). This is
+// GROSS usage — what the account consumed — distinct from the flat invoiced amount on Billing. It emits no
+// spend summary, so it never doubles the Overview rollup (which is the invoice on Summary).
+interface UsageRow {
+  item: string
+  cluster: string
+  period: string
+  amount: number
+}
+
+export const buildQdrantUsage = (input: QdrantUsageInput): CapabilityResult => {
+  const rows: UsageRow[] = input.items
+    .map((i) => ({
+      item: i.billableEntityType ?? 'Usage',
+      cluster: i.clusterName ?? i.clusterId ?? '—',
+      period: `${isoDay(i.startTime) ?? '?'} → ${isoDay(i.endTime) ?? '?'}`,
+      amount: round2(millicentsToMajor(i.amountMillicents))
+    }))
+    .sort((a, b) => b.amount - a.amount)
+
+  const total = record.fromColumns({
+    id: 'usageTotal',
+    fields: [{ key: 'total', label: 'Current cycle usage', role: 'money', currency: 'USD' }],
+    value: { total: round2(rows.reduce((sum, r) => sum + r.amount, 0)) }
+  })
+
+  const usage = table<UsageRow>({
+    id: 'usage',
+    columns: [
+      { key: 'item', label: 'Billable item', role: 'label' },
+      { key: 'cluster', label: 'Cluster', role: 'label' },
+      { key: 'period', label: 'Period (UTC)', role: 'text' },
+      { key: 'amount', label: 'Amount', role: 'money', currency: 'USD' }
+    ],
+    rows
+  })
+
+  return capabilityResult({
+    sections: [
+      total.stat({ fields: [{ key: 'total', caption: 'gross metered usage — the invoiced amount is on Billing' }] }),
+      usage.table({ title: 'This cycle by billable item' })
+    ]
+  })
+}
+
+const fetchQdrantUsage = async (ctx: CollectContext<QdrantConfig>): Promise<QdrantUsageInput> => {
+  const [year, month] = currentMonthKey().split('-').map(Number)
+  const res = await retryOn5xx(() =>
+    connect<{ items?: RawMetering[] }>(ctx, 'qdrant.cloud.metering.v1.MeteringService/ListMeterings', {
+      accountId: accountIdOf(ctx),
+      year,
+      month
+    })
+  )
+
+  return { items: res?.items ?? [] }
+}
+
 // --- members: who has access to the account (the dashboard's /cloud-access "all users" page). ---
 // The UI reads an aggregation RPC (NOT a flat user list) that joins each user with their account roles. The
 // response has no `name` — only the email. Everyone carries a baseline "Base" system role; the meaningful
@@ -474,6 +549,13 @@ export const qdrantPlugin = definePlugin({
       fetch: fetchQdrantInvoices,
       build: buildQdrantBilling,
       sample: sampleQdrantInvoices
+    }),
+    defineCapability({
+      id: 'usage',
+      label: 'Usage',
+      fetch: fetchQdrantUsage,
+      build: buildQdrantUsage,
+      sample: sampleQdrantUsage
     }),
     defineCapability({
       id: 'members',

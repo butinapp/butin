@@ -4,7 +4,7 @@
 
 import type { SampleConfig, SampleGen } from '@butinapp/sdk/testing'
 
-import type { QdrantInvoicesInput, QdrantKeysInput, QdrantMembersInput } from './main.js'
+import type { QdrantInvoicesInput, QdrantKeysInput, QdrantMembersInput, QdrantUsageInput } from './main.js'
 
 // A committed monthly plan: one flat invoice per past month (newest first), amount in MILLICENTS, each with a
 // synthetic PDF link. `documents` caps how far back the history runs.
@@ -26,6 +26,30 @@ export const sampleQdrantInvoices = (g: SampleGen, config: SampleConfig): Qdrant
         pdfUrl: `https://invoices.example.invalid/${ym}.pdf`
       }
     })
+  }
+}
+
+// The current cycle's metered line items — a couple of clusters × billable entities, amounts in MILLICENTS.
+export const sampleQdrantUsage = (g: SampleGen): QdrantUsageInput => {
+  const start = `${g.monthsAgo(1).yearMonth}-30T21:30:07Z`
+  const end = g.pastDate(1)
+  const clusters = [
+    { id: g.id('cl'), name: 'prod', scale: 30_000_000 },
+    { id: g.id('cl'), name: 'staging', scale: 3_000_000 }
+  ]
+
+  return {
+    items: clusters.flatMap((c) =>
+      ['Cluster', 'Cluster Extra Disk', 'Backup'].map((billableEntityType, i) => ({
+        clusterId: c.id,
+        clusterName: c.name,
+        billableEntityType,
+        startTime: start,
+        endTime: end,
+        amountMillicents: String(g.int(c.scale, c.scale * (i + 2))),
+        currency: 'USD'
+      }))
+    )
   }
 }
 
