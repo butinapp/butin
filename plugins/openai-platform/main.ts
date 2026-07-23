@@ -23,15 +23,19 @@ import { sampleOpenaiBilling, sampleOpenaiKeys, sampleOpenaiMembers } from './sa
 // platform only; the ChatGPT seat subscription + Codex usage live behind a SEPARATE credential — those
 // surfaces share the brand, not a session.
 //
-// Four read-only tabs over one transport / one mint:
+// Read-only tabs over one transport / one mint:
 //   • summary  — the overview: the live month-to-date spend (org → project → model) + the month-over-month
 //                chart (from the arrears invoice history) + spend-limit headline stats. The ONLY tab that
 //                emits the cross-service Overview rollup (spend.mtd).
 //   • billing  — the detail: the per-org billed breakdown + the downloadable invoice history.
+//   • usage    — where the current-month spend goes: the per-project + per-model $ breakdown across all work
+//                orgs (a project's month-to-date total, uncapped) plus a stacked daily-by-project chart. A
+//                detail tab — Summary owns the spend headline, so usage emits no rollup summary of its own.
+//                (OpenAI exposes no per-KEY dollar figure; keys live in projects, so project is the finest $ axis.)
 //   • apiKeys  — every standard key across the user's orgs + the legacy user-level keys (inventory, not
 //                spend: OpenAI exposes no per-key dollar figure).
 //   • members  — the org roster merged across the user's work orgs.
-// Summary + Billing share one billing fetch (the query cache dedupes it).
+// Summary + Billing + Usage share one billing fetch (the query cache dedupes it).
 //
 // AUTH is a minted JWT: the durable session is the platform.openai.com cookie (it carries cf_clearance),
 // but the API needs a short-lived `sess-` token minted from an auth0 access_token. The browser keeps that
@@ -165,6 +169,32 @@ export interface SpendReport {
   daily: Array<{ date: string; value: number }>
 }
 
+// usage — the current-month $ breakdown, read from the SAME daily_costs the spend report reads but keeping the
+// per-project and per-model dimensions the Summary/Overview roll away.
+export interface UsageProjectRow {
+  orgName: string
+  project: string
+  spend: number // USD, month-to-date
+  share: number // 0..1 of the month's total
+  key: string // hidden — `<orgId>:<projectId>`, the stable per-project ledger key (→ a monthly-MTD trend)
+}
+export interface UsageModelRow {
+  model: string
+  spend: number // USD, month-to-date
+  share: number // 0..1
+}
+export interface UsageDayPoint {
+  date: string // YYYY-MM-DD
+  project: string // project name, or 'Other' for projects past the chart's top-N
+  value: number // USD
+}
+export interface UsageBreakdown {
+  total: number // USD, month-to-date across all projects
+  byProject: UsageProjectRow[]
+  byModel: UsageModelRow[]
+  daily: UsageDayPoint[] // long-format (one row per date × project) for the stacked chart
+}
+
 export interface ApiKeyRow {
   id: string
   name: string
@@ -276,7 +306,6 @@ export const buildOpenaiSpend = (
         const cost = centsToMajor(li.cost)
 
         grandTotal += cost
-        void modelOf(li.name ?? 'unknown')
 
         if (date) {
           dailyMap.set(date, (dailyMap.get(date) ?? 0) + cost)
@@ -426,6 +455,146 @@ export const buildOpenaiBillingTab = (billing: PlatformBilling): CapabilityResul
             category: 'Invoices'
           })
         : null
+    ]
+  })
+}
+
+// ── usage: the current-month $ breakdown (project × model) ───────────────────────────────
+// Pure transform — fixture-tested. Reads the SAME daily_costs the spend report reads (line-item `cost` in
+// CENTS → USD). A project keys on `<orgId>:<projectId>` so its month-to-date total is a stable, monthly-
+// resetting counter the ledger can trend per row. The daily series is long-format (one row per date ×
+// project) for a stacked chart, with projects past the top-N folded into one 'Other' band so the legend
+// stays legible — the by-project table itself stays uncapped, so no spend is hidden.
+
+const TOP_PROJECTS_IN_CHART = 6
+
+export const buildOpenaiUsage = (perOrg: RawOrgUsage[] | null | undefined): UsageBreakdown => {
+  const projects = new Map<string, { orgName: string; project: string; spend: number }>()
+  const models = new Map<string, number>()
+  const dailyByProject = new Map<string, Map<string, number>>() // date → projectKey → USD
+  let total = 0
+
+  for (const bundle of perOrg ?? []) {
+    for (const day of bundle.usage.daily_costs ?? []) {
+      const date = epochSecDay(day.timestamp)
+
+      for (const li of day.line_items ?? []) {
+        const cost = centsToMajor(li.cost)
+
+        if (cost <= 0) {
+          continue
+        }
+
+        total += cost
+
+        const projectKey = `${bundle.org.id}:${li.project_id ?? li.project_name ?? 'unknown'}`
+        const project = projects.get(projectKey) ?? {
+          orgName: bundle.org.title,
+          project: li.project_name ?? li.project_id ?? 'Unknown project',
+          spend: 0
+        }
+
+        project.spend += cost
+        projects.set(projectKey, project)
+
+        const model = modelOf(li.name ?? 'unknown')
+
+        models.set(model, (models.get(model) ?? 0) + cost)
+
+        if (date) {
+          const perProject = dailyByProject.get(date) ?? new Map<string, number>()
+
+          perProject.set(projectKey, (perProject.get(projectKey) ?? 0) + cost)
+          dailyByProject.set(date, perProject)
+        }
+      }
+    }
+  }
+
+  const share = (value: number): number => (total > 0 ? value / total : 0)
+
+  const byProject = [...projects.entries()]
+    .map(([key, p]) => ({ key, orgName: p.orgName, project: p.project, spend: round2(p.spend), share: share(p.spend) }))
+    .sort((a, b) => b.spend - a.spend)
+
+  const byModel = [...models.entries()]
+    .map(([model, spend]) => ({ model, spend: round2(spend), share: share(spend) }))
+    .sort((a, b) => b.spend - a.spend)
+
+  // Only the top projects keep their own stack band; everything else sums into 'Other'.
+  const topKeys = new Set(byProject.slice(0, TOP_PROJECTS_IN_CHART).map((p) => p.key))
+  const labelOf = (key: string): string => (topKeys.has(key) ? (projects.get(key)?.project ?? 'Other') : 'Other')
+
+  const daily: UsageDayPoint[] = []
+
+  for (const [date, perProject] of [...dailyByProject.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const byLabel = new Map<string, number>()
+
+    for (const [key, value] of perProject) {
+      const label = labelOf(key)
+
+      byLabel.set(label, (byLabel.get(label) ?? 0) + value)
+    }
+
+    for (const [project, value] of byLabel) {
+      daily.push({ date, project, value: round2(value) })
+    }
+  }
+
+  return { total: round2(total), byProject, byModel, daily }
+}
+
+// The Usage tab: the stacked daily-by-project chart leads, then the ranked by-project and by-model tables.
+// No summary — Summary owns the single spend rollup; this is pure detail. Each section drops when empty.
+export const buildOpenaiUsageTab = (usage: UsageBreakdown): CapabilityResult => {
+  const daily = table<UsageDayPoint>({
+    id: 'usageByProjectDaily',
+    columns: [
+      { key: 'date', label: 'Date', role: 'timestamp' },
+      { key: 'project', label: 'Project', role: 'label' },
+      { key: 'value', label: 'Spend', role: 'money' }
+    ],
+    rows: usage.daily
+  })
+
+  const byProject = table<UsageProjectRow>({
+    id: 'usageByProject',
+    columns: [
+      { key: 'orgName', label: 'Organization', role: 'label' },
+      { key: 'project', label: 'Project', role: 'label' },
+      // Month-to-date per project → a monthly-resetting cumulative counter, so the renderer adds a per-row Trend.
+      { key: 'spend', label: 'Spend (MTD)', role: 'money', accrual: 'cumulative', resetPeriod: 'monthly' },
+      { key: 'share', label: 'Share', role: 'percent' },
+      { key: 'key', role: 'identifier', hidden: true }
+    ],
+    rows: usage.byProject,
+    key: 'key'
+  })
+
+  const byModel = table<UsageModelRow>({
+    id: 'usageByModel',
+    columns: [
+      { key: 'model', label: 'Model', role: 'label' },
+      { key: 'spend', label: 'Spend', role: 'money' },
+      { key: 'share', label: 'Share', role: 'percent' }
+    ],
+    rows: usage.byModel,
+    key: 'model'
+  })
+
+  return capabilityResult({
+    sections: [
+      usage.daily.length > 0
+        ? daily.timeseries({
+            x: 'date',
+            y: 'value',
+            stackBy: 'project',
+            granularity: 'daily',
+            title: 'Spend by project over time'
+          })
+        : null,
+      byProject.dataset.rows.length > 0 ? byProject.table({ title: 'Spend by project' }) : null,
+      byModel.dataset.rows.length > 0 ? byModel.table({ title: 'Spend by model' }) : null
     ]
   })
 }
@@ -621,8 +790,8 @@ export interface OpenaiBillingRaw {
   period: string // 'YYYY-MM' — the usage report's month
 }
 
-// Summary + Billing share the same per-org invoice/usage/subscription reads. Both capabilities fetch
-// fetchOpenaiBilling; the core query cache dedupes the underlying GETs across the two tabs.
+// Summary, Billing, and Usage share the same per-org invoice/usage/subscription reads. All three capabilities
+// fetch fetchOpenaiBilling; the core query cache dedupes the underlying GETs across the tabs.
 const fetchOpenaiBilling = async (ctx: CollectContext): Promise<OpenaiBillingRaw> => {
   const orgs = await workOrgs(ctx)
   const now = new Date()
@@ -675,6 +844,9 @@ export const buildOpenaiSummary = (raw: OpenaiBillingRaw): CapabilityResult =>
 
 export const buildOpenaiBillingResult = (raw: OpenaiBillingRaw): CapabilityResult =>
   buildOpenaiBillingTab(buildOpenaiBilling(raw.perOrgInvoices, raw.limits))
+
+export const buildOpenaiUsageResult = (raw: OpenaiBillingRaw): CapabilityResult =>
+  buildOpenaiUsageTab(buildOpenaiUsage(raw.perOrgUsage))
 
 // The raw apiKeys bundle: each work org's standard-key list + the legacy user-level keys.
 export interface OpenaiKeysRaw {
@@ -820,6 +992,13 @@ export const openaiPlugin = definePlugin({
       label: 'Billing',
       fetch: fetchOpenaiBilling,
       build: buildOpenaiBillingResult,
+      sample: sampleOpenaiBilling
+    }),
+    defineCapability({
+      id: 'usage',
+      label: 'Usage',
+      fetch: fetchOpenaiBilling,
+      build: buildOpenaiUsageResult,
       sample: sampleOpenaiBilling
     }),
     defineCapability({

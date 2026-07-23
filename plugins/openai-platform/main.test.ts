@@ -9,6 +9,8 @@ import {
   buildOpenaiMembers,
   buildOpenaiSpend,
   buildOpenaiSummaryResult,
+  buildOpenaiUsage,
+  buildOpenaiUsageTab,
   openaiPlugin,
   parseMintedSession,
   type RawApiKeyList,
@@ -24,7 +26,7 @@ const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): s
 test('openai plugin is well-formed', () => {
   expect(openaiPlugin.meta.id).toBe('openai-platform')
   expect(openaiPlugin.auth.kind).toBe('minted-jwt')
-  expect(openaiPlugin.capabilities.map((c) => c.id)).toEqual(['summary', 'billing', 'apiKeys', 'members'])
+  expect(openaiPlugin.capabilities.map((c) => c.id)).toEqual(['summary', 'billing', 'usage', 'apiKeys', 'members'])
 })
 
 test('every capability declares a sample that is contract-valid', () => {
@@ -277,6 +279,76 @@ describe('buildOpenaiSpend', () => {
     expect(r.grandTotal).toBe(0)
     expect(r.currentMtd).toBe(0) // current month, zero spend
     expect(r.daily).toEqual([])
+  })
+})
+
+// ── usage: the current-month $ breakdown (project × model) ─────────────────────────────────
+
+describe('buildOpenaiUsage', () => {
+  it('aggregates spend by project across orgs (cents → USD), sorted desc with shares + a stable key', () => {
+    const u = buildOpenaiUsage([PROD, INTERNAL])
+
+    expect(u.total).toBe(190)
+    expect(u.byProject.map((p) => [p.project, p.spend])).toEqual([
+      ['Default', 160], // proj_A: 100 + 50 + 10
+      ['Realtime', 25], // proj_B
+      ['Codex users', 5] // proj_C (org-INT)
+    ])
+    expect(u.byProject[0]!.orgName).toBe('Acme Prod')
+    expect(u.byProject[0]!.key).toBe('org-PROD:proj_A') // <orgId>:<projectId> — the per-project ledger key
+    expect(u.byProject[0]!.share).toBeCloseTo(160 / 190, 4)
+  })
+
+  it('aggregates spend by model (line-item name up to the first comma)', () => {
+    const u = buildOpenaiUsage([PROD, INTERNAL])
+
+    expect(u.byModel.map((m) => [m.model, m.spend])).toEqual([
+      ['gpt-5.5', 165], // input + output across both orgs
+      ['o3', 25]
+    ])
+    expect(u.byModel[0]!.share).toBeCloseTo(165 / 190, 4)
+  })
+
+  it('produces a long-format daily-by-project series for the stacked chart', () => {
+    const u = buildOpenaiUsage([PROD, INTERNAL])
+
+    expect(u.daily.filter((d) => d.date === '2026-06-01')).toEqual(
+      expect.arrayContaining([
+        { date: '2026-06-01', project: 'Default', value: 150 }, // 100 + 50
+        { date: '2026-06-01', project: 'Realtime', value: 25 },
+        { date: '2026-06-01', project: 'Codex users', value: 5 }
+      ])
+    )
+    expect(u.daily).toContainEqual({ date: '2026-06-02', project: 'Default', value: 10 })
+  })
+
+  it('handles empty input', () => {
+    expect(buildOpenaiUsage(null)).toEqual({ total: 0, byProject: [], byModel: [], daily: [] })
+  })
+})
+
+describe('buildOpenaiUsageTab', () => {
+  it('emits by-project + by-model tables and a stacked daily chart, contract-valid, no rollup summary', () => {
+    const r = buildOpenaiUsageTab(buildOpenaiUsage([PROD, INTERNAL]))
+
+    expect(validateCapabilityResult(r)).toEqual([]) // contract-valid
+    expect(r.summaries ?? []).toEqual([]) // detail tab — Summary owns the single spend rollup
+
+    const byProject = r.datasets.find((d) => d.id === 'usageByProject')
+    const byModel = r.datasets.find((d) => d.id === 'usageByModel')
+    const daily = (r.views ?? []).find((v) => v.type === 'timeseries')
+
+    // The by-project table is keyed off the per-project id so its MTD spend accumulates a per-row Trend.
+    expect(byProject?.shape === 'table' && byProject.key).toBe('key')
+    expect(byModel?.shape === 'table' && byModel.key).toBe('model')
+    expect(daily?.type === 'timeseries' && daily.stackBy).toBe('project')
+  })
+
+  it('drops every section when there is no usage', () => {
+    const r = buildOpenaiUsageTab(buildOpenaiUsage([]))
+
+    expect(r.datasets).toEqual([])
+    expect(r.views ?? []).toEqual([])
   })
 })
 
