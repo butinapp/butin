@@ -154,6 +154,25 @@ const accountIdOf = (ctx: CollectContext<QdrantConfig>): string => {
 const connect = <T>(ctx: CollectContext<QdrantConfig>, rpc: string, body: unknown): Promise<T> =>
   ctx.client.post<T>(`${API_ORIGIN}/connect/${rpc}`, body, { Origin: API_ORIGIN })
 
+// The metering gateway runs a multi-second query server-side on a busy account and intermittently answers a
+// transient 5xx — the same call succeeds moments later. Retry a 5xx (each attempt is host-paced, so the retries
+// are already spaced); surface auth/argument errors (401/4xx) immediately so a dead session still re-prompts.
+const METERING_MAX_ATTEMPTS = 3
+
+export const retryOn5xx = async <T>(fn: () => Promise<T>, attempts = METERING_MAX_ATTEMPTS): Promise<T> => {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      const status = (err as { status?: number }).status
+
+      if (attempt >= attempts || status == null || status < 500) {
+        throw err
+      }
+    }
+  }
+}
+
 // --- organization picker (Settings combobox) ---
 // An account = one Qdrant organization (own account, a shared team org, …). AccountService/ListAccounts
 // returns every org you belong to; the Settings combobox lists them so you pick one instead of pasting a
@@ -310,19 +329,21 @@ const loadQdrantMetering = async (
 ): Promise<QdrantBillingInput> => {
   const [year, month] = currentMonthKey().split('-').map(Number)
 
-  const listMonthly = () =>
-    connect<{ items?: RawMonthlyMetering[] }>(ctx, 'qdrant.cloud.metering.v1.MeteringService/ListMonthlyMeterings', {
-      accountId
-    }).then((r) => r?.items ?? [])
-
+  // Both metering RPCs share the gateway's transient-5xx behaviour, so both go through retryOn5xx — an
+  // un-retried current-month call would sink the whole billing+summary fetch on a single transient 500.
   const [monthly, current] = await Promise.all([
-    // The gateway occasionally returns a transient 500 on the monthly call — retry once.
-    listMonthly().catch(() => listMonthly()),
-    connect<{ items?: RawMetering[] }>(ctx, 'qdrant.cloud.metering.v1.MeteringService/ListMeterings', {
-      accountId,
-      year,
-      month
-    })
+    retryOn5xx(() =>
+      connect<{ items?: RawMonthlyMetering[] }>(ctx, 'qdrant.cloud.metering.v1.MeteringService/ListMonthlyMeterings', {
+        accountId
+      })
+    ).then((r) => r?.items ?? []),
+    retryOn5xx(() =>
+      connect<{ items?: RawMetering[] }>(ctx, 'qdrant.cloud.metering.v1.MeteringService/ListMeterings', {
+        accountId,
+        year,
+        month
+      })
+    )
   ])
 
   return { monthly, current: { year, month, items: current?.items ?? [] } }

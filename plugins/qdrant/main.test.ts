@@ -13,8 +13,11 @@ import {
   buildQdrantSummary,
   displayMemberRole,
   humanizeAccess,
-  qdrantPlugin
+  qdrantPlugin,
+  retryOn5xx
 } from './main.js'
+
+const http = (status: number) => Object.assign(new Error(`HTTP ${status}`), { status })
 
 const validateSampleResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
   rawValidateCR(resolveCurrencies(r, 'USD'))
@@ -70,6 +73,46 @@ test('qdrant captures the Auth0 refresh token from a dynamic localStorage key', 
   expect(token?.keyIncludes).toEqual(['@@auth0spajs@@', 'clusters'])
   expect(token?.jsonPath).toBe('body.refresh_token')
   expect(token?.storeAs).toBe('refreshToken')
+})
+
+test('retryOn5xx retries a transient 5xx from the metering gateway then returns the eventual success', async () => {
+  let calls = 0
+  const result = await retryOn5xx(async () => {
+    calls++
+
+    if (calls < 3) {
+      throw http(500)
+    }
+
+    return 'ok'
+  })
+
+  expect(result).toBe('ok')
+  expect(calls).toBe(3)
+})
+
+test('retryOn5xx surfaces a non-5xx (auth/argument) error immediately without retrying', async () => {
+  let calls = 0
+
+  await expect(
+    retryOn5xx(async () => {
+      calls++
+      throw http(401)
+    })
+  ).rejects.toThrow('HTTP 401')
+  expect(calls).toBe(1)
+})
+
+test('retryOn5xx gives up after the attempt ceiling and rethrows the 5xx', async () => {
+  let calls = 0
+
+  await expect(
+    retryOn5xx(async () => {
+      calls++
+      throw http(503)
+    }, 3)
+  ).rejects.toThrow('HTTP 503')
+  expect(calls).toBe(3)
 })
 
 const meteringInput = {
