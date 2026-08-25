@@ -456,6 +456,12 @@ describe('buildChatgptUsageResult', () => {
     expect(board.rows[0]!.codexUsd).toBeCloseTo(2677.66, 2)
     expect(board.rows[0]!.seatType).toBe('usage_based')
     expect(result.views?.some((v) => v.type === 'table' && v.dataset === 'leaderboard')).toBe(true)
+
+    // The Codex spend ($) owns the per-member Trend/drilldown — not the token or credit counts.
+    const boardDs = result.datasets.find((d) => d.id === 'leaderboard')
+    const trended = boardDs?.shape === 'table' ? boardDs.columns.filter((c) => c.accrual === 'cumulative') : []
+
+    expect(trended.map((c) => c.key)).toEqual(['codexUsd'])
   })
 
   it('renders zeroed org-total cards and no leaderboard for empty input', () => {

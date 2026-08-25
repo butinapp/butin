@@ -11,10 +11,15 @@ import {
   buildQdrantKeys,
   buildQdrantMembers,
   buildQdrantSummary,
+  buildQdrantUsage,
   displayMemberRole,
   humanizeAccess,
-  qdrantPlugin
+  qdrantPlugin,
+  retryOn5xx,
+  toBillingInvoices
 } from './main.js'
+
+const http = (status: number) => Object.assign(new Error(`HTTP ${status}`), { status })
 
 const validateSampleResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
   rawValidateCR(resolveCurrencies(r, 'USD'))
@@ -72,68 +77,170 @@ test('qdrant captures the Auth0 refresh token from a dynamic localStorage key', 
   expect(token?.storeAs).toBe('refreshToken')
 })
 
-const meteringInput = {
-  monthly: [
-    { year: 2026, month: 6, amountMillicents: '476268416', currency: 'USD' },
-    { year: 2026, month: 5, amountMillicents: '100000000' }
-  ],
-  current: {
-    year: 2026,
-    month: 6,
-    items: [
-      { clusterId: 'c1', clusterName: 'prod', billableEntityType: 'Cluster', amountMillicents: '400000000' },
-      { clusterId: 'c1', clusterName: 'prod', billableEntityType: 'Backup', amountMillicents: '76268416' },
-      { clusterId: 'c2', clusterName: 'staging', billableEntityType: 'Cluster', amountMillicents: '50000000' }
-    ]
-  }
+test('retryOn5xx retries a transient 5xx from the metering gateway then returns the eventual success', async () => {
+  let calls = 0
+  const result = await retryOn5xx(async () => {
+    calls++
+
+    if (calls < 3) {
+      throw http(500)
+    }
+
+    return 'ok'
+  })
+
+  expect(result).toBe('ok')
+  expect(calls).toBe(3)
+})
+
+test('retryOn5xx surfaces a non-5xx (auth/argument) error immediately without retrying', async () => {
+  let calls = 0
+
+  await expect(
+    retryOn5xx(async () => {
+      calls++
+      throw http(401)
+    })
+  ).rejects.toThrow('HTTP 401')
+  expect(calls).toBe(1)
+})
+
+test('retryOn5xx gives up after the attempt ceiling and rethrows the 5xx', async () => {
+  let calls = 0
+
+  await expect(
+    retryOn5xx(async () => {
+      calls++
+      throw http(503)
+    }, 3)
+  ).rejects.toThrow('HTTP 503')
+  expect(calls).toBe(3)
+})
+
+const invoicesInput = {
+  items: [
+    {
+      id: 'in_3',
+      number: '111-3',
+      totalAmount: '319167000',
+      createdAt: '2026-06-24T07:00:00Z',
+      status: 'INVOICE_STATUS_PAID',
+      pdfUrl: 'https://x/3.pdf'
+    },
+    {
+      id: 'in_2',
+      number: '111-2',
+      totalAmount: '319167000',
+      createdAt: '2026-05-24T07:00:00Z',
+      status: 'INVOICE_STATUS_PAID',
+      pdfUrl: 'https://x/2.pdf'
+    },
+    {
+      id: 'in_1',
+      number: '111-1',
+      totalAmount: '310812000',
+      createdAt: '2026-04-24T07:00:00Z',
+      status: 'INVOICE_STATUS_PAID',
+      pdfUrl: 'https://x/1.pdf'
+    }
+  ]
 }
 
-test('qdrant Summary: millicents→USD, monthly history ascending, per-cluster current breakdown, spend.mtd', () => {
-  const result = buildQdrantSummary(meteringInput)
+test('toBillingInvoices maps raw invoices → preset input (millicents→USD, issue day, lowercased status)', () => {
+  expect(toBillingInvoices(invoicesInput.items)[0]).toMatchObject({
+    id: 'in_3',
+    date: '2026-06-24',
+    amount: 3191.67,
+    status: 'paid',
+    pdfUrl: 'https://x/3.pdf'
+  })
+})
+
+test('qdrant Summary: invoices drive the monthly-spend chart (ascending) + the spend rollup', () => {
+  const result = buildQdrantSummary(invoicesInput)
 
   expect(validateCapabilityResult(result)).toEqual([])
 
   const monthly = result.datasets.find((d) => d.id === 'monthly') as unknown as {
     shape: string
-    rows: Array<{ month: string }>
+    rows: Array<{ month: string; amount: number }>
   }
 
   expect(monthly.shape).toBe('table')
-  expect(monthly.rows.map((r) => r.month)).toEqual(['2026-05', '2026-06'])
+  expect(monthly.rows.map((r) => r.month)).toEqual(['2026-04', '2026-05', '2026-06'])
+  expect(monthly.rows.at(-1)).toMatchObject({ month: '2026-06', amount: 3191.67 })
 
-  const clusters = result.datasets.find((d) => d.id === 'currentClusters') as unknown as {
-    rows: Array<{ cluster: string; total: number }>
-  }
-
-  expect(clusters.rows[0]).toMatchObject({ cluster: 'prod', total: 4762.68 })
-  expect(clusters.rows[1]).toMatchObject({ cluster: 'staging', total: 500 })
-
-  expect(result.summaries?.[0]).toMatchObject({ section: 'spend', value: 5262.68, basis: 'accrued' })
+  // no current-month invoice yet → "this month" falls back to the latest (the recurring charge)
+  expect(result.summaries?.[0]).toMatchObject({ section: 'spend', value: 3191.67, basis: 'invoiced' })
 })
 
-test('qdrant Billing detail: the monthly metering records table (newest first), no Summary headline', () => {
-  const result = buildQdrantBilling(meteringInput)
+test('qdrant Billing: the itemized invoice list (newest first) with a downloadable PDF per row', () => {
+  const result = buildQdrantBilling(invoicesInput)
 
   expect(validateCapabilityResult(result)).toEqual([])
-  const meterings = result.datasets.find((d) => d.id === 'meterings') as unknown as {
+  const invoices = result.datasets.find((d) => d.id === 'invoices') as unknown as {
     key: unknown
-    rows: Array<{ month: string; status: string }>
+    rows: Array<{ number: string; amount: number; status: string }>
   }
 
-  expect(meterings.rows.map((r) => r.month)).toEqual(['2026-06', '2026-05'])
-  expect(meterings.rows[0].status).toBe('metered')
-  // one row per month → keyed by month so the metering history accumulates in the ledger.
-  expect(meterings.key).toBe('month')
-  // headline + chart live on Summary
+  expect(invoices.rows.map((r) => r.number)).toEqual(['111-3', '111-2', '111-1'])
+  expect(invoices.rows[0]).toMatchObject({ amount: 3191.67, status: 'paid' })
+  // keyed by invoice id so the history accumulates in the ledger.
+  expect(invoices.key).toBe('id')
+
+  // the PDF download is wired as a files descriptor on the table view
+  const view = result.views?.find((v) => v.type === 'table' && v.dataset === 'invoices')
+
+  expect(view?.type === 'table' && view.files).toMatchObject({ source: { url: 'pdfUrl' }, ext: 'pdf' })
+
+  // headline + chart live on Summary, not here
   expect(result.datasets.some((d) => d.id === 'account')).toBe(false)
-  expect(result.datasets.some((d) => d.id === 'currentClusters')).toBe(false)
+  expect(result.summaries).toBeUndefined()
 })
 
-test('qdrant Summary tolerates empty meterings', () => {
-  const result = buildQdrantSummary({ monthly: [], current: { year: 2026, month: 6, items: [] } })
+test('qdrant Summary tolerates no invoices (null currentMtd → no spend summary)', () => {
+  const result = buildQdrantSummary({ items: [] })
 
   expect(validateCapabilityResult(result)).toEqual([])
-  expect(result.datasets.some((d) => d.id === 'currentClusters')).toBe(false)
+  expect(result.summaries).toBeUndefined()
+})
+
+test('qdrant Usage: metered line items (amount desc) + gross total, emits no spend rollup', () => {
+  const result = buildQdrantUsage({
+    items: [
+      {
+        clusterName: 'prod',
+        billableEntityType: 'Cluster',
+        startTime: '2026-06-30T21:30:07Z',
+        endTime: '2026-07-22T14:49:38Z',
+        amountMillicents: '334355154'
+      },
+      {
+        clusterName: 'staging',
+        billableEntityType: 'Cluster',
+        startTime: '2026-06-30T21:30:07Z',
+        endTime: '2026-07-22T14:49:38Z',
+        amountMillicents: '2659942'
+      }
+    ]
+  })
+
+  expect(validateCapabilityResult(result)).toEqual([])
+
+  const usage = result.datasets.find((d) => d.id === 'usage') as unknown as {
+    rows: Array<{ item: string; cluster: string; period: string; amount: number }>
+  }
+
+  // amount-descending, day-precision period, 2-decimal money (Qdrant's raw values carry 4+ decimals)
+  expect(usage.rows.map((r) => r.cluster)).toEqual(['prod', 'staging'])
+  expect(usage.rows[0]).toMatchObject({ item: 'Cluster', amount: 3343.55, period: '2026-06-30 → 2026-07-22' })
+
+  const totalRec = result.datasets.find((d) => d.id === 'usageTotal') as unknown as { value: { total: number } }
+
+  expect(totalRec.value.total).toBe(3370.15) // 3343.55 + 26.60
+
+  // gross usage, not billed → no spend summary, so the Overview rollup stays the invoice on Summary
+  expect(result.summaries).toBeUndefined()
 })
 
 test('qdrant leads with a Summary tab (kind billing, first) ahead of the invoicing Billing tab', () => {

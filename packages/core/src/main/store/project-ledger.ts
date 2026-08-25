@@ -171,6 +171,18 @@ export const dailyByColumn = (
       series.push({ date: v.from.slice(0, 10), capturedAt: v.from, section: '', value })
     }
 
+    // Anchor the series to the last-fetched day. A row still present but unchanged records no new version, so
+    // without this the trend would stop at the last CHANGE, not the last refresh. Re-stating the current value at
+    // seenTo lets deriveDailySpend carry the flat (zero-delta) days forward to today. dayOf screens out a non-ISO
+    // placeholder seenTo (no capture instant); the strictly-later check skips a row that just changed this fetch.
+    const last = row.versions[row.versions.length - 1]!
+    const lastValue = Number(last.data[columnKey])
+    const seenToDay = row.seenTo.slice(0, 10)
+
+    if (series.length > 0 && Number.isFinite(lastValue) && dayOf(row.seenTo) && seenToDay > last.from.slice(0, 10)) {
+      series.push({ date: seenToDay, capturedAt: row.seenTo, section: '', value: lastValue })
+    }
+
     if (series.length > 0) {
       readingsByRow[row.id] = series
     }
