@@ -85,3 +85,56 @@ test('a user-driven change DOES emit to the host', async () => {
     expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({ sort: { key: 'name', dir: 'asc' } }))
   )
 })
+
+test('the header checkbox selects only the rows on the current page, not every page', () => {
+  const onSelectionChange = vi.fn()
+
+  // 30 rows over a 25-row page: page one shows 25, the rest sit on page two.
+  render(
+    <DataTable
+      columns={columns}
+      rows={rows}
+      getRowId={getRowId}
+      paginated
+      selection={new Set<string>()}
+      onSelectionChange={onSelectionChange}
+    />
+  )
+
+  const master = screen.getByRole('checkbox', { name: 'Select all 25' })
+
+  fireEvent.click(master)
+
+  const selected = onSelectionChange.mock.calls[0][0] as Set<string>
+
+  expect(selected.size).toBe(25)
+  expect(selected.has('24')).toBe(true)
+  // Row 25 lives on the next page — it must not be swept in.
+  expect(selected.has('25')).toBe(false)
+})
+
+test('the header checkbox reads checked once this page is selected, and clears just this page', () => {
+  const onSelectionChange = vi.fn()
+  // Everything on page one, plus one row from page two selected by hand earlier.
+  const selection = new Set([...rows.slice(0, 25).map(getRowId), '27'])
+
+  render(
+    <DataTable
+      columns={columns}
+      rows={rows}
+      getRowId={getRowId}
+      paginated
+      selection={selection}
+      onSelectionChange={onSelectionChange}
+    />
+  )
+
+  const master = screen.getByRole('checkbox', { name: 'Select all 25' })
+
+  expect(master).toBeChecked()
+
+  fireEvent.click(master)
+
+  // Clearing drops this page's rows and leaves the off-page selection alone.
+  expect(onSelectionChange.mock.calls[0][0]).toEqual(new Set(['27']))
+})
