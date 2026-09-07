@@ -17,7 +17,7 @@ import {
 } from '@butinapp/shapes'
 
 import { appendObservation } from '../../main/store/ledger.js'
-import { projectCurrent } from '../../main/store/project-ledger.js'
+import { backfillAccrualBars, projectCurrent } from '../../main/store/project-ledger.js'
 
 import { backfillMonthlySeries, type EvolveOptions, evolveObservations } from './evolver.js'
 
@@ -68,9 +68,13 @@ export const synthesizeCapability = (
     return p ? { ...d, rows: p.rows } : d
   })
 
+  // The last step runCapability takes before caching: fill the spend chart's missing months from the accrual
+  // readings the ledger just recorded, so a service whose own payload carries no per-month amounts still charts.
+  const backfilled = backfillAccrualBars(projected, latest.summaries, manifest, ledger ?? null)
+
   return {
     ledger: ledger!,
-    current: { datasets: projected, summaries: latest.summaries, manifest },
+    current: { datasets: backfilled, summaries: latest.summaries, manifest },
     lastRunAt: latest.capturedAt
   }
 }

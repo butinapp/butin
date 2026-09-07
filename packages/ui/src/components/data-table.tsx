@@ -283,13 +283,16 @@ export const DataTable = <Row,>({
     )
   }, [rows, sorting, query, columns])
 
-  const allIds = useMemo(() => filtered.map(getRowId), [filtered, getRowId])
   const pageRows = usePaging ? filtered.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize) : filtered
+  // The header checkbox acts on the rows ON SCREEN — the current page when paginated, the whole filtered set
+  // otherwise (a grouped table is never paginated). Scoping it to the page keeps one click on a 15-page table
+  // from selecting hundreds of unseen rows; other pages are selected by paging to them and clicking again.
+  const pageIds = useMemo(() => pageRows.map(getRowId), [pageRows, getRowId])
 
-  // Master select-all state for the header checkbox: checked when every filtered row is selected,
-  // indeterminate when only some are. Clicking selects all filtered rows (across pages/groups), or clears.
-  const allSelected = selectable && selection ? sel.allOn(selection, allIds) : false
-  const someSelected = selectable && selection ? !allSelected && allIds.some((id) => selection.has(id)) : false
+  // Master select-all state for the header checkbox: checked when every row on this page is selected,
+  // indeterminate when only some are. Clicking selects this page's rows, or clears them.
+  const allSelected = selectable && selection ? sel.allOn(selection, pageIds) : false
+  const someSelected = selectable && selection ? !allSelected && pageIds.some((id) => selection.has(id)) : false
   const masterChecked: boolean | 'indeterminate' = allSelected ? true : someSelected ? 'indeterminate' : false
 
   const doExport = (format: ExportFormat): void => {
@@ -386,8 +389,8 @@ export const DataTable = <Row,>({
                 <th className={cn('bg-card sticky z-10 w-6 border-b py-1 pr-3 pl-0.5', headTop)}>
                   <Checkbox
                     checked={masterChecked}
-                    onCheckedChange={() => onSelectionChange?.(sel.setGroup(selection!, allIds, !allSelected))}
-                    aria-label={t.tableSelectAll(allIds.length)}
+                    onCheckedChange={() => onSelectionChange?.(sel.setGroup(selection!, pageIds, !allSelected))}
+                    aria-label={t.tableSelectAll(pageIds.length)}
                   />
                 </th>
               ) : null}
