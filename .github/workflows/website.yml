@@ -1,0 +1,89 @@
+name: website
+
+# Paths-gated the way release.yml is: the website is one package in a monorepo whose other packages ship an Electron
+# app, and a plugin change must not redeploy a marketing site. Both triggers carry the SAME filter, so a PR previews
+# exactly what merging it would deploy.
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - packages/website/**
+      - .github/workflows/website.yml
+  pull_request:
+    paths:
+      - packages/website/**
+      - .github/workflows/website.yml
+
+# The repository default is read-only, so the sticky preview comment fails with "Resource not accessible by
+# integration" unless the write is asked for here. Named at the top rather than per job: an omission is the failure.
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm -C packages/website build
+
+      - working-directory: packages/website
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm dlx wrangler@4 deploy
+
+      # The failure that actually happens with static assets is a site that builds green and serves nothing, because
+      # the output directory was wrong. A 200 on / is the cheapest thing that catches it.
+      - name: Smoke check
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://butin.app/)
+            if [ "$code" = "200" ]; then echo "ok"; exit 0; fi
+            echo "attempt $i: HTTP $code"; sleep 10
+          done
+          echo "::error::butin.app did not return 200"
+          exit 1
+
+  preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm -C packages/website build
+
+      # `versions upload` publishes a version WITHOUT routing traffic to it, which is what makes this a preview
+      # rather than a second deploy. It prints the preview URL, which the lines below lift out.
+      - id: upload
+        working-directory: packages/website
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          pnpm dlx wrangler@4 versions upload --preview-alias pr${{ github.event.number }} | tee upload.log
+          # The alias URL survives every push to the branch, so the comment keeps pointing at the newest build
+          # instead of minting a fresh dead link each time. Falls back to the version URL if the alias ever moves.
+          url=$(grep -oE 'https://pr[0-9]+-[^[:space:]]*\.workers\.dev' upload.log | head -1)
+          url=${url:-$(grep -oE 'https://[^[:space:]]*\.workers\.dev' upload.log | head -1)}
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          # An upload that prints no URL still succeeds, so nothing else here would notice: the comment would ship an
+          # arrow pointing at nothing, which reads as "preview is broken" rather than naming the cause. `preview_urls`
+          # is a non-versioned setting, so it only lands via a real `wrangler deploy` — previews are URL-less until
+          # this Worker has been deployed once.
+          if [ -z "$url" ]; then
+            echo "::warning::uploaded, but Cloudflare returned no preview URL — check that preview URLs are enabled on the Worker"
+          fi
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: preview-website
+          message: |
+            **butin.app preview** → ${{ steps.upload.outputs.url || 'version uploaded, but Cloudflare returned no preview URL' }}
