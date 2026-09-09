@@ -82,8 +82,8 @@ All product names, logos, and trademarks are the property of their respective ow
 service's name or icon is for identification only and does not imply any affiliation with, or
 endorsement by, that service.
 
-**The Butin name and logo.** The MIT license covers the _code_; it grants no trademark rights. The name
-**Butin** and the Butin logos are trademarks of the project. Nominative use is fine — you may refer to
-Butin by name (e.g. "built on Butin", "a fork of Butin"). What you may not do is carry the Butin name or
-logos as the branding of your own modified or commercialized fork without written permission; strip the
-branding when you redistribute a derivative.
+**The Butin name and logo.** The open-source licenses cover the _code_ (Apache-2.0 / MIT; see
+[`LICENSING.md`](./LICENSING.md)); they grant no trademark rights. The name **Butin** and the Butin logos
+are trademarks of the project. Nominative use is fine — you may refer to Butin by name (e.g. "built on Butin",
+"a fork of Butin"). What you may not do is carry the Butin name or logos as the branding of your own modified
+or commercialized fork without written permission; strip the branding when you redistribute a derivative.

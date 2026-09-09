@@ -1,0 +1,28 @@
+{
+  "name": "butin-website",
+  // Pinned rather than "today": a runtime change must not alter the behaviour of a site nobody edited.
+  "compatibility_date": "2026-08-01",
+  // Assets only — there is no `main`, because there is no server-side logic left. Docs search is an exported index
+  // (app/static.json) the browser queries itself. Naming a `main` that does not exist fails the deploy outright.
+  "assets": {
+    "directory": "./out",
+    // Next writes a real 404.html. Serve it with a 404 status instead of falling back to index.html, which would
+    // make every typo'd URL look like the homepage to both people and crawlers.
+    "not_found_handling": "404-page"
+  },
+  // Declaring these attaches them as custom domains and Cloudflare writes the DNS records itself. Safe on the first
+  // deploy only because both hostnames currently have NO record — an existing record makes Cloudflare refuse with
+  // 100117. `www` never actually serves: the zone's dynamic redirect runs before Workers, and the attachment is here
+  // only to give the hostname something to resolve to.
+  "routes": [
+    { "pattern": "butin.app", "custom_domain": true },
+    { "pattern": "www.butin.app", "custom_domain": true }
+  ],
+  // Production answers on the custom domains and nowhere else — a site reachable at a second address is a duplicate
+  // of itself. Per-version preview URLs are the exception and the whole point of the PR preview job.
+  //
+  // `preview_urls` is a NON-VERSIONED setting: `versions upload` cannot apply it, only a real `wrangler deploy`
+  // writes it. So previews print no URL until this Worker has been deployed at least once.
+  "workers_dev": false,
+  "preview_urls": true
+}

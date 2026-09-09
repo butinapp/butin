@@ -2,9 +2,11 @@ import { createMDX } from 'fumadocs-mdx/next'
 
 /** @type {import('next').NextConfig} */
 const config = {
-  reactStrictMode: true
-  // NOTE: static export (`output: 'export'`) lands in the polish phase together with the static
-  // search client — the dev-time /api/search route is incompatible with `export`.
+  reactStrictMode: true,
+  // Every route prerenders, so the whole site ships as files and is served by an assets-only Cloudflare Worker with
+  // no server behind it. The one thing that used to need a server was docs search; it is an exported index now
+  // (app/static.json) that the browser downloads and queries itself.
+  output: 'export'
 }
 
 const withMDX = createMDX()

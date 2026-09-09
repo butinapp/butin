@@ -2,7 +2,7 @@
 // `../../plugins/*` plugin metas. A `held` service stays in the data but is filtered out of the rendered
 // list (e.g. finance) until deliberately surfaced. Re-sync when the plugin roster changes.
 
-export type ServiceGroup = 'ai' | 'dev' | 'beyond'
+export type ServiceGroup = 'dev' | 'beyond' | 'ai'
 
 export interface Service {
   id: string

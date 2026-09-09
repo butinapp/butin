@@ -3,7 +3,7 @@
 The Butin marketing site + docs. **Next 16 (App Router) · React 19 · Tailwind v4 · Fumadocs · pnpm.**
 Built for **static export** (static host decided at deploy on price).
 
-Part of the Butin monorepo, MIT-licensed like the rest of the repo.
+Part of the Butin monorepo (Apache-2.0, with MIT author SDK & plugins; see LICENSING.md).
 
 ## Run
 
@@ -38,20 +38,45 @@ Brand tokens + fonts in `app/global.css` and `app/layout.tsx`.
 ./.demo-home` → `pnpm build` → `node scripts/shots.mjs`), so they carry only synthetic data. Re-run
   `scripts/shots.mjs` to refresh them after a UI change.
 
-## Status — built (2026-06-14)
+## Status — live on butin.app (2026-09-09)
 
-Phases 0–4 done: scaffold · landing · docs · services catalog · tour. Dark-first, no console errors,
-verified in-browser.
+Scaffold · landing · docs · services catalog · tour, then the polish pass and the deploy. Dark-first, no
+console errors, verified in-browser and against the built export at phone width.
 
-## TODO — Polish phase (not yet done)
+## Deploy
 
-1. **Mobile nav** — header nav is `hidden md:flex` with **no burger menu**; phones currently can't
-   navigate. (Real gap, do first.)
-2. **Static export + search** — set `output: 'export'` in `next.config`; replace the dev `app/api/search`
-   route with the static Orama client (Fumadocs `/docs/deploying/static` + `/docs/search/orama` static
-   mode). The api route is export-incompatible.
-3. **Favicon / app icons** — browser tab still shows the Next default; use the brand mark.
-4. **OG/social image** for link unfurls.
-5. **`app/sitemap.ts` + `app/robots.ts`**, and a branded **`app/not-found.tsx`**.
-6. **Responsive pass** across landing / services / docs.
-7. **Deploy** — choose a static host; wire the static build.
+**butin.app**, as a Cloudflare Worker (`butin-website`) serving the static export. Pushing to `master` with
+changes under `packages/website/**` builds and deploys it; a PR uploads a preview version and comments the
+URL. Both jobs are in [`.github/workflows/website.yml`](../../.github/workflows/website.yml).
+
+- **Static export.** `output: 'export'` in `next.config.mjs`. Nothing renders on demand, so docs search is an
+  index exported at build time (`app/static.json`) that the browser downloads and queries — see
+  `components/search-dialog.tsx`, which is fumadocs' own `DefaultSearchDialog` with a single import swapped
+  (`fetchClient` → `oramaStaticClient`). **Re-diff it against the shipped component on a fumadocs bump.**
+- **Every metadata route needs `export const dynamic = 'force-static'`.** `output: 'export'` refuses to guess
+  whether a route is static, and fails the build rather than assume. `robots.ts` and `sitemap.ts` both carry
+  it. Any new one will need it too.
+- **The social card is a committed PNG**, not an `opengraph-image.tsx` route. The route works, but an exported
+  route emits a file at its own path — `out/opengraph-image`, with no extension — and an asset server derives
+  content-type from the extension, so the card would ship as `application/octet-stream` and unfurls would
+  quietly render nothing. `pnpm og` regenerates `app/opengraph-image.png`. The same reasoning is why the
+  search index is `/static.json` and not `/api/search`.
+- **Prefetching is off, deliberately** — `components/site-link.tsx`, which the whole site imports instead of
+  `next/link`. Next 16 prefetches a per-_segment_ payload (`/__next.<segment>/…`), and the export only writes
+  that tree under each already-resolved page, so hovering any nav link from `/` fetched
+  `/__next.docs/$oc$slug.txt`, took a 307 to the percent-encoded form, and 404'd — every hover, on every page.
+  `experimental.clientSegmentCache: false` would target it but was removed in 16.2.9. Clicking still fetches
+  the per-route payload (`docs.txt`) that the export _does_ write, so navigation is unaffected. Revisit on a
+  Next bump.
+- **Hostnames.** `butin.app` + `www.butin.app` are declared in `wrangler.jsonc` as Worker **custom domains**,
+  so Cloudflare owns those DNS records. **Never add an A/AAAA record for either** — an existing record makes
+  the attachment fail with `100117`. `www` and `butin.io` both 301 to the apex via zone rulesets declared in
+  the icitte repo (`packages/infra/src/projects/butin.ts`), and a dynamic redirect runs before Workers, so
+  `www` never actually reaches this site.
+- **Analytics.** Cloudflare Web Analytics — cookieless, sets nothing on the visitor's machine, so no consent
+  banner. The beacon is **inlined in `app/layout.tsx`**, not left to Cloudflare's "automatic setup": that is
+  enabled on this site and injects nothing (verified across four hostnames on the account, Worker- and
+  origin-served alike). The token in that tag is public by design — it ships in the HTML of every page it
+  measures, like a GA measurement id — so it is not a secret and does not belong in a build arg. **Do not add
+  GA4 or any third-party tracker here:** the product's claim is that your data stays on your machine, and Law 25
+  would require a consent banner on the privacy product's own homepage.

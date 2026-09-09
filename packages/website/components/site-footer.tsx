@@ -1,7 +1,6 @@
-import Link from 'next/link'
-
 import { BrandMark, Wordmark } from './brand'
 
+import { Link } from '@/components/site-link'
 import { GITHUB } from '@/lib/links'
 
 const columns: { title: string; links: { href: string; label: string; external?: boolean }[] }[] = [
@@ -27,7 +26,7 @@ const columns: { title: string; links: { href: string; label: string; external?:
     title: 'Open source',
     links: [
       { href: GITHUB, label: 'Star on GitHub', external: true },
-      { href: `${GITHUB}/blob/master/LICENSE`, label: 'MIT License', external: true },
+      { href: `${GITHUB}/blob/master/LICENSING.md`, label: 'Licensing (Apache-2.0 / MIT)', external: true },
       { href: `${GITHUB}/issues`, label: 'Issues', external: true }
     ]
   }
@@ -78,7 +77,7 @@ export const SiteFooter = () => (
 
     <div className="border-t border-line">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-6 font-mono text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-        <span>© {new Date().getFullYear()} Butin · MIT · local-first</span>
+        <span>© {new Date().getFullYear()} Butin · Open source · local-first</span>
         <span>Your data, brought home.</span>
       </div>
     </div>

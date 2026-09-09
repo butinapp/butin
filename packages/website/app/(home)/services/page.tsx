@@ -1,31 +1,30 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 
 import { ServiceIcon } from '@/components/service-icon'
+import { Link } from '@/components/site-link'
 import { type Service, visibleServices } from '@/lib/services'
 
 export const metadata: Metadata = {
   title: 'Services',
   description:
-    'The services Butin can read — a growing catalog of plugins across AI, cloud, developer tools, and beyond. Each fetches your own data with your own login.'
+    'The services Butin supports — a catalog of plugins across cloud infrastructure, developer tools, subscriptions, utilities, and AI providers. Each fetches your own data using your own login.'
 }
 
 const groups: { id: Service['group']; title: string; blurb: string }[] = [
   {
-    id: 'ai',
-    title: 'AI & inference',
-    blurb: 'Every model provider you pay per-token for — spend, usage, and keys in one view.'
-  },
-  {
     id: 'dev',
-    title: 'Developer & cloud tools',
-    blurb: 'The stack an indie dev actually pays for — cloud, monitoring, infra, analytics.'
+    title: 'Developer & cloud infrastructure',
+    blurb: 'Cloud hosting, databases, error tracking, and developer tooling.'
   },
   {
     id: 'beyond',
-    title: 'Beyond dev tools',
-    blurb:
-      'No API? No export? No problem. The long tail Butin reaches that finance tools never could — health, telecom, utilities, and more.'
+    title: 'Subscriptions & everyday services',
+    blurb: 'Telecom, utilities, housing, and personal accounts with no vendor APIs.'
+  },
+  {
+    id: 'ai',
+    title: 'AI & model providers',
+    blurb: 'Token usage, open-period spend, and API keys across inference providers.'
   }
 ]
 
