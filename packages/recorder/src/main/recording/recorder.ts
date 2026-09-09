@@ -1,7 +1,7 @@
 import type { DownloadItem, Session, WebContents, WebFrameMain } from 'electron'
 import { createHash } from 'node:crypto'
-import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { appendFileSync, mkdirSync } from 'node:fs'
+import { basename, join } from 'node:path'
 
 import { classifyDownload, mergeDownloads } from '../../detect/downloads.js'
 import type { DetectedDownload } from '../../detect/types.js'
@@ -64,6 +64,22 @@ function mapTargetType(type: string): ContextKind {
   }
 }
 
+// CDP saying the request is no longer streamable: it completed, or its id has already been retired. Either way
+// the single-shot read is the right path, not a sign anything went wrong.
+function isRequestAlreadySettled(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err)
+
+  return /already finished loading|does not exists?/i.test(message)
+}
+
+// The Network-domain commands that read a body out of the network agent. Refused on a session that has not
+// reported Network.enable — see canReadBody.
+const BODY_COMMANDS = new Set([
+  'Network.getResponseBody',
+  'Network.getRequestPostData',
+  'Network.streamResourceContent'
+])
+
 function isTextLike(mimeType: string): boolean {
   return /json|text|xml|javascript|event-stream|x-www-form-urlencoded/i.test(mimeType)
 }
@@ -118,8 +134,11 @@ interface WsPending {
 interface Attachment {
   wc: WebContents
   kind: ContextKind
-  /** child-session id -> {kind,url}, learned via Target.attachedToTarget */
-  sessionKinds: Map<string, { kind: ContextKind; url?: string }>
+  /**
+   * child-session id -> {kind,url,ready}, learned via Target.attachedToTarget. `ready` flips once that session's
+   * Network.enable has come back — see canReadBody for why nothing may read a body before it does.
+   */
+  sessionKinds: Map<string, { kind: ContextKind; url?: string; ready: boolean }>
   /** Latest top-document URL/title, stamped onto requests for grouping. */
   currentUrl: string
   currentTitle: string
@@ -130,6 +149,13 @@ interface Attachment {
   onDidFinishLoad: () => void
   onDidFrameFinishLoad: () => void
   suspended: boolean
+}
+
+/** What names a run in its manifest — supplied by the window layer, which owns the recording's identity. */
+export interface RunIdentity {
+  label: string
+  startUrl: string
+  partition: string
 }
 
 export interface RecorderOptions {
@@ -182,6 +208,21 @@ export class Recorder {
     { localStorage: Record<string, string>; sessionStorage: Record<string, string> }
   >()
   private hadErrors = false
+  // BUTIN_RECORDER_TRACE=1 writes trace.log: one SYNCHRONOUS line per attached-only action, before and after.
+  // log.jsonl is appended asynchronously, so a hard abort discards its tail and the last thing the recorder did
+  // is exactly what goes missing. A sync line survives, so the final `>` with no matching `<` names the call the
+  // process died inside. Off by default — a sync write per CDP command is far too slow for a normal run.
+  private tracing = process.env.BUTIN_RECORDER_TRACE === '1'
+  // BUTIN_RECORDER_NO_PAGE_TOUCH=1 keeps the debugger attached and every network record intact, but stops the
+  // recorder reaching INTO the page: no capturePage, no storage snapshot, no rendered-DOM snapshot. Pausing
+  // drops the debugger and these together, so this is the way to record a site's full network surface while
+  // leaving the page itself untouched.
+  private pageTouch = process.env.BUTIN_RECORDER_NO_PAGE_TOUCH !== '1'
+  // Responses that finished before their streamResourceContent call landed — expected on any chunked API, so
+  // they're counted rather than logged one by one, and reported once at stop.
+  private streamRaceCount = 0
+  // Responses whose body was left unread because their session never reported Network.enable — see canReadBody.
+  private unreadableBodies = 0
   private startedAt = new Date()
   // When paused, the page must run like an ordinary browser with nothing a browser-verification check can
   // detect: the CDP debugger is detached from every contents, in-flight network / WebSocket events are
@@ -362,7 +403,41 @@ export class Recorder {
     }
   }
 
-  async stop(opts: { label: string; startUrl: string; partition: string }): Promise<RecordingManifest> {
+  /**
+   * Write the manifest for a run still in progress. ipc.ts lists only run dirs that hold a manifest.json, so
+   * without this a run that ends abruptly is invisible in the UI even though every request it captured is
+   * already on disk. The window layer calls this on an interval; stop overwrites it with the final one.
+   */
+  async checkpoint(opts: RunIdentity): Promise<void> {
+    await writeManifest(this.runDir, this.buildManifest(opts, false)).catch((err) =>
+      this.warn('manifest checkpoint failed', err)
+    )
+  }
+
+  // `complete` is false for a checkpoint and true only once stop has flushed everything, so a run cut short by a
+  // crash is distinguishable from one that ended cleanly.
+  private buildManifest(opts: RunIdentity, complete: boolean): RecordingManifest {
+    return {
+      runId: basename(this.runDir),
+      label: opts.label,
+      startUrl: opts.startUrl,
+      partition: opts.partition,
+      captureAll: this.captureAll,
+      startedAt: this.startedAt.toISOString(),
+      endedAt: new Date().toISOString(),
+      requestCount: this.requestCount,
+      navigationCount: this.navigationCount,
+      schemaVersion: SCHEMA_VERSION,
+      generator: 'butin-recorder@0.0.0',
+      webSocketCount: this.webSocketCount,
+      contextsAttached: this.attachments.size,
+      hostCounts: this.hostCounts,
+      hadErrors: this.hadErrors,
+      complete
+    }
+  }
+
+  async stop(opts: RunIdentity): Promise<RecordingManifest> {
     // Flush still-open streamed responses (e.g. long-lived SSE) as partial records.
     for (const [key, p] of this.pending) {
       if (p.streamed) {
@@ -431,23 +506,7 @@ export class Recorder {
     // the folder knows how to interpret the captured data.
     await writeSessionGuide(this.runDir)
 
-    const manifest: RecordingManifest = {
-      runId: this.runDir.split(/[/\\]/).pop()!,
-      label: opts.label,
-      startUrl: opts.startUrl,
-      partition: opts.partition,
-      captureAll: this.captureAll,
-      startedAt: this.startedAt.toISOString(),
-      endedAt: new Date().toISOString(),
-      requestCount: this.requestCount,
-      navigationCount: this.navigationCount,
-      schemaVersion: SCHEMA_VERSION,
-      generator: 'butin-recorder@0.0.0',
-      webSocketCount: this.webSocketCount,
-      contextsAttached: this.attachments.size,
-      hostCounts: this.hostCounts,
-      hadErrors: this.hadErrors
-    }
+    const manifest = this.buildManifest(opts, true)
 
     await writeManifest(this.runDir, manifest)
     await writeRunSummary(this.runDir, this.buildSummaryMarkdown(manifest)).catch((err) =>
@@ -461,7 +520,9 @@ export class Recorder {
       {
         requests: manifest.requestCount,
         websockets: manifest.webSocketCount,
-        hadErrors: manifest.hadErrors
+        hadErrors: manifest.hadErrors,
+        streamRaces: this.streamRaceCount,
+        unreadableBodies: this.unreadableBodies
       }
     )
 
@@ -538,8 +599,34 @@ export class Recorder {
     this.attachments.delete(wcId)
   }
 
+  /**
+   * Whether a body may be fetched from this session. A Network-domain body command — getResponseBody,
+   * getRequestPostData, streamResourceContent — issued on a child session whose Network.enable has not come back
+   * kills the browser process outright: it is a CHECK inside Chromium's network agent, not a protocol error, so
+   * there is no rejection to catch and the whole recording dies with it. The root session is enabled by
+   * openDebugger before any target can attach, so only child sessions need proving.
+   */
+  private canReadBody(wcId: number, sessionId?: string): boolean {
+    if (!sessionId) {
+      return true
+    }
+
+    return this.attachments.get(wcId)?.sessionKinds.get(sessionId)?.ready === true
+  }
+
   private send(wc: WebContents, method: string, params?: object, sessionId?: string): Promise<any> {
-    return wc.debugger.sendCommand(method, params ?? {}, sessionId || undefined)
+    // Guarded here rather than at each call site: a single missed caller is fatal, and every body read already
+    // treats a rejection as "no body available".
+    if (BODY_COMMANDS.has(method) && !this.canReadBody(wc.id, sessionId)) {
+      this.unreadableBodies += 1
+      this.trace('!', 'body-refused', `${method} sess=${sessionId}`)
+
+      return Promise.reject(new Error(`${method} refused: session ${sessionId} has not reported Network.enable`))
+    }
+
+    this.trace('>', 'cdp', `${method} sess=${sessionId || 'root'}`)
+
+    return this.traced('cdp', wc.debugger.sendCommand(method, params ?? {}, sessionId || undefined), method)
   }
 
   // --- CDP message handling -------------------------------------------------
@@ -564,6 +651,9 @@ export class Recorder {
     if (this.paused && method.startsWith('Network.')) {
       return
     }
+
+    // Opened only once the event is actually going to be handled, so a dropped one leaves no unmatched span.
+    this.trace('>', 'evt', `${method} sess=${sessionId || 'root'}`)
 
     try {
       switch (method) {
@@ -648,6 +738,8 @@ export class Recorder {
     } catch (err) {
       this.hadErrors = true
       this.warn(`handler ${method} threw`, err)
+    } finally {
+      this.trace('<', 'evt', `${method} sess=${sessionId || 'root'}`)
     }
   }
 
@@ -661,9 +753,20 @@ export class Recorder {
     const childSession: string = params?.sessionId
     const info = params?.targetInfo ?? {}
 
-    a.sessionKinds.set(childSession, { kind: mapTargetType(info.type ?? ''), url: info.url })
-    // Enable network on the child session and cascade auto-attach for nesting.
-    void this.send(a.wc, 'Network.enable', {}, childSession)
+    const session = { kind: mapTargetType(info.type ?? ''), url: info.url, ready: false }
+
+    a.sessionKinds.set(childSession, session)
+    // Enable network on the child session and cascade auto-attach for nesting. A target can accept the attach
+    // and never answer Network.enable (its renderer never gets far enough), so readiness is what the reply
+    // proves — not the attach.
+    void this.send(a.wc, 'Network.enable', {}, childSession).then(
+      () => {
+        session.ready = true
+      },
+      () => {
+        // stays unready — no body will be read from it
+      }
+    )
     void this.send(
       a.wc,
       'Target.setAutoAttach',
@@ -804,6 +907,12 @@ export class Recorder {
       return
     }
 
+    if (!this.canReadBody(wcId, sessionId)) {
+      p.streamed = false
+
+      return
+    }
+
     try {
       const res = await this.send(a.wc, 'Network.streamResourceContent', { requestId }, sessionId)
 
@@ -811,8 +920,17 @@ export class Recorder {
         p.streamChunks.push(Buffer.from(res.bufferedData, 'base64'))
       }
     } catch (err) {
-      // streamResourceContent unsupported / request already gone — best effort.
-      this.warn('streamResourceContent failed', err)
+      // The optimistic streaming path lost its race: a finite response routed here for advertising no
+      // Content-Length (a chunked JSON API — most of them) completed before this call landed, so CDP has no
+      // stream left to open. Expected, not a fault: put the record back on the single-shot path, which reads
+      // the body CDP still holds. Only a genuinely unexpected failure is worth a warning.
+      p.streamed = false
+
+      if (isRequestAlreadySettled(err)) {
+        this.streamRaceCount += 1
+      } else {
+        this.warn('streamResourceContent failed', err)
+      }
     }
   }
 
@@ -899,12 +1017,17 @@ export class Recorder {
       return // frame tree gone (contents torn down mid-flush)
     }
 
+    this.trace('>', 'flush-docs', `${this.docsAwaitingHtml.size} pending`)
+
     for (const [key, p] of this.docsAwaitingHtml) {
       if (p.wcId !== wc.id) {
         continue
       }
 
-      const frame = frames.find((f) => f.url === p.url)
+      // A frame destroyed since the subtree was read throws from its own url getter, and this runs across
+      // awaits while a page tears its iframes down — so every frame is checked live before it is read, or one
+      // dead frame would abort the flush and strand every document behind it.
+      const frame = frames.find((f) => !f.isDestroyed() && f.url === p.url)
 
       if (!frame) {
         continue // its frame isn't present/loaded yet — a later load event retries
@@ -913,6 +1036,8 @@ export class Recorder {
       this.docsAwaitingHtml.delete(key)
       await this.writeRecord(key, p, false, await this.captureRenderedHtml(frame))
     }
+
+    this.trace('<', 'flush-docs')
   }
 
   // A frame's rendered HTML (`document.documentElement.outerHTML`), DOCTYPE-prefixed, or null on failure. Post-
@@ -920,7 +1045,16 @@ export class Recorder {
   // HTML-scrape collector reads, and for an SPA it's strictly more (the data the client rendered in).
   private async captureRenderedHtml(frame: WebFrameMain): Promise<string | null> {
     try {
-      const html = await frame.executeJavaScript('document.documentElement ? document.documentElement.outerHTML : ""')
+      if (frame.isDestroyed() || !this.pageTouch) {
+        return null
+      }
+
+      this.trace('>', 'dom-snapshot')
+
+      const html = await this.traced(
+        'dom-snapshot',
+        frame.executeJavaScript('document.documentElement ? document.documentElement.outerHTML : ""')
+      )
 
       return typeof html === 'string' && html ? `<!DOCTYPE html>\n${html}` : null
     } catch {
@@ -1271,7 +1405,7 @@ export class Recorder {
   // arriving while a capture is in flight just replaces the queued one — only the latest navigation in a
   // burst is screenshotted, and never more than one capture runs at once.
   private captureScreenshot(wc: WebContents, url: string, index: number): void {
-    if (this.screenshotsDisabled) {
+    if (this.screenshotsDisabled || !this.pageTouch) {
       return
     }
 
@@ -1296,16 +1430,16 @@ export class Recorder {
         }
 
         try {
-          const image = await wc.capturePage()
+          this.trace('>', 'capture-page', url)
+
+          const image = await this.traced('capture-page', wc.capturePage())
 
           await writeScreenshot(this.runDir, index, url, image.toPNG())
         } catch (err) {
-          // A failed capturePage means the page's GPU compositor refused a frame (UnknownVizError). On a
-          // fingerprinting-heavy login page (a bank's anti-fraud WebGL) repeating the capture drives the GPU
-          // process into "GPU state invalid" and crashes it, taking the recorder down — and the page needs
-          // the real (hardware) GPU for its fingerprint, so software compositing isn't an option. So the
-          // first failure disables screenshots for the rest of the run: never give a wedged compositor a
-          // second capture. The recording (network/storage) is unaffected — screenshots are best-effort.
+          // A failed capturePage means the compositor refused a frame (UnknownVizError). Repeating the capture
+          // drives it further into "GPU state invalid" and crashes the GPU process, so the first failure
+          // disables screenshots for the rest of the run: never give a wedged compositor a second capture. The
+          // recording (network/storage) is unaffected — screenshots are best-effort.
           this.screenshotsDisabled = true
           this.screenshotQueued = null
           this.warn('screenshots disabled for this run after a capture failure', err)
@@ -1318,18 +1452,22 @@ export class Recorder {
 
   private async snapshotOrigin(wc: WebContents, origin: string): Promise<void> {
     try {
-      if (wc.isDestroyed()) {
+      if (wc.isDestroyed() || !this.pageTouch) {
         return
       }
 
-      const result = (await wc.executeJavaScript(
-        `(() => {
+      this.trace('>', 'storage-snapshot', origin)
+      const result = (await this.traced(
+        'storage-snapshot',
+        wc.executeJavaScript(
+          `(() => {
           if (location.origin !== ${JSON.stringify(origin)}) return null
           return {
             localStorage: Object.fromEntries(Object.entries(localStorage)),
             sessionStorage: Object.fromEntries(Object.entries(sessionStorage))
           }
         })()`
+        )
       )) as { localStorage: Record<string, string>; sessionStorage: Record<string, string> } | null
 
       if (result) {
@@ -1668,6 +1806,28 @@ export class Recorder {
     }
 
     return lines.join('\n')
+  }
+
+  /** Close a trace span when `work` settles, however it settles — so an unmatched '>' always means a real hang. */
+  private traced<T>(action: string, work: Promise<T>, detail?: string): Promise<T> {
+    return this.tracing ? work.finally(() => this.trace('<', action, detail)) : work
+  }
+
+  /** One synchronous trace line. `dir` is '>' entering a call, '<' leaving it, '!' a one-shot event. */
+  private trace(dir: '>' | '<' | '!', action: string, detail?: string): void {
+    if (!this.tracing) {
+      return
+    }
+
+    try {
+      appendFileSync(
+        join(this.runDir, 'trace.log'),
+        `${Date.now()} ${dir} ${action}${detail ? ' ' + detail : ''}
+`
+      )
+    } catch {
+      // tracing must never break a run
+    }
   }
 
   private warn(msg: string, err?: unknown): void {

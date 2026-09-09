@@ -26,20 +26,30 @@ export const loadRun = async (runDir: string): Promise<RunData> => {
   return { manifest, navigation, requests }
 }
 
-// A run dir is immutable once written, so its classification never changes — cache it in `summary.json`
-// beside the run and fold from that. `list-domains` / `get-domain` then read a tiny file per run instead of
-// every request body (hundreds of MB across a full history), which is what makes startup instant. Bump the
-// version to force a recompute when the classifiers change.
+// A finished run dir is immutable, so its classification never changes — cache it in `summary.json` beside the
+// run and fold from that. `list-domains` / `get-domain` then read a tiny file per run instead of every request
+// body (hundreds of MB across a full history), which is what makes startup instant. Bump the version to force a
+// recompute when the classifiers change.
 const SUMMARY_VERSION = 2
+
+// A recording in progress rewrites its own manifest on a checkpoint interval so the run is listable before it
+// ends, so `complete: false` alone doesn't mean nothing more is coming — a run cut short by a crash keeps that
+// flag forever and IS final. A manifest whose last checkpoint is well past the interval is one nothing is
+// writing to any more, and can be cached like any finished run.
+const CHECKPOINT_GRACE_MS = 60_000
+
+const stillRecording = (manifest: RecordingManifest): boolean =>
+  manifest.complete === false && Date.now() - Date.parse(manifest.endedAt) < CHECKPOINT_GRACE_MS
 
 interface RunSummary {
   version: number
   profile: RunProfile
 }
 
-// Return a run's cached RunProfile, computing + writing it on first read (or after a version bump / a run
-// added on disk by another tool). The one full-request read happens once per run, ever; every later startup
-// reads only the cached summary. A cache write failure is non-fatal — it just recomputes next time.
+// Return a run's cached RunProfile, computing it on first read (or after a version bump / a run added on disk
+// by another tool) and writing the cache back for every run but one still recording. The full-request read
+// happens once per run; every later startup reads only the cached summary. A cache write failure is non-fatal
+// — it just recomputes next time.
 export const loadRunProfile = async (runDir: string): Promise<RunProfile> => {
   const summaryPath = join(runDir, 'summary.json')
 
@@ -53,11 +63,14 @@ export const loadRunProfile = async (runDir: string): Promise<RunProfile> => {
     // no cache yet, or unreadable/stale — recompute below
   }
 
-  const profile = profileRun(await loadRun(runDir))
+  const run = await loadRun(runDir)
+  const profile = profileRun(run)
 
-  await writeFile(summaryPath, JSON.stringify({ version: SUMMARY_VERSION, profile } satisfies RunSummary)).catch(
-    () => {}
-  )
+  if (!stillRecording(run.manifest)) {
+    await writeFile(summaryPath, JSON.stringify({ version: SUMMARY_VERSION, profile } satisfies RunSummary)).catch(
+      () => {}
+    )
+  }
 
   return profile
 }
