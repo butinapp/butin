@@ -19,7 +19,8 @@ export const metadata: Metadata = {
   applicationName: 'Butin',
   openGraph: {
     title: 'Butin — your data, brought home',
-    description: "Their session expires. Your data doesn't. Your data, normalized and on your machine.",
+    description:
+      'A local-first desktop app that puts all your accounts in one place. Billing, usage, and documents stored locally on your machine.',
     url: 'https://butin.app',
     siteName: 'Butin',
     type: 'website'

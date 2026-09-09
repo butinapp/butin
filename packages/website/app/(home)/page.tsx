@@ -9,12 +9,12 @@ const SERVICE_COUNT = visibleServices.length
 // A cross-domain sample for the hero strip — dev tools next to a phone bill, a water heater, a health portal,
 // so "not just dev tools" lands at a glance.
 const stripServices = [
-  'Claude',
   'AWS',
   'Stripe',
+  'GitHub',
   'Vercel',
-  'Sentry',
   'Videotron',
+  'Claude',
   'Hydro-Solution',
   'Carnet Santé',
   'Airbnb'
@@ -52,7 +52,7 @@ const Hero = () => (
     <div className="mx-auto w-full max-w-6xl px-5 pt-24 md:pt-28">
       <div className="mx-auto max-w-3xl text-center">
         <div className="reveal flex justify-center" style={{ animationDelay: '0ms' }}>
-          <Kicker>Local-first · MIT · no cloud</Kicker>
+          <Kicker>Local-first · Open source · no cloud</Kicker>
         </div>
         <h1
           className="reveal mt-6 text-balance text-5xl font-bold leading-[0.97] tracking-tight md:text-7xl"
@@ -122,7 +122,7 @@ const Hero = () => (
     <div className="mt-20 border-t border-line">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-6 sm:flex-row sm:items-center">
         <span className="font-mono text-xs uppercase tracking-wider text-muted/70">
-          Works on the services that wall your data off
+          Connects to the services you already use
         </span>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:ml-auto">
           {stripServices.map((s) => (
@@ -139,59 +139,49 @@ const Hero = () => (
   </section>
 )
 
-// ---------------------------------------------------------------- The gap
+// ---------------------------------------------------------------- The problem
 
-const Gap = () => {
-  const seen = new Set([2, 6, 11, 15, 19])
-  const hot = new Set([8, 21])
-
+const Problem = () => {
   return (
     <section className="mx-auto grid w-full max-w-6xl items-center gap-14 px-5 py-24 md:grid-cols-[1fr_0.85fr]">
       <div>
-        <Kicker>The gap</Kicker>
+        <Kicker>The problem</Kicker>
         <h2
           className="mt-5 text-4xl font-bold tracking-tight md:text-5xl"
           style={{ fontFamily: 'var(--font-display)' }}
         >
-          Your accounts live in <span className="text-teal-soft">forty dashboards.</span>
+          Your accounts live in <span className="text-teal-soft">separate dashboards.</span>
         </h2>
         <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted">
-          Spend, usage, invoices, records — spread across dozens of services, no two alike. Half have no export and no
-          API at all. The real picture only shows up on the invoice, or never. A spreadsheet is the state of the art.
+          Spend, usage, invoices, and records are scattered across dozens of services. Many offer no public API and no
+          export option, leaving you signing in one by one or copying numbers into spreadsheets. Butin connects directly
+          to your accounts to pull your real data into one unified local view.
         </p>
-        <div className="mt-8 flex items-baseline gap-4">
-          <span className="font-mono text-5xl font-bold tracking-tight md:text-6xl">
-            <span className="text-teal">1</span>
-            <span className="mx-1 text-muted/50">/</span>
-            <span className="text-amber">40</span>
-          </span>
-          <span className="max-w-[22ch] text-sm leading-snug text-muted">
-            of your accounts you can actually see at once, today
-          </span>
-        </div>
       </div>
 
-      <div className="grid grid-cols-6 gap-2.5 rounded-2xl border border-line bg-white/[0.015] p-5">
-        {Array.from({ length: 24 }).map((_, i) => (
-          <div
-            key={i}
-            className={`grid aspect-square place-items-center rounded-lg border bg-surface ${
-              seen.has(i)
-                ? 'border-teal/45 shadow-[inset_0_0_16px_rgba(98,212,200,0.12)]'
-                : hot.has(i)
-                  ? 'border-amber/40 shadow-[0_0_12px_rgba(217,164,65,0.18)]'
-                  : 'border-line'
-            }`}
-          >
-            {seen.has(i) ? (
-              <span className="size-2 rounded-full bg-teal" />
-            ) : (
-              <span
-                className={`block h-2.5 w-3 rounded-sm border-t-2 ${hot.has(i) ? 'border-amber/60' : 'border-muted/50'}`}
-              />
-            )}
+      <div className="rounded-2xl border border-line bg-surface/60 p-6 space-y-4 shadow-xl">
+        <div className="flex items-center justify-between border-b border-line pb-3 font-mono text-xs">
+          <span className="uppercase tracking-wider text-muted">Without Butin</span>
+          <span className="text-destructive/80 font-medium">Scattered &amp; manual</span>
+        </div>
+        <div className="space-y-2.5 font-mono text-xs text-muted">
+          <div className="flex items-center justify-between rounded-lg border border-line bg-bg/50 px-3.5 py-3">
+            <span className="text-ink/80">AWS · Vercel · Cloudflare</span>
+            <span className="text-muted/60">Separate consoles &amp; auth</span>
           </div>
-        ))}
+          <div className="flex items-center justify-between rounded-lg border border-line bg-bg/50 px-3.5 py-3">
+            <span className="text-ink/80">Stripe · GitHub · SaaS</span>
+            <span className="text-muted/60">Individual invoices &amp; receipts</span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-line bg-bg/50 px-3.5 py-3">
+            <span className="text-ink/80">Telecom · Utilities · Records</span>
+            <span className="text-muted/60">No API, manual PDF downloads</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between border-t border-line pt-3 font-mono text-xs">
+          <span className="text-teal-soft font-medium">With Butin</span>
+          <span className="text-teal font-semibold">One unified local view</span>
+        </div>
       </div>
     </section>
   )
@@ -210,7 +200,7 @@ const steps = [
     n: '02',
     head: "While it's live",
     title: 'Fetch headless',
-    body: 'As long as the session holds, Butin reads the same endpoints your browser would — quietly, from Node, no window to keep open. Refresh anytime; the read is the capture. When it expires, you sign back in.'
+    body: 'While the session holds, Butin reads the same endpoints your browser would — quietly from Node, with no browser window left open. Refresh anytime on demand. When it expires, you simply sign back in.'
   },
   {
     n: '03',
@@ -224,7 +214,7 @@ const HowItWorks = () => (
   <section className="relative border-y border-line">
     <div className="bg-grid mask-fade pointer-events-none absolute inset-0 -z-10 opacity-60" />
     <div className="mx-auto w-full max-w-6xl px-5 py-24">
-      <Kicker>The mechanism</Kicker>
+      <Kicker>How it works</Kicker>
       <h2
         className="mt-5 max-w-2xl text-4xl font-bold tracking-tight md:text-5xl"
         style={{ fontFamily: 'var(--font-display)' }}
@@ -255,9 +245,9 @@ const HowItWorks = () => (
 
       <div className="mt-6 flex items-center gap-4 rounded-2xl border border-teal/20 bg-teal/[0.04] px-6 py-5">
         <span className="text-sm leading-relaxed text-muted">
-          <span className="font-semibold text-teal-soft">The read is the capture.</span> No separate export step, no
-          browser to babysit — opening a service fetches its latest data with your live session. When the session
-          lapses, a quick re-login refreshes it.
+          <span className="font-semibold text-teal-soft">On-demand fetching.</span> No export wizard or background
+          browser process required — opening a service queries its endpoints using your stored session. When the session
+          expires, reconnect with one click.
         </span>
       </div>
     </div>
@@ -309,38 +299,38 @@ const Showcase = () => (
   </section>
 )
 
-// ---------------------------------------------------------------- Proof
+// ---------------------------------------------------------------- Beyond billing
 
 const Proof = () => (
   <section className="relative border-y border-line bg-surface/30">
     <div className="mx-auto w-full max-w-6xl px-5 py-24">
-      <Kicker>Proof, not promises</Kicker>
+      <Kicker>Beyond simple billing</Kicker>
       <h2
         className="mt-5 max-w-2xl text-4xl font-bold tracking-tight md:text-5xl"
         style={{ fontFamily: 'var(--font-display)' }}
       >
-        A whole health record, <span className="text-teal-soft">exported off one login.</span>
+        Full structured records, <span className="text-teal-soft">exported locally.</span>
       </h2>
       <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
-        The sharpest proof isn&apos;t a billing chart. The <span className="font-mono text-ink">carnet-sante</span>{' '}
-        plugin logs into a government health portal — manual sign-in, MFA and all — then exports the entire record:
-        profile, medications, appointments, labs, imaging, the folder-access journal. Clean Markdown, JSON, and PDFs, on
-        your disk. No API. No cloud. There isn&apos;t one to use.
+        Butin isn&apos;t limited to billing summaries. For services with no public API — like the{' '}
+        <span className="font-mono text-ink">carnet-sante</span> health portal — plugins extract complete records:
+        profiles, medications, appointments, lab results, and document PDFs directly to your disk. No third-party
+        servers, no intermediaries.
       </p>
 
       <div className="mt-12 grid gap-5 md:grid-cols-3">
         {[
           {
             k: 'No API required',
-            d: 'If a browser can see it, a plugin can fetch it. Butin covers the long tail of services that never shipped an API — or hide it behind a paywall.'
+            d: 'If a browser can view it, a plugin can extract it. Butin supports services that lack a public API or restrict access behind enterprise tiers.'
           },
           {
-            k: 'The whole record',
-            d: 'Not just billing. Usage, members, invoices, documents, full record exports — whatever the service renders, normalized into one shape.'
+            k: 'Complete records',
+            d: 'Beyond high-level totals: usage breakdowns, member rosters, invoices, and exported documents are saved as clean local files.'
           },
           {
             k: `${SERVICE_COUNT}+ services, one model`,
-            d: 'AI billing, a cloud invoice, a phone bill, a bank statement, a government health portal — every auth shape, behind one plugin contract.'
+            d: 'Cloud infrastructure, developer platforms, telecom, subscriptions, and AI providers — unified under one plugin contract.'
           }
         ].map((c) => (
           <div key={c.k} className="rounded-2xl border border-line bg-bg p-7">
@@ -359,7 +349,10 @@ const pillars = [
   { t: 'Your session', d: 'It replays the requests your own browser makes. No middleman, no shared credentials.' },
   { t: 'Your machine', d: 'Captured data lives under ~/butin, encrypted with your OS keychain. There is no server.' },
   { t: 'No custody', d: 'No account, no sync, nowhere to send your numbers. We run nothing that can read them.' },
-  { t: 'MIT, open', d: 'The engine is open source. Read it, fork it, write your own plugins. Trust the architecture.' }
+  {
+    t: 'Open source',
+    d: 'The codebase is open source (Apache-2.0 & MIT). Read it, fork it, write your own plugins. Trust the architecture.'
+  }
 ]
 
 const LocalFirst = () => (
@@ -493,7 +486,9 @@ const FinalCTA = () => (
           Read the docs
         </Link>
       </div>
-      <p className="font-mono text-xs uppercase tracking-wider text-muted">Free · MIT · macOS · Windows · Linux</p>
+      <p className="font-mono text-xs uppercase tracking-wider text-muted">
+        Free · Open source · macOS · Windows · Linux
+      </p>
     </div>
   </section>
 )
@@ -502,7 +497,7 @@ export default function HomePage() {
   return (
     <>
       <Hero />
-      <Gap />
+      <Problem />
       <HowItWorks />
       <Showcase />
       <Proof />

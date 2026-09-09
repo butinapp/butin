@@ -4,7 +4,7 @@ description: The engine behind Butin — and why it's private by design.
 ---
 
 Most services show you rich data in their web dashboard but give you no clean way to get it out. Many have
-no API, or hide it behind a paid tier. Butin's trick: **it reads those dashboards the same way your browser
+no API, or hide it behind a paid tier. Butin's approach: **it reads those dashboards the same way your browser
 does, using the session you already logged in with.**
 
 ## Capture → replay → keep
@@ -12,7 +12,7 @@ does, using the session you already logged in with.**
 1. **Capture the session.** You log in by hand once. Butin captures the resulting session — cookies and
    tokens — and stores it, encrypted, on your machine.
 2. **Replay headless.** While that session is valid, Butin fetches the service's data straight from Node,
-   no browser window open. _The read is the capture._
+   with no browser window open. It runs directly on demand.
 3. **Keep your data.** Each fetch is normalized and saved locally, with history. It stays yours even after
    the session is gone.
 
@@ -46,7 +46,8 @@ The trust story is the architecture, not a privacy policy:
   shared credentials.
 - **No custody.** There's no account, no sync, and no server that could read your numbers. Captured data
   lives under `~/butin`, encrypted with your OS keychain.
-- **Open source, MIT.** Read the engine, fork it, write your own plugins. Trust the code, not a promise.
+- **Open source.** Read the code, fork it, write your own plugins. The app is Apache-2.0 and the SDK is
+  MIT. Trust the architecture, not a promise.
 
 > Butin only ever reads data that is already yours — in your own authenticated session, on your own
 > hardware. It's a personal data-portability tool: nothing leaves your machine, and no server takes

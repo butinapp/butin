@@ -3,7 +3,7 @@
 The Butin marketing site + docs. **Next 16 (App Router) · React 19 · Tailwind v4 · Fumadocs · pnpm.**
 Built for **static export** (static host decided at deploy on price).
 
-Part of the Butin monorepo, MIT-licensed like the rest of the repo.
+Part of the Butin monorepo (Apache-2.0, with MIT author SDK & plugins; see LICENSING.md).
 
 ## Run
 
