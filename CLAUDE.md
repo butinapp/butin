@@ -300,6 +300,11 @@ ProfileMenu, swaps `<Outlet/>`) · overview · service (tabbed, lazy per tab) ·
 
 The public user-facing docs site (Next.js + fumadocs); docs in `content/docs/*.mdx`. The engineering reference is this CLAUDE.md.
 
+**Live on `butin.app`** as an assets-only Cloudflare Worker. A push to `master` touching `packages/website/**` builds the static export and deploys it
+(`.github/workflows/website.yml`); a PR uploads a preview version and comments the URL. It is a **static export** — there is no server, so docs search is a
+build-time index rather than a route, and every metadata route needs `export const dynamic = 'force-static'`. Full detail, and the two traps worth knowing
+before editing it, in `packages/website/README.md` § Deploy.
+
 ### `packages/engine` → `@butinapp/engine`
 
 Shared main-process browser glue, consumed by BOTH core and recorder (extracted so the recorder doesn't depend on core): browser identity (real-Chromium UA +
