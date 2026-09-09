@@ -73,6 +73,10 @@ URL. Both jobs are in [`.github/workflows/website.yml`](../../.github/workflows/
   the attachment fail with `100117`. `www` and `butin.io` both 301 to the apex via zone rulesets declared in
   the icitte repo (`packages/infra/src/projects/butin.ts`), and a dynamic redirect runs before Workers, so
   `www` never actually reaches this site.
-- **Analytics.** Cloudflare Web Analytics, injected at the proxy — cookieless, no banner, no code in this
-  package. **Do not add GA4 or any third-party tracker here:** the product's claim is that your data stays on
-  your machine, and Law 25 would require a consent banner on the privacy product's own homepage.
+- **Analytics.** Cloudflare Web Analytics — cookieless, sets nothing on the visitor's machine, so no consent
+  banner. The beacon is **inlined in `app/layout.tsx`**, not left to Cloudflare's "automatic setup": that is
+  enabled on this site and injects nothing (verified across four hostnames on the account, Worker- and
+  origin-served alike). The token in that tag is public by design — it ships in the HTML of every page it
+  measures, like a GA measurement id — so it is not a secret and does not belong in a build arg. **Do not add
+  GA4 or any third-party tracker here:** the product's claim is that your data stays on your machine, and Law 25
+  would require a consent banner on the privacy product's own homepage.

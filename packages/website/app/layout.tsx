@@ -41,6 +41,23 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
     >
       <body className="flex min-h-screen flex-col">
+        {/*
+          Cloudflare Web Analytics — cookieless, stores no PII, sets nothing on the visitor's machine, so it needs no
+          consent banner under Law 25. That is the whole reason it is here and GA4 is not: this is the site of a
+          product whose claim is that your data stays on your machine.
+
+          The beacon is inline rather than left to Cloudflare's "automatic setup", which is enabled on this site
+          (`auto_install: true`) and demonstrably injects nothing — checked 2026-09-09 across four hostnames on this
+          account, Worker-served and droplet-served alike, and none of them carried the script.
+
+          The token is public by design: it ships in the HTML of every page it measures, exactly like a GA
+          measurement id. It is not a secret and does not belong in a build arg.
+        */}
+        <script
+          defer
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon='{"token": "5e83a33c90674d7abb81169668c6d532"}'
+        />
         <RootProvider
           theme={{ defaultTheme: 'dark', enableSystem: false }}
           search={{ SearchDialog: StaticSearchDialog }}
