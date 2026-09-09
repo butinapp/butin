@@ -7,7 +7,7 @@
   "author": "Butin",
   "type": "module",
   "scripts": {
-    "prepare": "node scripts/install-hooks.mjs",
+    "prepare": "node scripts/install-hooks.mjs && node scripts/ensure-electron.mjs",
     "dev": "pnpm --filter @butinapp/core dev",
     "dev:debug": "node scripts/dev-debug.mjs",
     "build": "turbo run build",
