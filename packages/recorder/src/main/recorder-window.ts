@@ -1,5 +1,7 @@
 import {
   applyBrowserIdentity,
+  clearServiceCookies,
+  copyCookies,
   createMagicToolbar,
   createStatusBar,
   detectSigninBlock,
@@ -13,6 +15,8 @@ import {
   wireStatusBar
 } from '@butinapp/engine'
 import { BaseWindow, session, WebContentsView, type WebContents } from 'electron'
+
+import { hostOf, registrableDomain } from '../detect/url.js'
 
 import { writeHarForRun } from './recording/har.js'
 import { formatRunId } from './recording/naming.js'
@@ -62,15 +66,16 @@ export interface CreateRecorderOptions {
    */
   partition?: string
   /**
-   * Record in a fresh in-memory partition (no persisted cookies/localStorage) instead of a profile's
-   * shared session — removes the stored cookie jar as a variable when diagnosing a login or
-   * browser-verification challenge. Cookies captured here never persist and never touch the app's session. Overrides `partition`.
+   * Record in a fresh in-memory partition (no persisted cookies/localStorage) instead of a profile's shared
+   * session — removes the stored cookie jar as a variable when diagnosing a login or browser-verification
+   * challenge. Cookies captured here reach the profile's jar only when the run is stopped with the Debug
+   * panel's Keep-this-session on; otherwise they die with the window. Overrides `partition`.
    */
   isolated?: boolean
   /**
    * Butin profile id owning the sign-in, keying the persistent real-Chrome user-data-dir the "Sign in with
    * Chrome" hand-off reuses. Same key the app uses, so a Google account signed in from Magic Login is already
-   * signed in here. An isolated run still uses its profile's key — the isolation empties the Electron cookie
+   * signed in here. An isolated run uses its profile's key too — the isolation empties the Electron cookie
    * jar, not the identity.
    */
   chromeScopeId: string
@@ -139,8 +144,11 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
   // logged-in service session is already live when the recorder opens. Pass opts.partition to scope
   // to a specific plugin's partition (persist:butin-<id>) when that isolation is needed. An isolated
   // recording instead uses an in-memory partition unique to this run (no `persist:` prefix → nothing is
-  // read from or written to disk), so a browser-verification challenge sees an empty cookie jar with no stale clearance cookie.
-  const partition = opts.isolated ? `butin-iso-${runId}` : (opts.partition ?? DEFAULT_PARTITION)
+  // read from or written to disk), so a browser-verification challenge sees an empty cookie jar with no stale
+  // clearance cookie. The profile's partition is kept alongside: it is where an isolated run's session is
+  // carried when the run is stopped with Keep-this-session on.
+  const profilePartition = opts.partition ?? DEFAULT_PARTITION
+  const partition = opts.isolated ? `butin-iso-${runId}` : profilePartition
   const ses = session.fromPartition(partition)
 
   // Delegate identity to @butinapp/engine: sets the UA from the real Chromium version and (when
@@ -211,6 +219,9 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
 
   // --- debug aids (toggled live from the toolbar Debug panel) ---
   let freezeRedirects = opts.debug.freezeRedirects
+  // Isolated only: carry this run's captured session into the profile's partition when the window closes.
+  // Off by default, so a diagnostic run cannot touch the shared session unless it is asked to.
+  let keepSession = false
 
   // Open/close DevTools on the site view via the recorder handoff (one debugger per webContents, so
   // capture on this view pauses while DevTools is open and resumes on devtools-closed — see recorder).
@@ -239,6 +250,7 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
     initialAutoPause: opts.debug.autoPauseOnError,
     initialAutoOpenDevTools: opts.debug.autoOpenDevTools,
     initialBrowserHeaders: opts.debug.browserHeaders,
+    showKeepSession: opts.isolated ?? false,
     onNavigate: (url) => {
       if (url) {
         void site.webContents.loadURL(url).catch(() => {})
@@ -308,7 +320,30 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
       // Re-applying identity on the live session is a no-op (idempotent WeakSet guard in
       // applyBrowserIdentity) — the toggle takes effect on the NEXT window / session open.
       applyBrowserIdentity(ses, { rewriteHeaders: on })
-    }
+    },
+    onSetKeepSession: (on) => {
+      keepSession = on
+    },
+    // Reset this site and reload, without ending the run. Scoped to the page's registrable domain, so every
+    // host and scoping of the service goes together — which is what clears a stale cookie the service keeps
+    // rejecting, a host-only one and its subdomain-scoped namesake alike.
+    onClearCookies: () =>
+      void (async () => {
+        const domain = registrableDomain(hostOf(site.webContents.getURL()))
+
+        if (!domain) {
+          toolbar.setWarning('No site to clear — navigate somewhere first.')
+
+          return
+        }
+
+        await clearServiceCookies(ses, [domain])
+        freezeRedirects = false
+        toolbar.setFrozen(false)
+        toolbar.setWarning(`Cleared ${domain} cookies. Reloading.`)
+        recorder.log('info', 'cookies-cleared', `Cleared cookies for ${domain}`, { domain })
+        site.webContents.reload()
+      })()
   })
 
   window.contentView.addChildView(toolbar.view)
@@ -388,9 +423,7 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
     toolbar.setNav(nav.canGoBack(), nav.canGoForward())
   }
 
-  // Every view that can hold a sign-in: the page plus any popup still alive.
   const childContents: WebContents[] = []
-  const liveContents = (): WebContents[] => [site.webContents, ...childContents].filter((wc) => !wc.isDestroyed())
 
   // A sign-in that refuses the embedded browser (Google's "may not be secure") reveals the toolbar's "Sign in
   // with Chrome" hand-off; any other page hides it again. The block can land in EITHER the page OR a login
@@ -398,7 +431,9 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
   // on the service's own login screen — so re-evaluate across every live view and offer the hand-off when ANY
   // of them is blocked.
   const refreshSigninBlock = (): void =>
-    void Promise.all(liveContents().map(detectSigninBlock)).then((results) => {
+    void Promise.all(
+      [site.webContents, ...childContents].filter((wc) => !wc.isDestroyed()).map(detectSigninBlock)
+    ).then((results) => {
       if (site.webContents.isDestroyed()) {
         return
       }
@@ -522,6 +557,20 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
       .then(async () => {
         if (opts.exportHar) {
           await writeHarForRun(runDir).catch((err) => console.error('[recorder] HAR export failed:', err))
+        }
+
+        // An isolated run's jar dies with this window, so a session captured in it is carried into the
+        // profile's partition BEFORE anything is torn down. Opt-in via the Debug panel's Keep-this-session, so
+        // a run that was only diagnosing leaves nothing behind.
+        if (opts.isolated && keepSession) {
+          const target = session.fromPartition(profilePartition)
+          const copied = await copyCookies(ses, target)
+
+          recorder.log('info', 'session-kept', `Carried ${copied} cookies into ${profilePartition}`, {
+            partition: profilePartition,
+            copied
+          })
+          await promoteSessionCookies(target)
         }
 
         // Promote session cookies to persistent so a login captured during this recording survives quit —

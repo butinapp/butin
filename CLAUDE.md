@@ -303,9 +303,16 @@ The public user-facing docs site (Next.js + fumadocs); docs in `content/docs/*.m
 ### `packages/engine` → `@butinapp/engine`
 
 Shared main-process browser glue, consumed by BOTH core and recorder (extracted so the recorder doesn't depend on core): browser identity (real-Chromium UA +
-`Sec-Ch-Ua*` client hints) · cookie promote/clear · popup `webPreferences` · the magic toolbar (a `WebContentsView` chrome strip — back/forward/reload + editable
-URL + a Debug panel; variants `capture` / `navigate` / `record`) · the status bar (load progress · title · hovered-link URL) · the chrome-login fallback (open real
-Chrome for a blocked sign-in, gather its cookies into a partition — profile-agnostic, keyed by a caller `scopeId`).
+`Sec-Ch-Ua*` client hints) · cookie promote/copy/clear · popup `webPreferences` · the magic toolbar (a `WebContentsView` chrome strip — back/forward/reload +
+editable URL + a Debug panel; variants `capture` / `navigate` / `record`) · the status bar (load progress · title · hovered-link URL) · the chrome-login fallback
+(open real Chrome for a blocked sign-in, gather its cookies into a partition; the Chrome user-data-dir is keyed by Butin profile id, so the app's Magic Login and
+the recorder's capture window share one signed-in Chrome per profile).
+
+**Writing a cookie back goes through `toSetDetails` — never a hand-built `cookies.set`.** Electron normalizes a `domain` with a preceding dot to make it valid for
+subdomains, so passing one for a HOST-ONLY cookie does not re-set that cookie: it writes a SECOND, subdomain-scoped cookie of the same name. The server, sending no
+Domain attribute, then only ever updates the host-only original while the twin rides along with a frozen value — two values under one name, which a Rails/Express
+session reads stale and an OAuth `state` check then rejects. The same helper pins the cookie-prefix rules Chromium enforces on set (`__Host-` must be Secure,
+path `/` and carry NO domain; `__Secure-` must be Secure), so a prefixed cookie isn't rejected outright and silently lost.
 
 ### `packages/recorder` → `@butinapp/recorder`
 
@@ -314,6 +321,12 @@ recordings to that profile's partition; recording a profile the app holds open i
 the shared engine magic toolbar (`record` variant) + status bar. Domains list per-subdomain; each has Record-again / Merge / Delete, and rows delete individually.
 A taxonomy detection layer classifies a recording onto Butin's transport/auth/render axes. Build-excluded from the shipped app — its own electron-vite entry, not
 imported by core.
+
+**Recovering a wedged sign-in, from the capture window's Debug panel.** A service that refuses the embedded browser (Google's "may not be secure") reveals **Sign
+in with Chrome** — the hand-off signs you in in real Chrome, brings the cookies into the recording's partition and reloads. **Clear domain cookies & reload** wipes
+the current page's registrable domain (so every host of the service goes together) without ending the run, which is how a stale cookie the service keeps rejecting
+gets cleared. An **isolated** run records into a throwaway in-memory partition, and its Debug panel adds **Keep this session when I stop** — off by default, so a
+diagnostic run leaves the profile's jar untouched unless the sign-in that finally worked is worth carrying home.
 
 **Session readiness is a hard rule.** A `Network.*` body command — `getResponseBody` · `getRequestPostData` · `streamResourceContent` — issued on a CDP child
 session that has not answered `Network.enable` aborts the browser process from native code: a `CHECK` inside Chromium's network agent, with no rejection to catch,
