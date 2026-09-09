@@ -1,0 +1,1805 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Butin — Pour commencer</title>
+    <style>
+      :root {
+        --bg: #0e1116;
+        --bg-2: #11151b;
+        --panel: #161b22;
+        --panel-2: #1d242d;
+        --line: rgba(255, 255, 255, 0.08);
+        --line-2: rgba(255, 255, 255, 0.14);
+        --ink: #eef1f5;
+        --ink-dim: #7c8a9a;
+        --ink-faint: #5c6675;
+        --cyan: #62d4c8;
+        --cyan-soft: #bdeee8;
+        --mag: #62d4c8;
+        --mag-soft: #bdeee8;
+        --ok: #4bbf8a;
+        --warn: #d9a441;
+        --bad: #e5715f;
+        --metal: #3c7d77;
+        --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono', Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font);
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+        letter-spacing: -0.01em;
+      }
+
+      /* ---------- stage ---------- */
+      .stage {
+        position: fixed;
+        inset: 0;
+      }
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: clamp(40px, 5.5vw, 88px);
+        opacity: 0;
+        transform: translateY(18px) scale(0.992);
+        pointer-events: none;
+        transition:
+          opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        background:
+          radial-gradient(120% 80% at 50% -10%, rgba(98, 212, 200, 0.1), transparent 60%),
+          radial-gradient(90% 70% at 90% 110%, rgba(98, 212, 200, 0.07), transparent 55%),
+          linear-gradient(180deg, var(--bg-2), var(--bg));
+      }
+      .slide.active {
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+      }
+      .slide::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+        background-size: 46px 46px;
+        mask-image: radial-gradient(120% 100% at 50% 30%, #000 35%, transparent 80%);
+        pointer-events: none;
+      }
+      .wrap {
+        width: min(1120px, 100%);
+        position: relative;
+        z-index: 2;
+      }
+
+      /* ---------- shared bits ---------- */
+      .kicker {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      .kicker::before {
+        content: '';
+        width: 26px;
+        height: 1px;
+        background: linear-gradient(90deg, var(--cyan), transparent);
+      }
+      h1 {
+        font-size: clamp(40px, 6.4vw, 86px);
+        line-height: 0.98;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+      }
+      h2 {
+        font-size: clamp(30px, 4.2vw, 56px);
+        line-height: 1.02;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+      }
+      .lead {
+        font-size: clamp(16px, 1.6vw, 20px);
+        line-height: 1.55;
+        color: var(--ink-dim);
+        max-width: 62ch;
+      }
+      .accent-c {
+        color: var(--cyan-soft);
+      }
+      .accent-m {
+        color: var(--mag-soft);
+      }
+      .ink {
+        color: var(--ink);
+      }
+      .mono {
+        font-family: var(--mono);
+      }
+      .step-eyebrow {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin-bottom: 14px;
+      }
+
+      /* ---------- brand mark ---------- */
+      .mark {
+        display: block;
+      }
+      .mark-glow {
+        position: relative;
+      }
+      .mark-glow::after {
+        content: '';
+        position: absolute;
+        inset: -8%;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(98, 212, 200, 0.22), transparent 62%);
+        filter: blur(6px);
+        animation: breathe 4.2s ease-in-out infinite;
+        z-index: -1;
+      }
+      @keyframes breathe {
+        0%,
+        100% {
+          opacity: 0.55;
+          transform: scale(0.98);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.04);
+        }
+      }
+
+      /* ---------- slide 1 hero ---------- */
+      .hero {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        gap: clamp(32px, 5vw, 72px);
+        align-items: center;
+      }
+      .hero .mark {
+        width: clamp(200px, 24vw, 320px);
+        height: auto;
+        margin-inline: auto;
+      }
+      .wordmark {
+        font-size: clamp(56px, 9vw, 112px);
+        font-weight: 800;
+        letter-spacing: -0.045em;
+        line-height: 0.9;
+      }
+      .wordmark .dot {
+        color: var(--mag);
+      }
+      .tagline {
+        margin-top: 22px;
+        font-size: clamp(18px, 1.9vw, 23px);
+        line-height: 1.45;
+        color: var(--ink-dim);
+        max-width: 44ch;
+      }
+      .tagline b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .hero-foot {
+        margin-top: 30px;
+        display: flex;
+        gap: 10px 22px;
+        flex-wrap: wrap;
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+      }
+      .hero-foot span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .hero-foot span::before {
+        content: '';
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--cyan);
+        box-shadow: 0 0 8px var(--cyan);
+      }
+      .hero-foot span.m::before {
+        background: var(--mag);
+        box-shadow: 0 0 8px var(--mag);
+      }
+
+      /* ---------- flow (mental model) ---------- */
+      .sec-head {
+        margin-bottom: 36px;
+      }
+      .sec-head h2 {
+        max-width: 22ch;
+        margin-top: 6px;
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr auto 1fr;
+        align-items: stretch;
+        gap: 12px;
+      }
+      .node {
+        background: linear-gradient(180deg, var(--panel-2), var(--panel));
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 22px 20px;
+      }
+      .node .nh {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin-bottom: 12px;
+      }
+      .node .nt {
+        font-size: 19px;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+        margin-bottom: 9px;
+      }
+      .node .nd {
+        font-size: 13.5px;
+        line-height: 1.5;
+        color: var(--ink-dim);
+      }
+      .node .nstep {
+        position: absolute;
+      }
+      .node.s1 {
+        border-color: rgba(98, 212, 200, 0.28);
+      }
+      .node.s1 .nt {
+        color: var(--cyan-soft);
+      }
+      .node.s2 {
+        border-color: rgba(98, 212, 200, 0.26);
+      }
+      .node.s2 .nt {
+        color: var(--mag-soft);
+      }
+      .node.s3 {
+        border-color: rgba(52, 211, 153, 0.3);
+      }
+      .node.s3 .nt {
+        color: #7ff0c7;
+      }
+      .arrow {
+        display: grid;
+        place-items: center;
+        gap: 5px;
+        align-content: center;
+      }
+      .arrow .line {
+        width: 100%;
+        min-width: 30px;
+        height: 2px;
+        background: linear-gradient(90deg, var(--cyan), var(--mag));
+        border-radius: 2px;
+        position: relative;
+      }
+      .arrow .line::after {
+        content: '';
+        position: absolute;
+        right: -1px;
+        top: -3px;
+        border: 4px solid transparent;
+        border-left-color: var(--mag);
+      }
+      .arrow .lbl {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        white-space: nowrap;
+      }
+      .callout {
+        margin-top: 34px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 20px;
+        border: 1px solid rgba(98, 212, 200, 0.22);
+        border-radius: 14px;
+        background: rgba(98, 212, 200, 0.04);
+      }
+      .callout b {
+        color: var(--cyan-soft);
+        font-weight: 700;
+      }
+      .callout .big {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--ink-dim);
+        line-height: 1.5;
+      }
+
+      /* ---------- app mock (shared) ---------- */
+      .layout {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: clamp(28px, 4vw, 56px);
+        align-items: center;
+      }
+      .layout.wide {
+        grid-template-columns: 1fr;
+      }
+      .app-mock {
+        border: 1px solid var(--line-2);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--bg-2);
+        box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+      .am-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+      }
+      .am-bar .wm {
+        font-weight: 800;
+        font-size: 14px;
+        letter-spacing: -0.02em;
+      }
+      .am-bar .wm .dot {
+        color: var(--mag);
+      }
+      .am-bar .sp {
+        margin-left: auto;
+      }
+      .am-gear {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        border: 1px solid var(--line-2);
+        opacity: 0.7;
+      }
+      .am-pill {
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        border: 1px solid var(--line-2);
+        color: var(--ink-dim);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .am-pill .d {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+      }
+      .d.ok {
+        background: var(--ok);
+        box-shadow: 0 0 8px var(--ok);
+      }
+      .d.warn {
+        background: var(--warn);
+        box-shadow: 0 0 8px var(--warn);
+      }
+      .d.bad {
+        background: var(--bad);
+        box-shadow: 0 0 8px var(--bad);
+      }
+      .am-body {
+        display: grid;
+        grid-template-columns: 168px 1fr;
+        min-height: 312px;
+      }
+      .am-side {
+        border-right: 1px solid var(--line);
+        padding: 12px 10px;
+        background: rgba(255, 255, 255, 0.012);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .am-search {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 6px 9px;
+        margin-bottom: 8px;
+      }
+      .am-item {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 7px 9px;
+        border-radius: 8px;
+        font-size: 12.5px;
+        color: var(--ink-dim);
+      }
+      .am-item.active {
+        background: rgba(98, 212, 200, 0.08);
+        color: var(--ink);
+        border: 1px solid rgba(98, 212, 200, 0.22);
+      }
+      .am-item .bd {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--metal);
+        flex: none;
+      }
+      .am-item .bd.c {
+        background: var(--cyan);
+      }
+      .am-item .bd.m {
+        background: var(--mag);
+      }
+      .am-item .data {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--ok);
+        box-shadow: 0 0 7px var(--ok);
+        margin-left: auto;
+        flex: none;
+      }
+      .am-sep {
+        height: 1px;
+        background: var(--line);
+        margin: 8px 2px;
+      }
+      .am-main {
+        padding: 16px 18px;
+        overflow: hidden;
+      }
+      .am-h {
+        font-size: 15px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+        margin-bottom: 3px;
+      }
+      .am-sub {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--ink-faint);
+        margin-bottom: 14px;
+      }
+
+      .am-empty {
+        display: grid;
+        place-items: center;
+        height: 100%;
+        text-align: center;
+        gap: 10px;
+        color: var(--ink-faint);
+      }
+      .am-empty .ic {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        border: 1px dashed var(--line-2);
+        display: grid;
+        place-items: center;
+      }
+      .am-empty .t {
+        font-size: 13px;
+        color: var(--ink-dim);
+      }
+      .am-empty .h {
+        font-size: 11px;
+      }
+
+      .am-tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 14px;
+      }
+      .am-tab {
+        font-size: 12px;
+        padding: 7px 12px;
+        color: var(--ink-faint);
+        border-bottom: 2px solid transparent;
+      }
+      .am-tab.active {
+        color: var(--ink);
+        border-bottom-color: var(--cyan);
+      }
+      .am-tab.gear {
+        margin-left: auto;
+        opacity: 0.7;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .card-s {
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        padding: 11px 12px;
+        background: var(--panel);
+      }
+      .card-s .cl {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin-bottom: 6px;
+      }
+      .card-s .cv {
+        font-size: 19px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .card-s .cv.c {
+        color: var(--cyan-soft);
+      }
+      .card-s .cv.m {
+        color: var(--mag-soft);
+      }
+      .card-s .cd {
+        font-size: 10px;
+        color: var(--ink-dim);
+        margin-top: 3px;
+      }
+
+      .bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 7px;
+        height: 86px;
+        padding: 8px 4px 0;
+        border-top: 1px solid var(--line);
+      }
+      .bars .b {
+        flex: 1;
+        border-radius: 4px 4px 0 0;
+        background: linear-gradient(180deg, var(--cyan), rgba(98, 212, 200, 0.15));
+        min-height: 6px;
+      }
+      .bars .b.m {
+        background: linear-gradient(180deg, var(--mag), rgba(98, 212, 200, 0.15));
+      }
+
+      .rows {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .row-l {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--ink-dim);
+        padding: 6px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .row-l .nm {
+        color: var(--ink);
+      }
+      .row-l .vv {
+        margin-left: auto;
+        font-family: var(--mono);
+      }
+      .row-l .up {
+        color: var(--bad);
+      }
+      .row-l .dn {
+        color: var(--ok);
+      }
+
+      /* annotations column */
+      .notes {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .note {
+        display: flex;
+        gap: 14px;
+      }
+      .note .n {
+        width: 26px;
+        height: 26px;
+        flex: none;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--bg);
+        background: var(--cyan);
+      }
+      .note:nth-child(even) .n {
+        background: var(--mag);
+      }
+      .note .nt {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+        margin-bottom: 3px;
+      }
+      .note .nd {
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--ink-dim);
+      }
+      .note .nd b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .note .nd code {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--line);
+        padding: 1px 5px;
+        border-radius: 4px;
+        color: var(--cyan-soft);
+      }
+
+      /* magic-login mock */
+      .ml {
+        border: 1px solid var(--line-2);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--bg-2);
+        box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
+      }
+      .ml-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel-2);
+      }
+      .ml-url {
+        flex: 1;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-dim);
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 6px 10px;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      .ml-btn {
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 6px 11px;
+        border-radius: 7px;
+        border: 1px solid var(--line-2);
+        color: var(--ink-dim);
+      }
+      .ml-btn.cap {
+        border-color: rgba(98, 212, 200, 0.45);
+        color: var(--mag-soft);
+        background: rgba(98, 212, 200, 0.07);
+      }
+      .ml-page {
+        padding: 30px;
+        display: grid;
+        place-items: center;
+        min-height: 230px;
+        background: radial-gradient(80% 60% at 50% 0%, rgba(98, 212, 200, 0.05), transparent 70%);
+      }
+      .ml-form {
+        width: 240px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      .ml-form .lg {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 4px;
+      }
+      .ml-input {
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid var(--line-2);
+        background: var(--panel);
+      }
+      .ml-sub {
+        height: 34px;
+        border-radius: 8px;
+        background: linear-gradient(90deg, var(--cyan), var(--mag));
+        color: var(--bg);
+        font-weight: 700;
+        font-size: 12.5px;
+        display: grid;
+        place-items: center;
+      }
+      .ml-mfa {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--ink-faint);
+      }
+
+      /* status legend (slide 7) */
+      .health {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-bottom: 30px;
+      }
+      .hstate {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px 18px;
+        background: var(--panel);
+      }
+      .hstate .top {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .hstate .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+      }
+      .hstate.ok {
+        border-color: rgba(52, 211, 153, 0.3);
+      }
+      .hstate.ok .dot {
+        background: var(--ok);
+        box-shadow: 0 0 10px var(--ok);
+      }
+      .hstate.info {
+        border-color: rgba(56, 189, 248, 0.3);
+      }
+      .hstate.info .dot {
+        background: #38bdf8;
+        box-shadow: 0 0 10px #38bdf8;
+      }
+      .hstate.bad {
+        border-color: rgba(251, 113, 133, 0.3);
+      }
+      .hstate.bad .dot {
+        background: var(--bad);
+        box-shadow: 0 0 10px var(--bad);
+      }
+      .hstate .hn {
+        font-size: 15px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+      }
+      .hstate .hd {
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--ink-dim);
+      }
+      .actions-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .act {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--ink-dim);
+        padding: 9px 15px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.015);
+      }
+      .act b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .act.danger {
+        border-color: rgba(251, 113, 133, 0.35);
+        color: var(--bad);
+      }
+
+      /* settings list (slide 8) */
+      .settings {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .set {
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        padding: 16px 18px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .set .st {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin-bottom: 8px;
+      }
+      .set .sv {
+        font-size: 14.5px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+        margin-bottom: 4px;
+      }
+      .set .sd {
+        font-size: 12.5px;
+        line-height: 1.45;
+        color: var(--ink-dim);
+      }
+      .set.hi {
+        border-color: rgba(98, 212, 200, 0.26);
+      }
+
+      /* library filetree (slide 9) */
+      .library {
+        display: grid;
+        grid-template-columns: 0.92fr 1.08fr;
+        gap: clamp(28px, 4vw, 56px);
+        align-items: center;
+      }
+      .tree {
+        font-family: var(--mono);
+        font-size: 13px;
+        line-height: 1.95;
+        color: var(--ink-dim);
+        border: 1px solid var(--line-2);
+        border-radius: 14px;
+        padding: 22px 24px;
+        background: var(--bg-2);
+        box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .tree .dir {
+        color: var(--cyan-soft);
+      }
+      .tree .enc {
+        color: var(--mag-soft);
+      }
+      .tree .cm {
+        color: var(--ink-faint);
+      }
+      .privacy {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .pp {
+        display: flex;
+        gap: 13px;
+        align-items: flex-start;
+      }
+      .pp .pi {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        margin-top: 7px;
+        flex: none;
+        background: var(--cyan);
+        box-shadow: 0 0 8px var(--cyan);
+      }
+      .pp:nth-child(even) .pi {
+        background: var(--mag);
+        box-shadow: 0 0 8px var(--mag);
+      }
+      .pp .pt {
+        font-size: 14.5px;
+      }
+      .pp .pt b {
+        color: var(--ink);
+        font-weight: 650;
+      }
+      .pp .pt span {
+        color: var(--ink-dim);
+      }
+
+      /* closing */
+      .close-wrap {
+        text-align: center;
+        display: grid;
+        justify-items: center;
+        gap: 26px;
+      }
+      .close-wrap .mark {
+        width: clamp(110px, 14vw, 150px);
+      }
+      .close-foot {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 8px;
+      }
+      .close-foot .cta {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        color: var(--ink-dim);
+        padding: 11px 18px;
+        border: 1px solid var(--line-2);
+        border-radius: 999px;
+      }
+      .close-foot .cta b {
+        color: var(--cyan-soft);
+      }
+
+      /* ---------- chrome ---------- */
+      .brand-lockup {
+        position: fixed;
+        top: 28px;
+        left: 32px;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        opacity: 0.92;
+      }
+      .brand-lockup .mark {
+        width: 30px;
+        height: 30px;
+      }
+      .brand-lockup .bn {
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        font-size: 17px;
+      }
+      .brand-lockup .bn .dot {
+        color: var(--mag);
+      }
+      .progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--cyan), var(--mag));
+        z-index: 40;
+        transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+        box-shadow: 0 0 10px rgba(98, 212, 200, 0.5);
+      }
+      .nav {
+        position: fixed;
+        bottom: 26px;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        z-index: 30;
+      }
+      .dots {
+        display: flex;
+        gap: 9px;
+      }
+      .dot-btn {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 0;
+        background: var(--line-2);
+        cursor: pointer;
+        padding: 0;
+        transition: all 0.3s;
+      }
+      .dot-btn.on {
+        background: var(--cyan);
+        box-shadow: 0 0 10px var(--cyan);
+        width: 24px;
+        border-radius: 5px;
+      }
+      .counter {
+        position: fixed;
+        bottom: 28px;
+        right: 34px;
+        z-index: 30;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink-faint);
+        letter-spacing: 0.08em;
+      }
+      .counter b {
+        color: var(--ink);
+      }
+      .hint {
+        position: fixed;
+        bottom: 28px;
+        left: 34px;
+        z-index: 30;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-faint);
+        letter-spacing: 0.06em;
+      }
+      kbd {
+        font-family: var(--mono);
+        border: 1px solid var(--line-2);
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 10.5px;
+        color: var(--ink-dim);
+      }
+      .slide-title {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        position: absolute;
+        top: 30px;
+        right: 34px;
+      }
+
+      @media (max-width: 980px) {
+        .hero,
+        .layout,
+        .library,
+        .gap-grid {
+          grid-template-columns: 1fr;
+        }
+        .hero .mark {
+          width: 170px;
+          order: -1;
+        }
+        .flow {
+          grid-template-columns: 1fr;
+        }
+        .arrow .line {
+          width: 2px;
+          height: 26px;
+          min-width: 0;
+          background: linear-gradient(180deg, var(--cyan), var(--mag));
+        }
+        .cards,
+        .settings,
+        .health {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- brand mark symbol (defined once, reused) -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="brandMark" viewBox="0 0 256 256">
+        <!-- Convergence hub — six accounts gathering into one place. Keep in sync with components/brand.tsx. -->
+        <g fill="none" stroke="#3c7d77" stroke-width="6.8" stroke-linecap="round">
+          <line x1="128" y1="60" x2="128" y2="96" />
+          <line x1="186.9" y1="94" x2="155.7" y2="112" />
+          <line x1="186.9" y1="162" x2="155.7" y2="144" />
+          <line x1="128" y1="196" x2="128" y2="160" />
+          <line x1="69.1" y1="162" x2="100.3" y2="144" />
+          <line x1="69.1" y1="94" x2="100.3" y2="112" />
+        </g>
+        <g fill="#bdeee8">
+          <circle cx="128" cy="60" r="10" />
+          <circle cx="186.9" cy="94" r="10" />
+          <circle cx="186.9" cy="162" r="10" />
+          <circle cx="128" cy="196" r="10" />
+          <circle cx="69.1" cy="162" r="10" />
+          <circle cx="69.1" cy="94" r="10" />
+        </g>
+        <circle cx="128" cy="128" r="22" fill="#62d4c8" />
+      </symbol>
+    </svg>
+
+    <div class="progress" id="progress"></div>
+
+    <div class="brand-lockup">
+      <svg class="mark"><use href="#brandMark" /></svg>
+      <span class="bn">BUTIN<span class="dot">.</span></span>
+    </div>
+
+    <div class="stage" id="stage">
+      <!-- SLIDE 1 — TITLE -->
+      <section class="slide active">
+        <div class="wrap">
+          <div class="hero">
+            <div>
+              <div class="kicker">Pour commencer · Visite guidée</div>
+              <div class="wordmark">BUTIN<span class="dot">.</span></div>
+              <p class="tagline">
+                Chaque compte que vous payez — facturation, utilisation et documents — en <b>un seul endroit local</b>,
+                consultable sans vous reconnecter et <b>conservé sur votre machine.</b>
+              </p>
+              <div class="hero-foot">
+                <span>Local-first</span>
+                <span class="m">Sans API fournisseur</span>
+                <span>Votre session uniquement</span>
+              </div>
+            </div>
+            <div class="mark-glow">
+              <svg class="mark"><use href="#brandMark" /></svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 2 — MENTAL MODEL -->
+      <section class="slide">
+        <span class="slide-title">Le principe</span>
+        <div class="wrap">
+          <div class="sec-head">
+            <div class="kicker">Fonctionnement</div>
+            <h2>
+              Vous vous connectez. <span class="accent-c">Butin lit chaque tableau de bord</span>
+              <span class="accent-m">pour vous.</span>
+            </h2>
+          </div>
+          <div class="flow">
+            <div class="node s1">
+              <div class="nh">Étape 1 · Connexion</div>
+              <div class="nt">Vous vous connectez à la main</div>
+              <div class="nd">
+                Une fenêtre de connexion normale s’ouvre. Vous vous identifiez — mot de passe, A2F, SSO. Butin
+                sauvegarde votre session chiffrée sur votre machine.
+              </div>
+            </div>
+            <div class="arrow">
+              <div class="lbl">une fois</div>
+              <div class="line"></div>
+            </div>
+            <div class="node s2">
+              <div class="nh">Étape 2 · Répétition</div>
+              <div class="nt">Récupération en arrière-plan</div>
+              <div class="nd">
+                Tant que la session est valide, Butin lit les mêmes pages que votre navigateur — en toute discrétion,
+                sans fenêtre ouverte. Lorsqu’elle expire, reconnectez-vous simplement.
+              </div>
+            </div>
+            <div class="arrow">
+              <div class="lbl">à chaque actualisation</div>
+              <div class="line"></div>
+            </div>
+            <div class="node s3">
+              <div class="nh">Étape 3 · Rapatriement</div>
+              <div class="nt">Données nettes et locales</div>
+              <div class="nd">
+                Chaque récupération produit un tableau de bord clair — dépenses, utilisation, membres, documents —
+                stocké uniquement sur votre disque.
+              </div>
+            </div>
+          </div>
+          <div class="callout">
+            <span class="big"
+              ><b>Récupération à la demande.</b> Aucune étape d’« exportation » séparée, aucun navigateur à surveiller —
+              ouvrir un service récupère ses dernières données avec votre session enregistrée. Si elle expire, une
+              reconnexion rapide la rafraîchit.</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 3 — THE SHELL -->
+      <section class="slide">
+        <span class="slide-title">Premier lancement</span>
+        <div class="wrap">
+          <div class="layout">
+            <div class="app-mock">
+              <div class="am-bar">
+                <span class="wm">BUTIN<span class="dot">.</span></span>
+                <span class="sp"></span>
+                <span class="am-gear"></span>
+              </div>
+              <div class="am-body">
+                <div class="am-side">
+                  <div class="am-search">Rechercher un service…</div>
+                  <div class="am-item active"><span class="bd c"></span>Aperçu</div>
+                  <div class="am-item"><span class="bd"></span>État des données</div>
+                  <div class="am-sep"></div>
+                  <div class="am-item"><span class="bd m"></span>Claude</div>
+                  <div class="am-item"><span class="bd c"></span>GitHub</div>
+                  <div class="am-item"><span class="bd m"></span>Sentry</div>
+                  <div class="am-item"><span class="bd c"></span>AWS</div>
+                </div>
+                <div class="am-main">
+                  <div class="am-empty">
+                    <div class="ic">
+                      <svg
+                        width="22"
+                        height="22"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#6f6c7e"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                      >
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                    </div>
+                    <div class="t">Rien ici pour le moment</div>
+                    <div class="h">Connectez un service pour afficher vos données</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="kicker">L’interface</div>
+              <h2 style="font-size: clamp(26px, 3.4vw, 40px); margin-bottom: 24px">
+                Une seule fenêtre. <span class="accent-c">Une liste à gauche, vos données à droite.</span>
+              </h2>
+              <div class="notes">
+                <div class="note">
+                  <div class="n">1</div>
+                  <div>
+                    <div class="nt">La barre latérale</div>
+                    <div class="nd">
+                      <b>Aperçu</b> figure en tête, suivi de <b>État des données</b>, puis de chaque service disponible.
+                      Recherchez pour y accéder rapidement.
+                    </div>
+                  </div>
+                </div>
+                <div class="note">
+                  <div class="n">2</div>
+                  <div>
+                    <div class="nt">Les indicateurs</div>
+                    <div class="nd">
+                      Un petit <b>point de couleur</b> identifie chaque service ; un <b>point vert</b> apparaît dès
+                      qu’il possède des données locales sur votre machine.
+                    </div>
+                  </div>
+                </div>
+                <div class="note">
+                  <div class="n">3</div>
+                  <div>
+                    <div class="nt">Premier lancement vide</div>
+                    <div class="nd">
+                      Une nouvelle installation n’a pas encore de données. Choisissez un service (ou ouvrez
+                      <b>État des données</b>) et connectez-le — c’est l’étape suivante.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 4 — CONNECT (MAGIC LOGIN) -->
+      <section class="slide">
+        <span class="slide-title">Connecter un service</span>
+        <div class="wrap">
+          <div class="layout">
+            <div class="ml">
+              <div class="ml-bar">
+                <span class="ml-btn">◀ ▶</span>
+                <span class="ml-url">https://claude.ai/login</span>
+                <span class="ml-btn">Copier</span>
+                <span class="ml-btn cap">Capturer la session</span>
+              </div>
+              <div class="ml-page">
+                <div class="ml-form">
+                  <div class="lg">Connexion</div>
+                  <div class="ml-input"></div>
+                  <div class="ml-input"></div>
+                  <div class="ml-sub">Continuer</div>
+                  <div class="ml-mfa">· puis votre code A2F ·</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="kicker">Connexion par navigateur</div>
+              <h2 style="font-size: clamp(26px, 3.4vw, 40px); margin-bottom: 24px">
+                Connectez-vous comme <span class="accent-m">vous le faites toujours.</span>
+              </h2>
+              <div class="notes">
+                <div class="note">
+                  <div class="n">1</div>
+                  <div>
+                    <div class="nt">Connexion manuelle</div>
+                    <div class="nd">
+                      Mot de passe, A2F, SSO, lien par courriel — selon le service. Butin ne voit ni ne stocke jamais
+                      votre mot de passe.
+                    </div>
+                  </div>
+                </div>
+                <div class="note">
+                  <div class="n">2</div>
+                  <div>
+                    <div class="nt">Capture automatique</div>
+                    <div class="nd">
+                      Lorsque la page atteint votre accueil connecté, Butin capture la session et ferme la fenêtre. Si
+                      la détection automatique échoue, cliquez sur <b>Capturer la session</b> dans la barre d’outils.
+                    </div>
+                  </div>
+                </div>
+                <div class="note">
+                  <div class="n">3</div>
+                  <div>
+                    <div class="nt">Stockage chiffré</div>
+                    <div class="nd">
+                      La session est scellée avec le trousseau de votre système dans <code>~/butin/</code>. Certains
+                      services ne nécessitent aucune connexion web — ils demandent simplement une clé d’API dans un
+                      formulaire succinct.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 5 — DATA APPEARS -->
+      <section class="slide">
+        <span class="slide-title">Vos données</span>
+        <div class="wrap">
+          <div class="layout">
+            <div class="app-mock">
+              <div class="am-bar">
+                <span class="wm">BUTIN<span class="dot">.</span></span>
+                <span class="sp"></span>
+                <span class="am-pill"><span class="d ok"></span>connecté</span>
+              </div>
+              <div class="am-body">
+                <div class="am-side">
+                  <div class="am-search">Search services…</div>
+                  <div class="am-item"><span class="bd c"></span>Overview</div>
+                  <div class="am-item"><span class="bd"></span>Data status</div>
+                  <div class="am-sep"></div>
+                  <div class="am-item active"><span class="bd m"></span>Claude<span class="data"></span></div>
+                  <div class="am-item"><span class="bd c"></span>GitHub</div>
+                </div>
+                <div class="am-main">
+                  <div class="am-tabs">
+                    <span class="am-tab active">Facturation</span>
+                    <span class="am-tab">Utilisation</span>
+                    <span class="am-tab">Membres</span>
+                    <span class="am-tab gear">⚙</span>
+                  </div>
+                  <div class="am-sub">actualisé il y a 4 minutes · 14 juin 2026, 15:42</div>
+                  <div class="cards">
+                    <div class="card-s">
+                      <div class="cl">Ce mois-ci</div>
+                      <div class="cv m">$842.10</div>
+                      <div class="cd">▲ 12% vs précédent</div>
+                    </div>
+                    <div class="card-s">
+                      <div class="cl">Sièges</div>
+                      <div class="cv">14</div>
+                      <div class="cd">2 inactifs</div>
+                    </div>
+                    <div class="card-s">
+                      <div class="cl">Forfait</div>
+                      <div class="cv c">Équipe</div>
+                      <div class="cd">annuel</div>
+                    </div>
+                  </div>
+                  <div class="bars">
+                    <div class="b" style="height: 38%"></div>
+                    <div class="b" style="height: 52%"></div>
+                    <div class="b" style="height: 46%"></div>
+                    <div class="b" style="height: 64%"></div>
+                    <div class="b" style="height: 58%"></div>
+                    <div class="b m" style="height: 82%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="kicker">Affichage direct</div>
+              <h2 style="font-size: clamp(26px, 3.4vw, 40px); margin-bottom: 24px">
+                Ouvrez un service. <span class="accent-c">Voici vos données.</span>
+              </h2>
+              <div class="notes">
+                <div class="note">
+                  <div class="n">1</div>
+                  <div>
+                    <div class="nt">Les onglets sont les données</div>
+                    <div class="nd">
+                      Chaque service affiche ses données disponibles — <b>Facturation</b>, <b>Utilisation</b>,
+                      <b>Membres</b>, documents. Les onglets se chargent dès que vous les ouvrez.
+                    </div>
+                  </div>
+                </div>
+                <div class="note">
+                  <div class="n">2</div>
+                  <div>
+                    <div class="nt">« Actualisé il y a X »</div>
+                    <div class="nd">
+                      Chaque onglet indique la fraîcheur de ses données. Cliquez sur <b>Actualiser</b> pour récupérer
+                      les chiffres récents ; les anciennes données restent intactes en cas d’échec.
+                    </div>
+                  </div>
+                </div>
+                <div class="note">
+                  <div class="n">3</div>
+                  <div>
+                    <div class="nt">L’onglet engrenage</div>
+                    <div class="nd">
+                      L’onglet <b>⚙</b> à l’extrême droite permet de gérer la connexion et l’exportation locale.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 6 — OVERVIEW -->
+      <section class="slide">
+        <span class="slide-title">L’Aperçu</span>
+        <div class="wrap">
+          <div class="layout">
+            <div>
+              <div class="kicker">Un chiffre unique</div>
+              <h2 style="font-size: clamp(26px, 3.4vw, 40px); margin-bottom: 22px">
+                Tous les services, <span class="accent-m">additionnés.</span>
+              </h2>
+              <p class="lead" style="margin-bottom: 20px">
+                Connectez quelques services et l’<span class="ink">Aperçu</span> devient votre tableau de bord central :
+                total des dépenses combinées, tendance mensuelle et variations marquantes.
+              </p>
+              <div class="notes">
+                <div class="note">
+                  <div class="n">1</div>
+                  <div>
+                    <div class="nt">Cartes consolidées</div>
+                    <div class="nd">
+                      Dépenses et utilisation cumulées sur tous vos services — le chiffre unifié qu’aucun portail
+                      individuel ne fournit.
+                    </div>
+                  </div>
+                </div>
+                <div class="note">
+                  <div class="n">2</div>
+                  <div>
+                    <div class="nt">Ce qui a changé</div>
+                    <div class="nd">
+                      Les « Variations » mettent en évidence les plus fortes hausses mensuelles, pour anticiper un coût
+                      imprévu avant la facturation.
+                    </div>
+                  </div>
+                </div>
+                <div class="note">
+                  <div class="n">3</div>
+                  <div>
+                    <div class="nt">Instantané</div>
+                    <div class="nd">
+                      Lecture directe depuis votre cache local — s’ouvre <b>sans appel réseau</b>. Actualisez un service
+                      pour mettre à jour sa part.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="app-mock">
+              <div class="am-bar">
+                <span class="wm">BUTIN<span class="dot">.</span></span
+                ><span class="sp"></span><span class="am-gear"></span>
+              </div>
+              <div class="am-body" style="grid-template-columns: 130px 1fr">
+                <div class="am-side">
+                  <div class="am-item active"><span class="bd c"></span>Overview</div>
+                  <div class="am-item"><span class="bd"></span>Data status</div>
+                  <div class="am-sep"></div>
+                  <div class="am-item"><span class="bd m"></span>Claude<span class="data"></span></div>
+                  <div class="am-item"><span class="bd c"></span>GitHub<span class="data"></span></div>
+                  <div class="am-item"><span class="bd m"></span>Sentry<span class="data"></span></div>
+                </div>
+                <div class="am-main">
+                  <div class="am-h">Aperçu</div>
+                  <div class="am-sub">sur 5 services</div>
+                  <div class="cards">
+                    <div class="card-s">
+                      <div class="cl">Total / mois</div>
+                      <div class="cv c">$3,418</div>
+                      <div class="cd">▲ 8%</div>
+                    </div>
+                    <div class="card-s">
+                      <div class="cl">Services</div>
+                      <div class="cv">5</div>
+                      <div class="cd">tous à jour</div>
+                    </div>
+                    <div class="card-s">
+                      <div class="cl">Seats</div>
+                      <div class="cv m">37</div>
+                      <div class="cd">sur l’ensemble</div>
+                    </div>
+                  </div>
+                  <div class="bars" style="margin-bottom: 12px">
+                    <div class="b" style="height: 40%"></div>
+                    <div class="b" style="height: 48%"></div>
+                    <div class="b" style="height: 44%"></div>
+                    <div class="b" style="height: 60%"></div>
+                    <div class="b" style="height: 66%"></div>
+                    <div class="b m" style="height: 88%"></div>
+                  </div>
+                  <div class="rows">
+                    <div class="row-l">
+                      <span class="nm">Claude</span><span>dépense</span><span class="vv up">▲ 31%</span>
+                    </div>
+                    <div class="row-l">
+                      <span class="nm">Sentry</span><span>dépense</span><span class="vv dn">▼ 6%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 7 — CONNECTION HEALTH -->
+      <section class="slide">
+        <span class="slide-title">Santé des connexions</span>
+        <div class="wrap">
+          <div class="sec-head">
+            <div class="kicker">Toujours connecté ?</div>
+            <h2>Trois couleurs indiquent <span class="accent-c">l’état de chaque service.</span></h2>
+          </div>
+          <div class="health">
+            <div class="hstate ok">
+              <div class="top"><span class="dot"></span><span class="hn">Vert — vérifié</span></div>
+              <div class="hd">
+                Fonctionnement validé lors de cette session : une récupération, un test ou une reconnexion réussie
+                atteste que la session est active.
+              </div>
+            </div>
+            <div class="hstate info">
+              <div class="top"><span class="dot"></span><span class="hn">Bleu — stocké</span></div>
+              <div class="hd">
+                Session enregistrée ayant survécu au redémarrage, non encore vérifiée aujourd’hui. Probablement valide —
+                testez pour confirmer.
+              </div>
+            </div>
+            <div class="hstate bad">
+              <div class="top"><span class="dot"></span><span class="hn">Rouge — expirée</span></div>
+              <div class="hd">
+                La session est fermée ou une requête a renvoyé « déconnecté ». Reconnectez-vous — vos données locales
+                restent conservées.
+              </div>
+            </div>
+          </div>
+          <div class="step-eyebrow">Gérez chaque service depuis son onglet Paramètres ⚙</div>
+          <div class="actions-row">
+            <span class="act"><b>Tester</b> — sonder la session</span>
+            <span class="act"><b>Reconnecter</b> — relancer la connexion</span>
+            <span class="act"><b>Tout actualiser</b> — recharger tous les onglets</span>
+            <span class="act"><b>Activé</b> — masquer de l’Aperçu</span>
+            <span class="act danger"><b>Déconnecter</b> — purger la session</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 8 — SETTINGS -->
+      <section class="slide">
+        <span class="slide-title">Personnalisation</span>
+        <div class="wrap">
+          <div class="sec-head">
+            <div class="kicker">Paramètres</div>
+            <h2>Quelques réglages sous <span class="accent-m">l’engrenage en haut à droite.</span></h2>
+          </div>
+          <div class="settings">
+            <div class="set">
+              <div class="st">Apparence</div>
+              <div class="sv">Clair ou sombre</div>
+              <div class="sd">Toute l’application suit votre préférence.</div>
+            </div>
+            <div class="set">
+              <div class="st">Langue</div>
+              <div class="sv">English / Français</div>
+              <div class="sd">Interface et intitulés, modifiables à tout instant.</div>
+            </div>
+            <div class="set">
+              <div class="st">Formatage</div>
+              <div class="sv">Devises · format de date</div>
+              <div class="sd">
+                Affichage des montants et dates — US, français, européen, ISO — indépendant de la langue.
+              </div>
+            </div>
+            <div class="set">
+              <div class="st">Capture</div>
+              <div class="sv">Capture manuelle</div>
+              <div class="sd">
+                Désactivez la détection automatique pour déclencher vous-même la capture à chaque connexion.
+              </div>
+            </div>
+            <div class="set hi">
+              <div class="st">Données et confidentialité</div>
+              <div class="sv">Ouvrir le dossier · Tout effacer</div>
+              <div class="sd">
+                Accédez directement à <code style="font-family: var(--mono); color: var(--cyan-soft)">~/butin/</code>,
+                ou effacez tout en deux clics.
+              </div>
+            </div>
+            <div class="set">
+              <div class="st">Diagnostics</div>
+              <div class="sv">Journaux et état</div>
+              <div class="sd">Une page dédiée pour examiner les détails techniques.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 9 — YOUR LIBRARY -->
+      <section class="slide">
+        <span class="slide-title">Vos données, en local</span>
+        <div class="wrap">
+          <div class="library">
+            <div class="tree">
+              <span class="dir">~/butin/</span>
+              config.json <span class="enc">← sessions chiffrées</span>
+              <span class="dir">claude/</span>
+              <span class="dir">reports/</span> <span class="cm">facturation · utilisation</span>
+              <span class="dir">documents/</span> <span class="cm">factures, PDF</span>
+              <span class="dir">sentry/</span>
+              <span class="dir">reports/</span>
+              <span class="dir">github/</span>
+              <span class="dir">reports/</span>
+            </div>
+            <div>
+              <div class="kicker">Tout reste chez vous</div>
+              <h2 style="font-size: clamp(26px, 3.4vw, 42px); margin-bottom: 22px">
+                Vos données, <span class="accent-c">sur votre disque.</span>
+              </h2>
+              <div class="privacy">
+                <div class="pp">
+                  <span class="pi"></span>
+                  <div class="pt">
+                    <b>Un seul dossier.</b>
+                    <span
+                      >Tout ce que Butin récupère réside dans <code style="font-family: var(--mono)">~/butin/</code> —
+                      sessions chiffrées, rapports et fichiers dans des dossiers clairs que vous pouvez ouvrir.</span
+                    >
+                  </div>
+                </div>
+                <div class="pp">
+                  <span class="pi"></span>
+                  <div class="pt">
+                    <b>Tout sauvegarder.</b>
+                    <span
+                      >L’option « Tout sauvegarder » de l’onglet ⚙ exporte l’intégralité d’un service — rapports et
+                      documents — en une seule fois.</span
+                    >
+                  </div>
+                </div>
+                <div class="pp">
+                  <span class="pi"></span>
+                  <div class="pt">
+                    <b>You're in control.</b>
+                    <span
+                      >Erase one service's data, or clear it all, any time. Disconnect keeps your downloaded
+                      files.</span
+                    >
+                  </div>
+                </div>
+                <div class="pp">
+                  <span class="pi"></span>
+                  <div class="pt">
+                    <b>Rien ne s’échappe.</b>
+                    <span
+                      >Aucun nuage, aucun compte tiers, aucun serveur externe. Il n’y a personne à qui envoyer vos
+                      données — c’est tout l’intérêt.</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 10 — CLOSE -->
+      <section class="slide">
+        <div class="wrap">
+          <div class="close-wrap">
+            <div class="mark-glow">
+              <svg class="mark"><use href="#brandMark" /></svg>
+            </div>
+            <div>
+              <div class="kicker" style="justify-content: center">Vous êtes prêt</div>
+              <h2 style="max-width: 20ch; margin-inline: auto">
+                Choisissez un service. <span class="accent-c">Connectez-vous.</span>
+                <span class="accent-m">Gardez vos données chez vous.</span>
+              </h2>
+            </div>
+            <div class="close-foot">
+              <span class="cta">1 · <b>Ouvrez un service</b> dans la barre latérale</span>
+              <span class="cta">2 · <b>Connectez-vous</b> dans la fenêtre qui s’ouvre</span>
+              <span class="cta">3 · <b>Consultez vos données</b> — et l’Aperçu global</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="nav"><div class="dots" id="dots"></div></div>
+    <div class="counter"><b id="cur">01</b> / <span id="tot">10</span></div>
+    <div class="hint"><kbd>←</kbd> <kbd>→</kbd> pour naviguer</div>
+
+    <script>
+      const slides = [...document.querySelectorAll('.slide')]
+      const dotsWrap = document.getElementById('dots')
+      const progress = document.getElementById('progress')
+      const cur = document.getElementById('cur')
+      let i = 0
+
+      slides.forEach((_, k) => {
+        const b = document.createElement('button')
+        b.className = 'dot-btn' + (k === 0 ? ' on' : '')
+        b.addEventListener('click', () => go(k))
+        dotsWrap.appendChild(b)
+      })
+      document.getElementById('tot').textContent = String(slides.length).padStart(2, '0')
+
+      function go(n) {
+        i = Math.max(0, Math.min(slides.length - 1, n))
+        slides.forEach((s, k) => s.classList.toggle('active', k === i))
+        ;[...dotsWrap.children].forEach((d, k) => d.classList.toggle('on', k === i))
+        progress.style.width = ((i + 1) / slides.length) * 100 + '%'
+        cur.textContent = String(i + 1).padStart(2, '0')
+      }
+
+      go(0)
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+          e.preventDefault()
+          go(i + 1)
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+          e.preventDefault()
+          go(i - 1)
+        } else if (e.key === 'Home') go(0)
+        else if (e.key === 'End') go(slides.length - 1)
+      })
+      let tx = 0
+      window.addEventListener(
+        'wheel',
+        (e) => {
+          tx += e.deltaY
+          if (Math.abs(tx) > 120) {
+            go(i + (tx > 0 ? 1 : -1))
+            tx = 0
+          }
+        },
+        { passive: true }
+      )
+    </script>
+  </body>
+</html>

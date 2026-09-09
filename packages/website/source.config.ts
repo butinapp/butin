@@ -4,4 +4,8 @@ export const docs = defineDocs({
   dir: 'content/docs'
 })
 
+export const docsFr = defineDocs({
+  dir: 'content/docs-fr'
+})
+
 export default defineConfig()

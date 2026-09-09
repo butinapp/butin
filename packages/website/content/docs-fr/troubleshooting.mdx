@@ -1,0 +1,36 @@
+---
+title: Dépannage
+description: Solutions aux difficultés courantes.
+---
+
+### Un service s'affiche en rouge / « déconnecté »
+
+La session enregistrée a expiré (les services clôturent périodiquement les sessions). Ouvrez le service et cliquez sur **Reconnecter** pour vous identifier de nouveau. Vos données déjà téléchargées restent intactes.
+
+### La fenêtre de connexion ne s'est pas fermée après mon identification
+
+Certains services n'atterrissent pas sur une page d'accueil reconnue automatiquement par Butin. Une fois clairement connecté, cliquez sur **Capturer la session** dans la barre d'outils de la fenêtre. Si la situation se reproduit systématiquement sur ce service, activez l'option de **capture manuelle** dans les Paramètres pour déclencher vous-même la capture.
+
+### Un service est bleu et je souhaite vérifier son fonctionnement
+
+Le voyant bleu signifie « session sauvegardée mais non vérifiée aujourd'hui ». Ouvrez le service et cliquez sur **Tester** — le voyant passera au vert s'il fonctionne.
+
+### L'actualisation a échoué mais d'anciens chiffres demeurent affichés
+
+Ce comportement est volontaire : Butin préserve les dernières données valides et affiche un bandeau de données périmées au lieu d'afficher une page blanche. Reconnectez-vous si la session a expiré, puis actualisez.
+
+### Un service protégé refuse de se charger alors que je suis connecté
+
+L'extraction doit correspondre à l'empreinte exacte du navigateur utilisé lors de la connexion. Reconnectez-vous depuis la même machine ; ne modifiez pas manuellement les sessions. Si le problème persiste, capturez une nouvelle session propre via le bouton Reconnecter.
+
+### Un service requiert un identifiant ou une clé inconnue
+
+Certains services nécessitent une valeur fixe dans leur configuration qui ne peut pas être déduite automatiquement — par exemple, Groq demande votre **Organization ID** (présent dans l'URL de la page de facturation de la console). Rendez-vous dans les paramètres du service et collez-y la valeur demandée.
+
+### L'application ne démarre pas (compilation depuis les sources)
+
+Exécutez `node node_modules/electron/install.js` une fois, puis relancez `pnpm dev`.
+
+### Diagnostic plus approfondi
+
+Le menu Paramètres → **Diagnostics** propose les journaux et l'état détaillé du système pour isoler précisément le problème.

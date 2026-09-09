@@ -1,0 +1,50 @@
+---
+title: Changer d'ordinateur
+description: Exportez un profil sous forme de fichier scellé et importez-le sur une autre machine, sans aucune perte.
+---
+
+Un profil Butin contient tout ce qui a été collecté pour un ensemble de comptes : les sessions actives, chaque rapport en cache et chaque document téléchargé. La fonction **Exporter** regroupe tout cela dans une archive unique transférable par clé USB ou via votre stockage cloud personnel ; la fonction **Importer** le déploie sur la nouvelle machine comme un nouveau profil.
+
+Ces deux opérations s'effectuent depuis **Profils** — menu des profils dans la barre supérieure, puis **Gérer les profils**.
+
+## Exporter
+
+Ouvrez le menu sur la carte du profil et sélectionnez **Exporter…**. Butin vous demande une phrase secrète, puis l'emplacement où enregistrer le fichier (`<profil>-<date>.butin`).
+
+La phrase secrète est obligatoire et revêt une importance critique : l'archive renferme vos sessions actives dans un format exécutable sur n'importe quel ordinateur ; quiconque détient à la fois le fichier et la phrase secrète accède à vos comptes. Choisissez une phrase que vous n'employez nulle part ailleurs.
+
+Une fois l'archive créée, Butin affiche un **code de récupération** unique. Il permet de déverrouiller l'archive si la phrase secrète venait à être oubliée. Rien d'autre ne pourra le faire — aucune réinitialisation n'est envisageable puisqu'aucun serveur n'en détient de copie.
+
+Un profil verrouillé ne peut pas être exporté — tant qu'il demeure verrouillé, Butin ne dispose pas de la clé nécessaire pour lire ses données scellées. Déverrouillez-le au préalable.
+
+## Importer
+
+Sur l'autre ordinateur, ouvrez **Gérer les profils**, choisissez **Importer un profil…**, sélectionnez le fichier archive et saisissez la phrase secrète (ou le code de récupération).
+
+Butin vous présente alors le contenu de l'archive — nombre de services et de fichiers, date de création — **avant** toute écriture sur le disque, ainsi que le nom attribué au profil. Vous pouvez modifier ce nom sur-le-champ, ce qui est recommandé si la machine d'accueil possède déjà un profil de même nom.
+
+Confirmez : le profil est créé en tant que **nouveau profil**, aux côtés des profils déjà existants sur cet ordinateur. Rien de ce qui existait n'est écrasé, remplacé ni fusionné. Si le nom est déjà utilisé, Butin lui adjoint la mention _(importé)_ pour éviter toute confusion.
+
+En cas d'interruption (fichier endommagé, disque plein), l'importation est intégralement annulée. Aucun profil bancal ou incomplet n'est laissé derrière.
+
+## Ce qui est transféré
+
+- **Vos sessions**, permettant aux services de fonctionner sans nouvelle authentification.
+- **Chaque rapport en cache** — vos onglets apparaissent exactement comme sur l'ancienne machine, avec leur historique complet.
+- **Tous les documents téléchargés**, y compris les fichiers pointant vers un dossier personnalisé. Ceux-ci sont rapatriés dans le dossier `documents/` du profil importé, l'ancien chemin n'existant pas forcément sur la nouvelle machine. Butin vous signale les services concernés.
+- **Vos paramètres** par service et la disposition de vos tableaux.
+
+Deux éléments sont délibérément écartés :
+
+- **La session propre au navigateur intégré.** Butin la régénère automatiquement à partir de la session transférée dès l'ouverture d'une fenêtre de connexion — aucune action manuelle n'est requise.
+- **Les journaux de diagnostic.** Ils reflètent une machine donnée, et non vos données personnelles.
+
+## Après l'importation
+
+Le profil importé arrive **non chiffré**, même si le profil source l'était — le chiffrement au repos relève d'un choix propre à chaque équipement. Si vous souhaitez l'activer sur cette machine, configurez-le depuis le menu du profil sous **Chiffrement**.
+
+Si un service était connecté sur l'ancienne machine mais que sa clé secrète n'a pu y être lue — généralement suite à une copie manuelle antérieure —, Butin vous le signale après l'import et vous invite simplement à vous reconnecter à ce service.
+
+## Conserver l'archive
+
+Une archive représente une capture ponctuelle et non un flux synchronisé. Rien ne change sur aucune des deux machines après sa génération, et les deux profils vivront leur propre vie. L'archive constitue également une sauvegarde de premier ordre — conservez-la en lieu sûr, elle se restaurera à l'identique.

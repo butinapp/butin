@@ -1,0 +1,46 @@
+---
+title: Créer un plugin
+description: Ajouter un service dans Butin. (Le contrat d'API est en cours de stabilisation.)
+---
+
+Un **plugin** enseigne à Butin comment se connecter à un service et comment extraire ses données. La plupart des plugins sont concis et largement déclaratifs : décrivez le mécanisme de connexion et les données à requérir, renvoyez un format normalisé, et le moteur générique de Butin s'occupe de l'affichage. **La quasi-totalité des plugins ne requiert aucun code d'interface graphique.**
+
+> **Remarque :** le contrat d'API de `@butinapp/sdk` poursuit son évolution avant la version publique officielle ; cette documentation constitue une vue d'ensemble et non une référence d'API figée. La source de vérité demeure le dépôt lui-même. Consultez [`CLAUDE.md`](https://github.com/butinapp/butin/blob/master/CLAUDE.md) et le paquet `@butinapp/sdk` avant de concevoir un plugin.
+
+## Structure générale
+
+```ts
+import { definePlugin } from '@butinapp/sdk'
+import { billing } from '@butinapp/sdk/presets'
+
+export const acme = definePlugin({
+  meta: { id: 'acme', name: 'Acme' },
+  session: { loginUrl: 'https://acme.com/login', cookieDomains: ['acme.com'] },
+  auth: { kind: 'cookie' },
+  capabilities: [
+    {
+      id: 'billing',
+      label: 'Facturation',
+      collect: async ({ client }) =>
+        billing.result({
+          /* … */
+        })
+    }
+  ]
+})
+```
+
+Un plugin s'articule autour de trois dimensions déclaratives :
+
+- **Transport** — Node standard, ou un contexte Electron doté d'une véritable empreinte de navigateur pour les services requérant un moteur de rendu complet.
+- **Authentification** — simple témoin (cookie), témoin associé à un jeton extrait de la page, jeton JWT de courte durée, jeton d'actualisation tournant, clé d'API pérenne, etc. Les cas usuels ne réclament aucun code spécifique.
+- **Format d'extraction** — JSON, GraphQL, parsing HTML, etc. — pris en charge dans la fonction `collect()` de chaque capacité. Le contrat d'API normalise le client authentifié en entrée et le résultat en sortie, en vous laissant toute liberté sur la méthode d'analyse.
+
+## Pour débuter
+
+1. Rétro-ingéniez les requêtes réseau réelles du service (l'enregistreur de session intégré facilite cette étape).
+2. Créez le dossier du plugin sous `plugins/`.
+3. Réunissez le descripteur `definePlugin` et les fonctions de transformation pure dans un fichier unique, accompagné de tests basés sur des captures réelles (fixtures).
+4. Vérifiez le typage et exécutez les tests — aucun compte réel n'est nécessaire pour exécuter les tests de transformation pure.
+
+Le guide complet et à jour est disponible dans le dépôt. Prenez exemple sur les plugins existants sous `plugins/`, et ouvrez un ticket ou une discussion sur [GitHub](https://github.com/butinapp/butin) en cas de question !

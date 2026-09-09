@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 
-import { source } from '@/lib/source'
+import { source, sourceFr } from '@/lib/source'
 
 // As in robots.ts: `output: 'export'` will not guess. `lastModified` below is therefore build time, which is the
 // honest answer for a site that only changes when it is rebuilt.
@@ -23,7 +23,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8
     },
     {
+      url: `${baseUrl}/fr`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9
+    },
+    {
+      url: `${baseUrl}/fr/services`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8
+    },
+    {
       url: `${baseUrl}/tour`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7
+    },
+    {
+      url: `${baseUrl}/fr/tour`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.7
@@ -37,5 +55,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8
   }))
 
-  return [...staticRoutes, ...docsRoutes]
+  const docsRoutesFr: MetadataRoute.Sitemap = sourceFr.getPages().map((page) => ({
+    url: `${baseUrl}${page.url}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.8
+  }))
+
+  return [...staticRoutes, ...docsRoutes, ...docsRoutesFr]
 }

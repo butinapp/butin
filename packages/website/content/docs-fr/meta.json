@@ -1,0 +1,16 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "getting-started",
+    "how-it-works",
+    "connecting-a-service",
+    "viewing-your-data",
+    "connection-health",
+    "the-library",
+    "moving-to-another-computer",
+    "faq",
+    "troubleshooting",
+    "contributing"
+  ]
+}

@@ -1,0 +1,30 @@
+---
+title: Consulter vos données
+description: Onglets de données, actualisation et vue globale dans l'Aperçu.
+---
+
+Dès qu'un service est connecté, sa page présente ses données sous forme d'**onglets** — Facturation, Utilisation, Membres, Documents, et ainsi de suite, selon les capacités offertes par le service.
+
+## Onglets de service
+
+- **Chargement à la demande.** Ouvrir un onglet déclenche l'interrogation et le rendu des données ; y revenir ensuite est instantané.
+- **Fraîcheur apparente.** Chaque onglet indique la date de sa dernière mise à jour — par exemple, _actualisé il y a 4 minutes_.
+- **Actualiser** relance l'extraction pour cet onglet. Si l'actualisation échoue (par exemple si la session a expiré), les données antérieures demeurent affichées avec un avertissement de péremption plutôt que d'être effacées.
+- Les onglets standards sont mis en page automatiquement sous forme de cartes d'indicateurs, tableaux et graphiques. Certains onglets spécifiques présentent leurs données brutes en format JSON structuré.
+
+## L'Aperçu
+
+Après avoir connecté plusieurs services, l'**Aperçu** devient l'écran central de votre utilisation quotidienne. Il s'alimente directement depuis votre cache local, s'ouvrant **instantanément sans aucun appel réseau**, et rassemble tout en un seul lieu :
+
+- **total des dépenses et de l'utilisation** consolidé pour l'ensemble des services connectés — le chiffre unique qu'aucun tableau de bord individuel ne peut fournir
+- un **graphique combiné des dépenses mensuelles**
+- **les variations notables** — les plus fortes hausses depuis le mois passé, permettant de déceler un coût imprévu avant l'arrivée de la facture
+- une **ventilation par service**
+
+Pour rafraîchir l'Aperçu, actualisez simplement les services concernés ; l'Aperçu reflète fidèlement l'état du cache local.
+
+## Gestion d'un service
+
+Chaque service dispose de ses propres paramètres (reconnexion, test, déconnexion, activation/désactivation, actualisation, exportation intégrale et emplacement de ses fichiers). Ces réglages sont décrits dans [Santé des connexions](/fr/docs/connection-health) et [Vos données et exportations](/fr/docs/the-library).
+
+> **Comptes multiples** (par exemple un GitHub professionnel et un personnel) sont gérés grâce aux **profils** — des environnements étanches et commutables depuis la barre supérieure. Au sein d'un même profil, chaque service ne gère qu'un seul compte : vous basculez ainsi de profil plutôt que de juxtaposer deux sessions simultanées.

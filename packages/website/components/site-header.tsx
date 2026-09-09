@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 
 import { BrandMark, Wordmark } from './brand'
@@ -7,19 +8,31 @@ import { BrandMark, Wordmark } from './brand'
 import { Link } from '@/components/site-link'
 import { GITHUB } from '@/lib/links'
 
-const nav = [
-  { href: '/docs', label: 'Docs' },
-  { href: '/services', label: 'Services' },
-  { href: '/tour', label: 'Tour' }
-]
-
 export const SiteHeader = () => {
   const [open, setOpen] = useState(false)
+  const pathname = usePathname() || '/'
+  const isFr = pathname === '/fr' || pathname.startsWith('/fr/')
+
+  const nav = [
+    { href: isFr ? '/fr/docs' : '/docs', label: 'Docs' },
+    { href: isFr ? '/fr/services' : '/services', label: 'Services' },
+    { href: isFr ? '/fr/tour' : '/tour', label: isFr ? 'Visite' : 'Tour' }
+  ]
+
+  const switchHref = isFr
+    ? pathname.replace(/^\/fr(\/|$)/, '/') || '/'
+    : pathname === '/services'
+      ? '/fr/services'
+      : pathname === '/tour'
+        ? '/fr/tour'
+        : pathname.startsWith('/docs')
+          ? `/fr${pathname}`
+          : '/fr'
 
   return (
     <header className="sticky top-0 z-50 border-b border-line/80 bg-bg/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-8 px-5">
-        <Link href="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
+        <Link href={isFr ? '/fr' : '/'} className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
           <BrandMark className="size-7" />
           <Wordmark className="text-lg" />
         </Link>
@@ -36,13 +49,21 @@ export const SiteHeader = () => {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          <Link
+            href={switchHref}
+            className="hidden rounded-full border border-line px-3 py-1 font-mono text-xs text-muted transition-colors hover:border-teal/40 hover:text-teal-soft sm:inline-flex"
+            title={isFr ? 'Switch to English' : 'Passer au français'}
+          >
+            {isFr ? 'EN' : 'FR'}
+          </Link>
+
           <a
             href={`${GITHUB}/releases`}
             target="_blank"
             rel="noreferrer"
             className="hidden sm:inline-flex rounded-full border border-teal/40 bg-teal/10 px-4 py-1.5 text-sm font-medium text-teal-soft transition-colors hover:bg-teal/15"
           >
-            Download
+            {isFr ? 'Télécharger' : 'Download'}
           </a>
 
           <button
@@ -103,7 +124,16 @@ export const SiteHeader = () => {
             >
               GitHub ↗
             </a>
-            <div className="pt-2 border-t border-line">
+            <div className="flex items-center justify-between border-t border-line pt-2">
+              <Link
+                href={switchHref}
+                onClick={() => setOpen(false)}
+                className="font-mono text-xs text-muted hover:text-teal-soft"
+              >
+                {isFr ? 'Switch to English' : 'Passer en français'}
+              </Link>
+            </div>
+            <div className="border-t border-line pt-2">
               <a
                 href={`${GITHUB}/releases`}
                 target="_blank"
@@ -111,7 +141,7 @@ export const SiteHeader = () => {
                 onClick={() => setOpen(false)}
                 className="inline-flex w-full items-center justify-center rounded-full border border-teal/40 bg-teal/10 px-4 py-2 text-sm font-medium text-teal-soft transition-colors hover:bg-teal/15"
               >
-                Download Butin
+                {isFr ? 'Télécharger Butin' : 'Download Butin'}
               </a>
             </div>
           </nav>

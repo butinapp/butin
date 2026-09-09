@@ -1,0 +1,39 @@
+---
+title: Pour commencer
+description: Installez Butin et connectez votre premier service.
+---
+
+Butin est une application de bureau pour macOS, Windows et Linux. Aucun compte à créer, aucun serveur distant — elle nécessite uniquement que vous vous connectiez à vos propres services.
+
+## Installation
+
+**Depuis un paquet officiel** — téléchargez l'installateur correspondant à votre système d'exploitation depuis les [Versions GitHub](https://github.com/butinapp/butin/releases) et lancez Butin comme n'importe quelle autre application.
+
+**Depuis le code source** (développeurs) :
+
+```bash
+git clone https://github.com/butinapp/butin
+cd butin
+pnpm install
+pnpm dev
+```
+
+Si Electron ne se lance pas après l'installation, exécutez `node node_modules/electron/install.js` une fois, puis relancez `pnpm dev`.
+
+## Premier lancement
+
+Au premier démarrage, après un court écran de chargement, vous découvrirez la fenêtre principale :
+
+- une **barre latérale** à gauche — **Aperçu** en tête, suivi de vos services
+- l'**Aperçu** lui-même, initialement **vide** (aucune donnée n'est encore présente)
+- l'engrenage des **paramètres** dans la barre supérieure
+
+Une installation neuve n'a rien à afficher — l'étape suivante consiste à connecter votre premier service.
+
+## Connecter votre premier service
+
+Sélectionnez un service dans la barre latérale et cliquez sur **Connecter**. Une fenêtre de connexion standard s'ouvre ; identifiez-vous comme vous le faites d'habitude — mot de passe, A2F, SSO. Butin capture la session de manière chiffrée, et les onglets de données apparaissent.
+
+C'est tout le fonctionnement. Consultez **[Connecter un service](/fr/docs/connecting-a-service)** pour les détails (notamment les services utilisant un jeton copié ou une clé d'accès au lieu d'une connexion web), puis **[Consulter vos données](/fr/docs/viewing-your-data)**.
+
+> Vous débutez ? La façon la plus rapide de comprendre Butin est de suivre la [visite interactive](/fr/tour).
