@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 
 import { ServiceIcon } from '@/components/service-icon'
 import { Link } from '@/components/site-link'
+import { GITHUB } from '@/lib/links'
 import { type Service, visibleServices } from '@/lib/services'
 
 export const metadata: Metadata = {
@@ -109,19 +110,29 @@ export default function ServicesPage() {
         )
       })}
 
-      <div className="mt-20 flex flex-col items-start gap-4 rounded-2xl border border-teal/20 bg-teal/[0.04] p-8 sm:flex-row sm:items-center">
+      <div className="mt-20 flex flex-col items-start gap-5 rounded-2xl border border-teal/20 bg-teal/[0.04] p-8 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Missing a service?</h2>
           <p className="mt-1.5 text-sm text-muted">
-            A plugin is small and mostly declarative. If a browser can see it, you can fetch it.
+            Request a plugin on GitHub, or build your own in under 50 lines of declarative TypeScript.
           </p>
         </div>
-        <Link
-          href="/docs/contributing"
-          className="rounded-full border border-teal/40 bg-teal/10 px-5 py-2.5 text-sm font-medium text-teal-soft transition-colors hover:bg-teal/15 sm:ml-auto"
-        >
-          Write a plugin →
-        </Link>
+        <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
+          <a
+            href={`${GITHUB}/issues/new?title=Plugin+request:+[Service+Name]`}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full border border-line-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-teal/50 hover:text-teal-soft"
+          >
+            Request a plugin ↗
+          </a>
+          <Link
+            href="/docs/contributing"
+            className="rounded-full border border-teal/40 bg-teal/10 px-4 py-2 text-sm font-medium text-teal-soft transition-colors hover:bg-teal/15"
+          >
+            Write a plugin →
+          </Link>
+        </div>
       </div>
     </section>
   )

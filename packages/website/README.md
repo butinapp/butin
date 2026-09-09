@@ -74,9 +74,11 @@ URL. Both jobs are in [`.github/workflows/website.yml`](../../.github/workflows/
   the icitte repo (`packages/infra/src/projects/butin.ts`), and a dynamic redirect runs before Workers, so
   `www` never actually reaches this site.
 - **Analytics.** Cloudflare Web Analytics — cookieless, sets nothing on the visitor's machine, so no consent
-  banner. The beacon is **inlined in `app/layout.tsx`**, not left to Cloudflare's "automatic setup": that is
-  enabled on this site and injects nothing (verified across four hostnames on the account, Worker- and
-  origin-served alike). The token in that tag is public by design — it ships in the HTML of every page it
-  measures, like a GA measurement id — so it is not a secret and does not belong in a build arg. **Do not add
-  GA4 or any third-party tracker here:** the product's claim is that your data stays on your machine, and Law 25
+  banner. **This package ships no analytics code and must not.** Cloudflare injects the beacon at the edge, on
+  Worker-served responses included; it is enabled once in the dashboard per zone and there is nothing to wire.
+  **Do not hand-add the snippet** — a hand-written tag carries only a token, and the beacon posts to the central
+  `cloudflareinsights.com/cdn-cgi/rum` unless its config also carries `version`, which only the edge-injected
+  tag has. That endpoint refuses it, so the page ends up with two beacons, a CORS error and a 503 on every load,
+  while the injected one was already reporting fine. (Done, undone, 2026-09-09.) **Do not add GA4 or any
+  third-party tracker here either:** the product's claim is that your data stays on your machine, and Law 25
   would require a consent banner on the privacy product's own homepage.

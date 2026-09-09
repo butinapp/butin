@@ -1,0 +1,36 @@
+---
+title: FAQ
+description: Questions fréquentes au sujet de Butin.
+---
+
+### Mes données quittent-elles ma machine ?
+
+Non. Il n'y a aucun nuage, aucun compte distant, aucun serveur central. Tout ce que Butin extrait est stocké localement sous `~/butin`, et les sessions sont chiffrées avec le trousseau de votre système d'exploitation. Vos données n'ont nulle part où être envoyées.
+
+### Dois-je m'identifier à chaque consultation ?
+
+Vous devez vous reconnecter **uniquement lorsque la session expire** — ce qui dépend de la politique du service, variant d'environ 20 minutes (banques) à plusieurs jours (services à session longue). Tant qu'une session reste valide, Butin interroge et rafraîchit vos données sans exiger de nouvelle connexion. Voir [Fonctionnement](/fr/docs/how-it-works).
+
+### Butin « pirate-t-il » ou extrait-il des données non autorisées ?
+
+Non. Butin rejoue **votre propre** session authentifiée pour accéder à **vos propres** données — très exactement ce que fait votre navigateur lorsque vous visitez votre espace client. Il n'accède jamais au compte d'un tiers et ne conserve aucun identifiant sur un quelconque serveur.
+
+### Butin stocke-t-il mon mot de passe ?
+
+Non. Vous vous identifiez dans une fenêtre de navigateur standard ; Butin ne conserve que la **session** résultante (témoins et jetons d'accès), et jamais votre mot de passe.
+
+### Quels services sont pris en charge ?
+
+Consultez le [Catalogue des services](/fr/services). Le catalogue s'étoffe régulièrement avec l'ajout de nouveaux plugins — et vous pouvez concevoir le vôtre (voir [Créer un plugin](/fr/docs/contributing)).
+
+### Puis-je suivre deux comptes distincts pour un même service ?
+
+Oui, grâce aux **profils**. Chaque profil constitue un environnement hermétique et indépendant, sélectionnable depuis la barre supérieure — connectez votre compte professionnel dans un profil et votre compte personnel dans un autre. Au sein d'un même profil, chaque service ne gère qu'un seul compte : vous passez simplement d'un profil à l'autre.
+
+### L'application est-elle gratuite ?
+
+Oui — Butin est gratuit et open source. L'application de bureau est sous licence Apache-2.0, tandis que le SDK et les plugins sont sous licence MIT (voir [Licences](https://github.com/butinapp/butin/blob/master/LICENSING.md)). Si l'application vous est utile, une ⭐ sur le [dépôt GitHub](https://github.com/butinapp/butin) est grandement appréciée !
+
+### Sur quelles plateformes Butin fonctionne-t-il ?
+
+macOS, Windows et Linux (il s'agit d'une application de bureau Electron).

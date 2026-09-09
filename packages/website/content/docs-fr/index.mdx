@@ -1,0 +1,22 @@
+---
+title: Qu'est-ce que Butin
+description: Une application de bureau local-first qui regroupe tous vos comptes au même endroit — consultable hors ligne, sur votre propre machine.
+---
+
+Butin est une **application de bureau local-first** qui rassemble **tous vos comptes en un seul endroit**. Elle extrait la facturation, l'utilisation, les membres et les documents de chaque service que vous utilisez dans un tableau de bord local unifié — consultable sans vous reconnecter, grâce à la session avec laquelle **vous** vous êtes déjà identifié, et conservé sur **votre** machine.
+
+Elle accède aux données que les services gardent derrière leurs propres tableaux de bord (aucune API nécessaire), télécharge chaque document et conserve l'historique qu'ils effacent. Aucun identifiant n'est transmis à un tiers. Rien n'est téléversé nulle part.
+
+## Le modèle — en trois étapes
+
+1. **Connexion.** Vous vous connectez manuellement à un service dans une fenêtre classique (mot de passe, A2F, SSO — tout fonctionne). Butin capture cette session et l'enregistre, chiffrée, sur votre ordinateur. Elle reste valide aussi longtemps que le service la maintient active — d'environ 20 minutes à plusieurs jours.
+2. **Récupération en arrière-plan.** Tant que la session est valide, Butin lit les données discrètement en arrière-plan — sans laisser de fenêtre de navigateur ouverte. Dès que la session expire, reconnectez-vous simplement pour extraire les données fraîches.
+3. **Gardez vos données.** Chaque récupération produit un tableau de bord propre — dépenses, consommation, membres, documents — sauvegardé uniquement sur votre disque, avec son historique. Les données déjà rapatriées restent les vôtres, même après l'expiration de la session.
+
+> L'engagement fondamental : tout s'exécute dans **votre** propre session, **localement**, sans qu'aucun serveur n'ait la garde de vos identifiants. Le compte consulté est toujours le vôtre.
+
+## Par où commencer
+
+- **[Pour commencer](/fr/docs/getting-started)** — installez l'application et connectez votre premier service.
+- **[Fonctionnement](/fr/docs/how-it-works)** — le moteur interne et sa conception privée par défaut.
+- **[Créer un plugin](/fr/docs/contributing)** — ajoutez votre propre service.

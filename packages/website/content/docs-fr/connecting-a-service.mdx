@@ -1,0 +1,28 @@
+---
+title: Connecter un service
+description: Connexion par navigateur, jetons copiés et services basés sur des clés.
+---
+
+Sélectionnez un service dans la barre latérale et cliquez sur **Connecter**. La suite dépend du mode d'authentification du service — il existe trois approches.
+
+## Connexion par navigateur (la majorité des services)
+
+Une fenêtre s'ouvre, affichant la page de connexion officielle du service, accompagnée d'une fine barre d'outils Butin (URL courante, bouton Copier et bouton **Capturer la session**).
+
+1. **Connectez-vous manuellement** — mot de passe, A2F, redirection SSO, lien par courriel. Butin ne voit ni n'enregistre jamais votre mot de passe ; il ne conserve que la session résultante.
+2. **Capture automatique** — dès que la page atteint votre tableau de bord connecté, Butin capture la session, la chiffre et referme la fenêtre.
+3. **Capture manuelle** — certains services redirigent vers une page que Butin ne détecte pas automatiquement. Une fois clairement connecté, cliquez sur **Capturer la session** dans la barre d'outils.
+
+La session est stockée chiffrée (via le stockage sécurisé de votre système) dans `~/butin`. Elle persiste entre les redémarrages de l'application. Vous n'avez donc généralement à le faire qu'une fois par durée de vie de session — voir [Fonctionnement → expiration des sessions](/fr/docs/how-it-works).
+
+## Jeton copié / champs manuels
+
+Quelques services nécessitent une valeur additionnelle qui n'est pas un cookie — un jeton à copier depuis l'interface ou une clé à coller. Dans ce cas, le panneau de connexion affiche un champ dédié en regard de la connexion.
+
+## Services basés sur des clés (sans connexion web)
+
+Certains services n'utilisent aucune session de navigateur — ils s'authentifient via une clé d'accès ou un profil système (AWS en est l'exemple type). Pour ceux-ci, **Connecter ouvre un court formulaire de configuration** au lieu d'une fenêtre de navigateur : renseignez les valeurs requises et validez. L'état « connecté » signifie simplement que les paramètres sont valides.
+
+## À l'expiration de la session
+
+Les sessions s'éteignent selon les règles propres au service. Dès qu'une session expire, le service s'affiche comme déconnecté — ouvrez-le et cliquez sur **Reconnecter** pour vous identifier de nouveau. Vos données déjà téléchargées restent intactes. Voir [Santé des connexions](/fr/docs/connection-health).

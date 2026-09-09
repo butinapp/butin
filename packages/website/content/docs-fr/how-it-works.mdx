@@ -1,0 +1,37 @@
+---
+title: Fonctionnement
+description: Le moteur interne de Butin — et pourquoi il garantit votre confidentialité par conception.
+---
+
+La plupart des services affichent des données riches dans leur tableau de bord web, mais ne proposent aucun moyen simple de les exporter. Beaucoup n'ont pas d'API, ou la réservent aux forfaits d'entreprise. L'approche de Butin : **il lit ces tableaux de bord exactement comme votre navigateur le fait, à l'aide de la session avec laquelle vous vous êtes déjà connecté.**
+
+## Capture → lecture → conservation
+
+1. **Capturez la session.** Vous vous connectez manuellement une fois. Butin capture la session résultante — témoins de connexion (cookies) et jetons — et la stocke, chiffrée, sur votre machine.
+2. **Lecture en arrière-plan.** Tant que la session est valide, Butin récupère les données du service directement depuis Node, sans aucune fenêtre de navigateur ouverte. L'exécution se fait à la demande.
+3. **Gardez vos données.** Chaque extraction est normalisée et enregistrée localement, avec son historique. Elle reste vôtre même après l'expiration de la session.
+
+## L'expiration des sessions — un comportement normal
+
+Une session capturée dure exactement le temps que le **service** lui accorde, ce qui varie grandement — environ **20 minutes** pour une institution financière, **~30 minutes** pour certains portails, **~1 heure** pour d'autres, jusqu'à **plusieurs jours** pour les plus pérennes. Butin ne prolonge pas — et ne peut pas prolonger — cette durée.
+
+Le modèle authentique est donc le suivant : connectez-vous, laissez Butin lire et actualiser vos données pendant la validité de la session, et **reconnectez-vous lorsqu'elle expire** pour rapatrier des données fraîches. Ce qui est permanent, ce sont les **données déjà sur votre disque**, et non l'accès direct.
+
+## Pourquoi cela fonctionne sans API
+
+Butin reproduit les requêtes authentifiées que votre navigateur effectue, éliminant le besoin d'une API officielle du fournisseur. Si un navigateur peut afficher l'information, un plugin peut la récupérer. Sous le capot, l'application intègre deux moteurs d'extraction :
+
+- un moteur **Node** standard pour la grande majorité des services, et
+- un moteur **Electron** présentant une empreinte de navigateur réelle pour les services qui l'exigent — correspondant précisément à la fenêtre dans laquelle vous vous êtes identifié.
+
+La manière dont chaque service est analysé (JSON, GraphQL, analyse HTML, etc.) réside au sein de son plugin. L'application normalise chaque résultat selon un schéma commun et l'affiche à travers un tableau de bord générique unifié.
+
+## Privé par conception
+
+La confiance repose sur l'architecture, non sur une promesse commerciale :
+
+- **Votre session, votre machine.** Butin rejoue les requêtes de votre propre navigateur — sans intermédiaire ni partage d'identifiants.
+- **Aucune garde distante.** Il n'y a aucun compte, aucune synchronisation cloud, aucun serveur susceptible de consulter vos chiffres. Les données capturées résident sous `~/butin`, chiffrées avec le trousseau de votre système d'exploitation.
+- **Open source.** Examinez le code, forkez le projet, écrivez vos propres plugins. L'application est sous licence Apache-2.0 et le SDK sous licence MIT. Fiez-vous à l'architecture, pas à des promesses.
+
+> Butin n'accède qu'aux données qui vous appartiennent déjà — dans votre propre session authentifiée, sur votre propre matériel. C'est un outil personnel de portabilité des données : rien ne quitte votre machine, et aucun serveur n'a la garde de vos identifiants.

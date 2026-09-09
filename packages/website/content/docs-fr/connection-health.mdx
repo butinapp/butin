@@ -1,0 +1,23 @@
+---
+title: Santé des connexions
+description: Vert, bleu, rouge — et comment se reconnecter.
+---
+
+Butin communique clairement sur l'état de chaque session. Tout service connecté se trouve dans l'un des trois états suivants, représenté par son voyant latéral et une étiquette d'état :
+
+- 🟢 **Vert — vérifié.** Fonctionnement attesté _durant cette session_ — une requête réussie, un Test ou une Reconnexion confirme que la session est active.
+- 🔵 **Bleu — stocké.** La session est sauvegardée et a persisté après redémarrage, mais n'a pas encore été sollicitée durant la session courante. Généralement valide — lancez un **Test** pour le vérifier.
+- 🔴 **Rouge — expirée.** La session n'est plus active ou le service a renvoyé un statut « déconnecté ». Cliquez sur **Reconnecter** pour vous réauthentifier. Vos données déjà acquises ne sont en rien affectées.
+
+Pour les services basés sur des clés (comme AWS), l'état « connecté » indique que la configuration est correctement renseignée plutôt qu'une session web active.
+
+## Gestion d'une connexion
+
+Chaque service regroupe ses commandes au même endroit :
+
+- **Reconnecter** — relancer la connexion (ou modifier le formulaire de configuration pour les services à clés).
+- **Tester** — vérifier la validité de la session immédiatement.
+- **Déconnecter** — supprimer la session enregistrée. Vos fichiers téléchargés sont conservés.
+- **Activer / désactiver** — masquer un service de la barre latérale et de l'Aperçu sans effacer ses données.
+
+> La couleur bleue signifie simplement « sauvegardé mais pas encore vérifié aujourd'hui ». Cela ne présage **aucun** dysfonctionnement — un simple Test fait passer le voyant au vert.

@@ -1,0 +1,30 @@
+---
+title: Vos données et exportations
+description: Emplacement des données, exportations intégrales et suppression.
+---
+
+Tout ce que Butin rassemble réside dans un répertoire unique : **`~/butin`** au sein de votre dossier personnel.
+
+```text
+~/butin/
+  config.json          ← vos sessions chiffrées et paramètres par service
+  <service>/
+    reports/           ← les données de chaque onglet (facturation, utilisation, …)
+    documents/         ← les fichiers téléchargés (factures, PDF, dossiers)
+```
+
+Les sessions sont **chiffrées** (via le trousseau de clés de votre système d'exploitation). Les rapports et documents téléchargés résident dans des dossiers ouverts que vous pouvez parcourir et sauvegarder librement.
+
+## Tout exporter
+
+- **Tout sauvegarder** (dans les réglages d'un service) lance une exportation intégrale du service en une seule passe — l'ensemble des rapports et tous les documents disponibles sont enregistrés dans son dossier.
+- Certains services proposent un onglet groupé **Documents** (sélection de fichiers, téléchargement) ou, pour les jeux de données volumineux, une fonction d'**Exportation** dédiée (par exemple, un export intégral de carnet de santé).
+
+## Suppression des données
+
+- **Effacer les données stockées** supprime les rapports d'un service, tout en conservant sa session et les fichiers déjà téléchargés.
+- **Désinstaller un service** supprime sa session, ses réglages et ses données en cache, mais conserve les fichiers téléchargés — à moins de cocher la case demandant la suppression intégrale de son dossier.
+- **Tout effacer** (dans les Paramètres généraux) supprime l'ensemble des données après une double confirmation.
+- **La déconnexion préserve vos fichiers téléchargés** — elle révoque uniquement la session locale.
+
+Il n'y a aucun nuage, aucune synchronisation distante, aucun compte en ligne. Vos données n'ont nulle part où fuiter — c'est l'essence même du projet.
