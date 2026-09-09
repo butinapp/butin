@@ -1,3 +1,4 @@
+import type { ButinPlugin } from '@butinapp/sdk'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -111,6 +112,9 @@ describe('profile registry', () => {
   })
 })
 
+// The registry descriptor a move needs: its id, and the auth kind that decides what "connected" means.
+const sentry = { meta: { id: 'sentry', name: 'Sentry' }, auth: { kind: 'cookie' } } as unknown as ButinPlugin
+
 describe('movePluginToProfile', () => {
   // Seed the source profile with a plugin's full footprint: a config entry (stored session + enabled), a table pref
   // keyed `<id>.<cap>`, and a data folder with a cached report.
@@ -134,7 +138,7 @@ describe('movePluginToProfile', () => {
   it('relocates the config entry, table prefs, and data folder to the target', async () => {
     await seedPlugin('personal')
 
-    const res = movePluginToProfile('sentry', 'personal', 'work')
+    const res = movePluginToProfile(sentry, 'personal', 'work')
 
     expect(res.ok).toBe(true)
 
@@ -156,13 +160,13 @@ describe('movePluginToProfile', () => {
   it('refuses when source and target are the same', async () => {
     await seedPlugin('personal')
 
-    const res = movePluginToProfile('sentry', 'personal', 'personal')
+    const res = movePluginToProfile(sentry, 'personal', 'personal')
 
     expect(res).toEqual({ ok: false, error: expect.stringMatching(/same/i) })
   })
 
   it('refuses an unknown profile', () => {
-    const res = movePluginToProfile('sentry', 'personal', 'nope')
+    const res = movePluginToProfile(sentry, 'personal', 'nope')
 
     expect(res.ok).toBe(false)
   })
@@ -171,7 +175,7 @@ describe('movePluginToProfile', () => {
     await seedPlugin('personal')
     writeConfigAt(profileDir('work'), { plugins: { sentry: { enabled: false, cookie: 'their-cookie' } } })
 
-    const res = movePluginToProfile('sentry', 'personal', 'work')
+    const res = movePluginToProfile(sentry, 'personal', 'work')
 
     expect(res).toEqual({ ok: false, error: expect.stringMatching(/already/i) })
     // The source keeps its entry — a refused move is a no-op.
@@ -179,8 +183,40 @@ describe('movePluginToProfile', () => {
     expect(readConfigAt(profileDir('work')).plugins.sentry).toEqual({ enabled: false, cookie: 'their-cookie' })
   })
 
+  it('moves into a target that has the plugin installed but disconnected', async () => {
+    await seedPlugin('personal')
+    // What Disconnect leaves behind: the lifecycle flags + the pinned config, no session material.
+    writeConfigAt(profileDir('work'), {
+      plugins: { sentry: { enabled: true, installed: true, onboardedAt: '2026-01-01', config: { orgSlug: 'theirs' } } }
+    })
+
+    expect(movePluginToProfile(sentry, 'personal', 'work').ok).toBe(true)
+    expect(readConfigAt(profileDir('work')).plugins.sentry).toEqual({
+      enabled: true,
+      cookie: 'enc-bytes',
+      cookie_enc: true
+    })
+    expect(readConfigAt(profileDir('personal')).plugins.sentry).toBeUndefined()
+  })
+
+  it('moves the data folder even when the target has a stale one of its own', async () => {
+    await seedPlugin('personal')
+    await mkdir(join(profileDir('work'), 'sentry', 'reports'), { recursive: true })
+    await writeFile(join(profileDir('work'), 'sentry', 'reports', 'usage.json'), '{"stale":true}')
+    await writeFile(join(profileDir('work'), 'sentry', 'reports', 'billing.json'), '{"kept":true}')
+
+    expect(movePluginToProfile(sentry, 'personal', 'work').ok).toBe(true)
+
+    // The moved report wins over the leftover of the same name; a leftover the move doesn't cover survives.
+    const reports = join(profileDir('work'), 'sentry', 'reports')
+
+    expect(await readFile(join(reports, 'usage.json'), 'utf8')).toBe('{"ok":true}')
+    expect(await readFile(join(reports, 'billing.json'), 'utf8')).toBe('{"kept":true}')
+    expect(existsSync(join(profileDir('personal'), 'sentry'))).toBe(false)
+  })
+
   it('refuses when the plugin has nothing to move in the source', () => {
-    const res = movePluginToProfile('sentry', 'personal', 'work')
+    const res = movePluginToProfile(sentry, 'personal', 'work')
 
     expect(res.ok).toBe(false)
   })
@@ -207,7 +243,7 @@ describe('movePluginToProfile across encrypted profiles', () => {
     writeConfigAt(fromDir, { plugins: { sentry: { enabled: true, cookie: 'secret-cookie', cookie_enc: false } } })
     writeBytesSync(fromDir, join(fromDir, 'sentry', 'reports', 'usage.json'), Buffer.from('{"ok":true}'))
 
-    expect(movePluginToProfile('sentry', 'personal', 'work').ok).toBe(true)
+    expect(movePluginToProfile(sentry, 'personal', 'work').ok).toBe(true)
 
     // The target decrypts both the config entry and the data file under its own DEK…
     expect(readConfigAt(toDir).plugins.sentry).toEqual({ enabled: true, cookie: 'secret-cookie', cookie_enc: false })
@@ -222,7 +258,7 @@ describe('movePluginToProfile across encrypted profiles', () => {
     writeConfigAt(profileDir('personal'), { plugins: { sentry: { enabled: true, cookie: 'x' } } })
     lockVault(profileDir('work'))
 
-    const res = movePluginToProfile('sentry', 'personal', 'work')
+    const res = movePluginToProfile(sentry, 'personal', 'work')
 
     expect(res).toEqual({ ok: false, error: expect.stringMatching(/unlock/i) })
   })

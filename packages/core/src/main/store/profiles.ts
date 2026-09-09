@@ -1,3 +1,4 @@
+import type { ButinPlugin } from '@butinapp/sdk'
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, relative } from 'node:path'
@@ -5,6 +6,7 @@ import { join, relative } from 'node:path'
 import { setActivePartition } from '../browser/shared-session.js'
 import { env } from '../env.js'
 import { log } from '../log.js'
+import { entryIsConnected } from '../plugin/connection.js'
 import { clearAllSpaBearers } from '../session/spa-session.js'
 import { type VaultState, vaultExists, vaultState } from '../vault/vault.js'
 
@@ -320,10 +322,13 @@ export type MovePluginResult = { ok: true } | { ok: false; error: string }
 // what's profile-specific is the stored session + config (its config.json `plugins[id]` entry), its per-capability
 // `tablePrefs["<id>.*"]`, and its data folder (reports/manifests/documents/extracts/caches). Moving all three
 // hands the live connection + cached data to the target, leaving the source with the plugin present-but-empty.
-// Refuses to clobber a target that already has the plugin connected (the user disconnects it there first) and
-// no-ops with an error when there's nothing to move. The encrypted credential bytes travel verbatim — safeStorage
-// keys off the OS user, not the profile, so they still decrypt in the target.
-export const movePluginToProfile = (pluginId: string, fromId: string, toId: string): MovePluginResult => {
+// Refuses to clobber a target whose copy is still CONNECTED (the user disconnects it there first) — a target
+// that merely has the plugin installed or disconnected is a valid destination, and the moved state wins over
+// whatever it kept. No-ops with an error when there's nothing to move. The encrypted credential bytes travel
+// verbatim — safeStorage keys off the OS user, not the profile, so they still decrypt in the target.
+export const movePluginToProfile = (plugin: ButinPlugin, fromId: string, toId: string): MovePluginResult => {
+  const pluginId = plugin.meta.id
+
   if (fromId === toId) {
     return { ok: false, error: 'source and target profiles are the same' }
   }
@@ -346,7 +351,7 @@ export const movePluginToProfile = (pluginId: string, fromId: string, toId: stri
   const fromConfig = readConfigAt(fromDir)
   const toConfig = readConfigAt(toDir)
 
-  if (toConfig.plugins[pluginId] !== undefined) {
+  if (entryIsConnected(plugin, toConfig.plugins[pluginId])) {
     return { ok: false, error: 'the target profile already has this plugin connected — disconnect it there first' }
   }
 
@@ -405,24 +410,25 @@ const listFilesRec = (dir: string): string[] => {
   return out
 }
 
-// Move a plugin's data folder between profiles. When BOTH sides are plaintext (no vault) a raw rename/copy is
-// correct and fast. When EITHER side is encrypted, ciphertext can't be copied verbatim across distinct DEKs —
-// each file is read under the source profile's key (decrypting, or raw if the source is OFF) and rewritten
-// under the target's (sealing, or raw if the target is OFF), then the source tree is removed.
+// Move a plugin's data folder between profiles. A whole-folder rename is correct and fast only when both sides
+// are plaintext (no vault) AND the target has no folder of its own — moveInto never clobbers a destination that
+// exists, so anything else walks file by file. That walk is also what re-keys across vaults: ciphertext can't
+// be copied verbatim across distinct DEKs, so each file is read under the source profile's key (decrypting, or
+// raw if the source is OFF) and rewritten under the target's (sealing, or raw if the target is OFF). Either way
+// the source tree is removed, and a file the moved plugin brings wins over a leftover of the same name.
 const transferDataFolder = (fromDir: string, toDir: string, pluginId: string): void => {
   const fromRoot = join(fromDir, pluginId)
+  const toRoot = join(toDir, pluginId)
 
   if (!existsSync(fromRoot)) {
     return
   }
 
-  if (!vaultExists(fromDir) && !vaultExists(toDir)) {
-    moveInto(fromRoot, join(toDir, pluginId))
+  if (!vaultExists(fromDir) && !vaultExists(toDir) && !existsSync(toRoot)) {
+    moveInto(fromRoot, toRoot)
 
     return
   }
-
-  const toRoot = join(toDir, pluginId)
 
   for (const abs of listFilesRec(fromRoot)) {
     const bytes = readBytesSync(fromDir, abs)

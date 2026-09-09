@@ -63,14 +63,12 @@ export const getPublicConfig = (pluginId: string, schema: PluginConfigSchema): R
   )
 }
 
-// True when the plugin has at least one stored config value (text non-empty, or a secret present). For
-// `external` plugins the config IS the credential, so this is what "connected" means for them. `select`
-// fields are skipped — a defaulted dropdown (e.g. an auth-mode toggle) is a choice, not evidence the
-// plugin was actually configured.
-export const hasPluginConfig = (pluginId: string, schema: PluginConfigSchema): boolean => {
-  const raw = entryConfig(pluginId)
-
-  return schema.fields.some((field) => {
+// True when a stored config object holds at least one filled value (text non-empty, or a secret present).
+// `select` fields are skipped — a defaulted dropdown (e.g. an auth-mode toggle) is a choice, not evidence the
+// plugin was actually configured. Takes the raw object rather than an id so a config read off another
+// profile's file can be judged too.
+export const configIsFilled = (raw: Record<string, unknown>, schema: PluginConfigSchema): boolean =>
+  schema.fields.some((field) => {
     if (field.kind === 'select') {
       return false
     }
@@ -79,7 +77,11 @@ export const hasPluginConfig = (pluginId: string, schema: PluginConfigSchema): b
 
     return typeof value === 'string' ? value.length > 0 : value !== undefined
   })
-}
+
+// True when the plugin has at least one stored config value. For `external` plugins the config IS the
+// credential, so this is what "connected" means for them.
+export const hasPluginConfig = (pluginId: string, schema: PluginConfigSchema): boolean =>
+  configIsFilled(entryConfig(pluginId), schema)
 
 // Wipe a plugin's whole stored config. For `external` plugins, Disconnect clears the config (the
 // credential) rather than preserving it the way clearCredentials does for session plugins.
