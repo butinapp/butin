@@ -33,12 +33,13 @@ const rows = (result: CapabilityResult, dataset: string): Record<string, unknown
   return ds?.shape === 'table' ? ds.rows : []
 }
 
-// All fixtures are SYNTHETIC — structurally faithful to the GraphQL responses but with invented data (no real
-// names, addresses, account numbers, or tokens). The repo is public.
+// All fixtures are SYNTHETIC — structurally faithful to the GraphQL responses but with invented data. That
+// covers the identifiers as much as the names: an account id, an invoice number and a card's last four each
+// identify on their own. The repo is public.
 
 const ACCOUNT: RawOxioAccount = {
   status: 'ACTIVE',
-  gaiiaId: 205926,
+  gaiiaId: 100200,
   createdAt: '2025-08-03T15:12:43+00:00',
   referralCode: 'RA00001',
   internetProvider: 'COGECO',
@@ -142,7 +143,7 @@ const BILLING: OxioBillingRaw = {
     {
       id: 'inv-1',
       amountRemaining: 1250,
-      invoiceNumber: '25372640',
+      invoiceNumber: '10000001',
       fromDate: '2026-08-08',
       s3Key: 'inv-1/oxio-2026-08-08.pdf',
       dueDate: '2026-08-29'
@@ -150,7 +151,7 @@ const BILLING: OxioBillingRaw = {
     {
       id: 'inv-2',
       amountRemaining: 0,
-      invoiceNumber: '21622585',
+      invoiceNumber: '10000002',
       fromDate: '2026-07-08',
       s3Key: 'inv-2/oxio-2026-07-08.pdf',
       dueDate: '2026-07-29'
@@ -163,9 +164,9 @@ const BILLING: OxioBillingRaw = {
       autoPaymentEnabled: false,
       creditCard: {
         brand: 'MASTERCARD',
-        maskedIdentificationNumber: '5015',
-        expirationMonth: 2,
-        expirationYear: 2029
+        maskedIdentificationNumber: '1122',
+        expirationMonth: 1,
+        expirationYear: 2030
       },
       bankAccount: null
     },
@@ -174,7 +175,7 @@ const BILLING: OxioBillingRaw = {
       createdAt: '2025-11-17T02:14:38+00:00',
       autoPaymentEnabled: true,
       creditCard: null,
-      bankAccount: { maskedIdentificationNumber: '4741' }
+      bankAccount: { maskedIdentificationNumber: '3344' }
     }
   ]
 }
@@ -222,7 +223,7 @@ test('the recurring charge sums only the live subscriptions', () => {
 })
 
 test('the account number reads as it does on the bill', () => {
-  expect(oxioAccountNumber(ACCOUNT)).toBe('00205926')
+  expect(oxioAccountNumber(ACCOUNT)).toBe('00100200')
   expect(oxioAccountNumber({})).toBeNull()
 })
 
@@ -244,7 +245,7 @@ test('buildOxioSummary headlines the flat recurring charge with the account stan
   expect(cell(result, 'account', 'plan')).toBe('Internet: 100 Mbps 10 Mbps [QC]')
   expect(cell(result, 'account', 'balanceDue')).toBe(12.5)
   expect(cell(result, 'account', 'nextBill')).toBe('2026-09-08')
-  expect(cell(result, 'account', 'accountNumber')).toBe('00205926')
+  expect(cell(result, 'account', 'accountNumber')).toBe('00100200')
 
   const summary = result.summaries?.[0]
 
@@ -277,20 +278,20 @@ test('buildOxioBilling normalizes the cycle, the cards, and the bill list', () =
     {
       id: 'pm-1',
       method: 'Mastercard',
-      last4: '5015',
-      expires: '02/2029',
+      last4: '1122',
+      expires: '01/2030',
       autoPay: 'Disabled',
       createdAt: '2025-08-03'
     },
     // A bank account has no brand or expiry, and still shows its masked number.
-    { id: 'pm-2', method: 'Bank account', last4: '4741', expires: null, autoPay: 'Enabled', createdAt: '2025-11-17' }
+    { id: 'pm-2', method: 'Bank account', last4: '3344', expires: null, autoPay: 'Enabled', createdAt: '2025-11-17' }
   ])
 
   const invoices = rows(result, 'invoices')
 
   expect(invoices).toHaveLength(2)
   expect(invoices[0]).toMatchObject({ fromDate: '2026-08-08', balance: 12.5, status: 'Outstanding' })
-  expect(invoices[1]).toMatchObject({ invoiceNumber: '21622585', balance: 0, status: 'Paid' })
+  expect(invoices[1]).toMatchObject({ invoiceNumber: '10000002', balance: 0, status: 'Paid' })
   // The download key rides hidden on the row — fetchFile exchanges it for a signed URL.
   expect(invoices[0].s3Key).toBe('inv-1/oxio-2026-08-08.pdf')
 })
