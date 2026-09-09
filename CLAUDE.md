@@ -277,6 +277,8 @@ host-imported). Layered subpaths so an import line says its tier — app-SPECIFI
 - **`store/`** — credentials · config-file · plugin-config (encrypted store) · profiles (switchable isolated account contexts) · store (paths) · report-store ·
   snapshots · overview (home assembler)
 - **`export/`** — documents{,-config,-plan} · export{,-bundle} · extract (`runExtractAll`) · extract-serialize
+- **`archive/`** — the portable profile archive (moving a profile to another computer): container (the sealed
+  format) · export-profile · import-profile
 
 **`src/dev/`** — dev-only tooling, NOT reachable from the main entry (excluded from the shipped bundle): `seed/` (prng · evolver · fallback · synthesize) — the
 `pnpm seed-demo` generator. Lives outside `main/` precisely so it reads as dev tooling, not a subsystem.
@@ -287,7 +289,7 @@ host-imported). Layered subpaths so an import line says its tier — app-SPECIFI
 `window.butin.<domain>.<method>` (e.g. `window.butin.vault.unlock`). The DTOs live in per-domain files under `src/shared/ipc/` (`ipc.ts` re-exports them, so
 consumers import any DTO from `shared/ipc.js` unchanged). Adding a channel = one line in `IPC` + one method on the matching `ButinApi` domain + one handler in the
 owning `main/ipc/` fragment; preload + main wiring follow for free. Events live in a separate `IPC_EVENT` const. Fallible channels return one `Result<T>`; long jobs
-stream one `job:progress`.
+stream one `job:progress` (a profile archive's pack/restore streams `archive:progress` instead, since it names a profile rather than a plugin).
 
 **`src/renderer/`** — TanStack Router over hash history (`router.tsx` + `routes/*.lazy`): `routes/root` (AppShell + Sidebar chrome, brand/settings top bar,
 ProfileMenu, swaps `<Outlet/>`) · overview · service (tabbed, lazy per tab) · management · logs · diagnostics · settings · `index.css` (theme + `@source`) ·
@@ -522,6 +524,9 @@ ServicePageShell · ServiceSettingsPanel · ProfileSwitcher · Dialog · Switch`
 - `@butinapp/core` — encrypted credential/config store · auth resolution (the full auth taxonomy + memoized `resolve()` hook + offscreen spa-bearer mint) ·
   dual-transport `ButinClient` (axios + Electron `net.request`) + a built-in per-plugin query cache · browser session subsystem (real-Chromium identity,
   promote-on-quit cookies, shared `persist:butin` partition) · Magic Login + Disconnect · profiles · cached report store · Overview assembler · plugin host.
+- **Profile transfer** — a profile packs into one passphrase-sealed `.butin` archive (sessions re-keyed off
+  `safeStorage` so they work on the receiving machine, cached data, every downloaded file including folders
+  redirected outside the profile) and imports on another computer as a new profile.
 - **Plugins** spanning cookie / bearer-token / external / cookie-CSRF / minted-JWT / rotating-refresh / spa-bearer.
 - **Demo seed** — `pnpm seed-demo` writes deterministic synthetic ledgers + current caches for every plugin into an isolated `BUTIN_HOME` (a generic role-based
   evolver in `dev/seed/`, monthly-reset MTD model for cumulative columns). Every plugin is authored via `defineCapability` + `sample.ts`, so the seed draws each

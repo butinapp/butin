@@ -1,10 +1,28 @@
 import { useLabels } from '@butinapp/ui/i18n'
-import { Badge, Button, cn, Input, readableOn } from '@butinapp/ui/primitives'
-import { Check, Copy, MoreHorizontal, Palette, Pencil, ShieldCheck, Trash2, X } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { Badge, Button, cn, Input, Label, readableOn } from '@butinapp/ui/primitives'
+import {
+  Check,
+  Copy,
+  HardDriveDownload,
+  MoreHorizontal,
+  Palette,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Trash2,
+  Upload,
+  X
+} from 'lucide-react'
+import { type ReactNode, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { EncryptionBadge, type VaultState } from './encryption-badge.js'
+import {
+  type ArchiveProgressRow,
+  type ProfileArchiveActions,
+  ProfileExportPanel,
+  ProfileImportPanel
+} from './profile-archive-controls.js'
 import { ProfileEncryptionControls, type ProfileEncryptionActions } from './profile-encryption-controls.js'
 
 export type ManageProfileRow = { id: string; name: string; color?: string; active: boolean; encryption: VaultState }
@@ -14,7 +32,7 @@ const PROFILE_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '
 
 // One expanded region per card; only one card is ever open. 'edit' swaps the name for an input inline; the
 // rest render a panel below the row.
-type Panel = { id: string; mode: 'edit' | 'color' | 'delete' | 'encryption' }
+type Panel = { id: string; mode: 'edit' | 'color' | 'delete' | 'encryption' | 'export' }
 
 // Body of the "Manage profiles" dialog. Pure + prop-driven. A card IS the switch target (clicking an inactive
 // card switches to it); everything else — rename, duplicate, color, encryption, delete — lives in a per-card
@@ -29,7 +47,10 @@ export const ManageProfiles = ({
   onSwitch,
   onDuplicate,
   onRecolor,
-  encryptionActions
+  encryptionActions,
+  archiveActions,
+  archiveProgress,
+  onImported
 }: {
   profiles: ManageProfileRow[]
   onCreate: (name: string) => void
@@ -39,12 +60,18 @@ export const ManageProfiles = ({
   onDuplicate: (id: string) => void
   onRecolor: (id: string, color: string) => void
   encryptionActions?: (id: string) => ProfileEncryptionActions
+  archiveActions?: ProfileArchiveActions
+  archiveProgress?: ArchiveProgressRow
+  onImported?: (profileName: string) => void
 }) => {
   const t = useLabels()
   const [draft, setDraft] = useState('')
   const [menuId, setMenuId] = useState<string | null>(null)
   const [panel, setPanel] = useState<Panel | null>(null)
   const [editName, setEditName] = useState('')
+  // Only one of the two add-a-profile operations is ever open.
+  const [adding, setAdding] = useState<'none' | 'create' | 'import'>('none')
+  const createId = useId()
   const last = profiles.length <= 1
 
   const create = (): void => {
@@ -53,6 +80,7 @@ export const ManageProfiles = ({
     if (name) {
       onCreate(name)
       setDraft('')
+      setAdding('none')
     }
   }
 
@@ -153,6 +181,8 @@ export const ManageProfiles = ({
                       open={menuId === p.id}
                       last={last}
                       hasEncryption={Boolean(encryptionActions)}
+                      hasArchive={Boolean(archiveActions)}
+                      onExport={() => openPanel(p, 'export')}
                       onToggle={() => setMenuId((v) => (v === p.id ? null : p.id))}
                       onClose={() => setMenuId(null)}
                       onRename={() => openPanel(p, 'edit')}
@@ -214,62 +244,116 @@ export const ManageProfiles = ({
                   <ProfileEncryptionControls state={p.encryption} active={p.active} {...encryptionActions(p.id)} />
                 </div>
               )}
+
+              {open && panel.mode === 'export' && archiveActions && (
+                <div className="px-3 pb-3">
+                  <ProfileExportPanel
+                    profileId={p.id}
+                    onExport={archiveActions.onExport}
+                    progress={archiveProgress}
+                    onClose={closePanel}
+                  />
+                </div>
+              )}
             </li>
           )
         })}
       </ul>
 
-      <div className="flex items-center gap-2 border-t pt-3">
-        <Input
-          value={draft}
-          placeholder={t.profileNewName}
-          aria-label={t.profileNewName}
-          className="h-8 flex-1"
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              create()
-            }
-          }}
-        />
-        <Button size="sm" onClick={create} disabled={!draft.trim()}>
-          {t.profileAdd}
-        </Button>
+      {/* Adding a profile is two separate operations — start a blank one, or bring one in from another
+          computer. They are offered as a choice and only one opens at a time: side by side, a name typed for
+          one reads as if it named the other. */}
+      <div className="border-t pt-3">
+        {adding === 'none' && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setAdding('create')}>
+              <Plus className="size-3.5" />
+              {t.profileNew}
+            </Button>
+            {archiveActions && (
+              <Button variant="outline" size="sm" onClick={() => setAdding('import')}>
+                <Upload className="size-3.5" />
+                {t.archiveImport}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {adding === 'create' && (
+          <div className="bg-card flex flex-col gap-2 rounded-md border p-3">
+            <Label htmlFor={createId} className="text-xs">
+              {t.profileNewName}
+            </Label>
+            <Input
+              id={createId}
+              autoFocus
+              value={draft}
+              className="h-8"
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  create()
+                }
+              }}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setAdding('none')}>
+                {t.cancel}
+              </Button>
+              <Button size="sm" onClick={create} disabled={!draft.trim()}>
+                {t.profileAdd}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {adding === 'import' && archiveActions && (
+          <ProfileImportPanel
+            actions={archiveActions}
+            progress={archiveProgress}
+            onClose={() => setAdding('none')}
+            onImported={(row) => onImported?.(row.profileName)}
+          />
+        )}
       </div>
     </div>
   )
 }
 
 // The per-card actions menu. A plain useState-toggled popover (not the radix dropdown-menu) so it opens under
-// fireEvent.click in jsdom — radix menus rely on pointer-capture jsdom lacks. Duplicate is disabled for a
-// locked profile (no key to read its data under); Delete is disabled for the last remaining profile.
+// fireEvent.click in jsdom — radix menus rely on pointer-capture jsdom lacks. Duplicate and Export are disabled
+// for a locked profile (no key to read its data under); Delete is disabled for the last remaining profile.
 const CardMenu = ({
   profile,
   open,
   last,
   hasEncryption,
+  hasArchive,
   onToggle,
   onClose,
   onRename,
   onDuplicate,
   onColor,
   onEncryption,
+  onExport,
   onDelete
 }: {
   profile: ManageProfileRow
   open: boolean
   last: boolean
   hasEncryption: boolean
+  hasArchive: boolean
   onToggle: () => void
   onClose: () => void
   onRename: () => void
   onDuplicate: () => void
   onColor: () => void
   onEncryption: () => void
+  onExport: () => void
   onDelete: () => void
 }) => {
   const t = useLabels()
-  const lockedDuplicate = profile.encryption === 'locked'
+  const locked = profile.encryption === 'locked'
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [coords, setCoords] = useState({ top: 0, left: 0 })
 
@@ -314,8 +398,8 @@ const CardMenu = ({
               <MenuItem
                 icon={<Copy className="size-3.5" />}
                 label={t.profileDuplicate}
-                disabled={lockedDuplicate}
-                hint={lockedDuplicate ? t.profileDuplicateLockedHint : undefined}
+                disabled={locked}
+                hint={locked ? t.profileDuplicateLockedHint : undefined}
                 onClick={onDuplicate}
               />
               <MenuItem icon={<Palette className="size-3.5" />} label={t.profileColor} onClick={onColor} />
@@ -324,6 +408,15 @@ const CardMenu = ({
                   icon={<ShieldCheck className="size-3.5" />}
                   label={t.profileManageEncryption}
                   onClick={onEncryption}
+                />
+              )}
+              {hasArchive && (
+                <MenuItem
+                  icon={<HardDriveDownload className="size-3.5" />}
+                  label={t.profileExport}
+                  disabled={locked}
+                  hint={locked ? t.profileExportLockedHint : undefined}
+                  onClick={onExport}
                 />
               )}
               <div className="my-1 border-t" />

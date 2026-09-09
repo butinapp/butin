@@ -9,6 +9,7 @@ export {
   resolveNumberLocale,
   resolveMoneyLocale,
   moneyLocale,
+  formatBytes,
   formatDateTime,
   formatRelative
 } from './format.js'

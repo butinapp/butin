@@ -1,3 +1,4 @@
+import { formatBytes } from '@butinapp/ui/i18n'
 import { Badge, Button, cn, Input, Select } from '@butinapp/ui/primitives'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Copy, Trash2 } from 'lucide-react'
@@ -11,8 +12,6 @@ import { type CookieGroup, groupCookiesByDomain } from './cookie-grouping.js'
 // Set-Cookie gets dropped). Surface the approach so the bloated domain is obvious before it wedges.
 const DOMAIN_CAP = 180
 const DOMAIN_WARN = 150
-
-const formatBytes = (n: number): string => (n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} kB`)
 
 const expiryLabel = (c: DevCookieDto): string =>
   c.session || c.expires == null ? 'Session' : new Date(c.expires * 1000).toISOString().slice(0, 10)

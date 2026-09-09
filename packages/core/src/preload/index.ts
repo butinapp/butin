@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-import { IPC, IPC_EVENT, type ButinApi, type JobProgressDto } from '../shared/ipc.js'
+import { type ArchiveProgressDto, type ButinApi, IPC, IPC_EVENT, type JobProgressDto } from '../shared/ipc.js'
 
 const subscribe = <T>(channel: string, cb: (p: T) => void): (() => void) => {
   const listener = (_e: unknown, p: T): void => cb(p)
@@ -28,6 +28,8 @@ const api = {
   ...domains,
   platform: process.platform,
   onJobProgress: (cb: (p: JobProgressDto) => void) => subscribe<JobProgressDto>(IPC_EVENT.jobProgress, cb),
+  onArchiveProgress: (cb: (p: ArchiveProgressDto) => void) =>
+    subscribe<ArchiveProgressDto>(IPC_EVENT.archiveProgress, cb),
   onNotificationsChanged: (cb: () => void) => subscribe<void>(IPC_EVENT.notificationsChanged, cb)
 } as ButinApi
 

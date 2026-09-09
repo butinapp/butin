@@ -16,6 +16,13 @@ const noopEncryption = () => ({
   onDisable: async () => false
 })
 
+const noopArchive = {
+  onExport: async () => null,
+  onPickArchive: async () => null,
+  onInspect: async () => null,
+  onImport: async () => null
+}
+
 const base = {
   onCreate: () => {},
   onRename: () => {},
@@ -46,14 +53,26 @@ describe('ManageProfiles', () => {
     expect(screen.getByText(/Current/i)).toBeInTheDocument()
   })
 
-  it('creates a profile from the input', () => {
+  it('creates a profile from its own panel', () => {
     const onCreate = vi.fn()
 
     render(<ManageProfiles {...base} profiles={profiles} onCreate={onCreate} />)
-    fireEvent.change(screen.getByPlaceholderText(/New profile name/i), { target: { value: 'Side' } })
-    fireEvent.click(screen.getByRole('button', { name: /^Add$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^New profile$/i }))
+    fireEvent.change(screen.getByLabelText(/^Profile name$/i), { target: { value: 'Side' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Create$/i }))
 
     expect(onCreate).toHaveBeenCalledWith('Side')
+  })
+
+  it('opens one add-a-profile operation at a time', () => {
+    render(<ManageProfiles {...base} profiles={profiles} archiveActions={noopArchive} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /^Import profile/i }))
+
+    // The new-profile field must not sit under the import panel competing for the name being typed.
+    expect(screen.queryByLabelText(/^Profile name$/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^New profile$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /choose file/i })).toBeInTheDocument()
   })
 
   it('renames via the menu then save', () => {

@@ -1,9 +1,10 @@
 import { useLabels } from '@butinapp/ui/i18n'
 import { Button, Input, Label } from '@butinapp/ui/primitives'
-import { Check, Copy, KeyRound, Lock, ShieldOff } from 'lucide-react'
-import { useEffect, useId, useState } from 'react'
+import { KeyRound, Lock, ShieldOff } from 'lucide-react'
+import { useId, useState } from 'react'
 
 import type { VaultState } from './encryption-badge.js'
+import { RecoveryCodeReveal } from './recovery-code-reveal.js'
 
 // Callbacks the host wires to vault IPC. Fallible ones resolve to false (wrong secret / failure) so the
 // control can show an inline error; onEnable resolves to the recovery key to display once, or null on failure.
@@ -35,7 +36,6 @@ export const ProfileEncryptionControls = ({
   const [oldPw, setOldPw] = useState('')
   const [recovery, setRecovery] = useState('')
   const [recoveryKey, setRecoveryKey] = useState('')
-  const [copied, setCopied] = useState(false)
 
   const reset = (): void => {
     setMode('idle')
@@ -46,7 +46,6 @@ export const ProfileEncryptionControls = ({
     setOldPw('')
     setRecovery('')
     setRecoveryKey('')
-    setCopied(false)
   }
 
   const enable = async (): Promise<void> => {
@@ -124,41 +123,9 @@ export const ProfileEncryptionControls = ({
     }
   }
 
-  const copyKey = (): void => {
-    void navigator.clipboard?.writeText(recoveryKey)
-    setCopied(true)
-  }
-
-  // Revert the copied confirmation so the control reads "Copy" again if the user lingers on the reveal.
-  useEffect(() => {
-    if (!copied) {
-      return
-    }
-
-    const id = setTimeout(() => setCopied(false), 2000)
-
-    return () => clearTimeout(id)
-  }, [copied])
-
-  // The one-time recovery-key reveal — shown after enabling or (optionally) reset, dismissed only by confirm.
   if (mode === 'recovery') {
     return (
-      <div className="bg-card mt-1 flex flex-col gap-2 rounded-md border p-3">
-        <p className="text-sm font-medium">{t.encRecoveryTitle}</p>
-        <p className="text-muted-foreground text-xs">{t.encRecoveryBlurb}</p>
-        <div className="flex items-center gap-2">
-          <code className="bg-muted flex-1 rounded px-2 py-1.5 font-mono text-sm break-all" data-testid="recovery-key">
-            {recoveryKey}
-          </code>
-          <Button variant="outline" size="sm" onClick={copyKey}>
-            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-            {copied ? t.encCopied : t.encCopy}
-          </Button>
-        </div>
-        <Button size="sm" className="self-end" onClick={reset}>
-          {t.encSavedRecovery}
-        </Button>
-      </div>
+      <RecoveryCodeReveal code={recoveryKey} title={t.encRecoveryTitle} blurb={t.encRecoveryBlurb} onConfirm={reset} />
     )
   }
 

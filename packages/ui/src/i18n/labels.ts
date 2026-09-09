@@ -402,13 +402,41 @@ export interface ButinLabels {
   profileColor: string
   profileColorAria: (name: string) => string
   profileManageEncryption: string
+  profileExport: string
+  profileExportLockedHint: string
   profileDelete: string
   profileDeleteConfirm: string
+  profileNew: string
   profileNewName: string
   profileAdd: string
   profileSave: string
   profileActive: string
   profileNameAria: string
+  // Profile archive — moving a profile to another computer.
+  archiveExportTitle: string
+  archiveExportBlurb: string
+  archivePassphrase: string
+  archivePassphraseConfirm: string
+  archivePassphraseMismatch: string
+  archiveExportSubmit: string
+  archiveExporting: string
+  archiveRecoveryTitle: string
+  archiveRecoveryBlurb: string
+  archiveImport: string
+  archiveImportTitle: string
+  archiveImportBlurb: string
+  archiveChooseFile: string
+  archiveImportAs: string
+  archiveImportSubmit: string
+  archiveImporting: string
+  archiveWrongPassphrase: string
+  archiveContents: (services: number, files: number, size: string) => string
+  archivePackedAt: (app: string, when: string) => string
+  archiveReHomedNote: (services: string) => string
+  archiveUnreadableNote: (count: number) => string
+  archiveSourceEncryptedNote: string
+  archiveImported: (name: string) => string
+  archiveDone: string
   profilesDialogTitle: string
   profilesDialogBlurb: string
 
@@ -860,13 +888,44 @@ export const en: ButinLabels = {
   profileColor: 'Color',
   profileColorAria: (name) => `Color for ${name}`,
   profileManageEncryption: 'Encryption',
+  profileExport: 'Export…',
+  profileExportLockedHint: 'Unlock this profile to export it.',
   profileDelete: 'Delete',
   profileDeleteConfirm: 'Confirm delete',
-  profileNewName: 'New profile name',
-  profileAdd: 'Add',
+  profileNew: 'New profile',
+  profileNewName: 'Profile name',
+  profileAdd: 'Create',
   profileSave: 'Save',
   profileActive: 'Active',
   profileNameAria: 'Profile name',
+  archiveExportTitle: 'Export this profile',
+  archiveExportBlurb:
+    'One sealed file holding this profile’s sessions, cached data and every downloaded document — so you can move it to another computer.',
+  archivePassphrase: 'Passphrase',
+  archivePassphraseConfirm: 'Confirm passphrase',
+  archivePassphraseMismatch: 'Passphrases don’t match.',
+  archiveExportSubmit: 'Export',
+  archiveExporting: 'Packing…',
+  archiveRecoveryTitle: 'Save this recovery code',
+  archiveRecoveryBlurb: 'It opens the archive if the passphrase is ever lost. It is shown once.',
+  archiveImport: 'Import profile…',
+  archiveImportTitle: 'Import a profile',
+  archiveImportBlurb: 'It lands as a new profile. Nothing you already have is changed.',
+  archiveChooseFile: 'Choose file…',
+  archiveImportAs: 'Import as',
+  archiveImportSubmit: 'Import',
+  archiveImporting: 'Restoring…',
+  archiveWrongPassphrase: 'That passphrase does not open this archive.',
+  archiveContents: (services, files, size) =>
+    `${services} service${services === 1 ? '' : 's'}, ${files} file${files === 1 ? '' : 's'}, ${size}`,
+  archivePackedAt: (app, when) => `Packed ${when} by Butin ${app}`,
+  archiveReHomedNote: (services) => `Documents kept outside the profile were brought back into it: ${services}.`,
+  archiveUnreadableNote: (count) =>
+    `${count} stored secret${count === 1 ? '' : 's'} could not be read on the source machine — sign in to those services again.`,
+  archiveSourceEncryptedNote:
+    'The source profile was encrypted; this copy is not. Turn encryption on if you want it here.',
+  archiveImported: (name) => `${name} imported`,
+  archiveDone: 'Done',
   profilesDialogTitle: 'Profiles',
   profilesDialogBlurb: 'Each profile is its own isolated workspace — separate logins, settings, and data.',
 
@@ -1329,13 +1388,44 @@ export const fr: ButinLabels = {
   profileColor: 'Couleur',
   profileColorAria: (name) => `Couleur de ${name}`,
   profileManageEncryption: 'Chiffrement',
+  profileExport: 'Exporter…',
+  profileExportLockedHint: 'Déverrouillez ce profil pour l’exporter.',
   profileDelete: 'Supprimer',
   profileDeleteConfirm: 'Confirmer la suppression',
-  profileNewName: 'Nom du nouveau profil',
-  profileAdd: 'Ajouter',
+  profileNew: 'Nouveau profil',
+  profileNewName: 'Nom du profil',
+  profileAdd: 'Créer',
   profileSave: 'Enregistrer',
   profileActive: 'Actif',
   profileNameAria: 'Nom du profil',
+  archiveExportTitle: 'Exporter ce profil',
+  archiveExportBlurb:
+    'Un seul fichier scellé contenant les sessions, les données en cache et tous les documents téléchargés de ce profil — pour le transférer vers un autre ordinateur.',
+  archivePassphrase: 'Phrase de passe',
+  archivePassphraseConfirm: 'Confirmer la phrase de passe',
+  archivePassphraseMismatch: 'Les phrases de passe ne correspondent pas.',
+  archiveExportSubmit: 'Exporter',
+  archiveExporting: 'Archivage…',
+  archiveRecoveryTitle: 'Conservez ce code de récupération',
+  archiveRecoveryBlurb: 'Il ouvre l’archive si la phrase de passe est perdue. Il n’est affiché qu’une fois.',
+  archiveImport: 'Importer un profil…',
+  archiveImportTitle: 'Importer un profil',
+  archiveImportBlurb: 'Il arrive comme un nouveau profil. Rien de ce que vous avez déjà n’est modifié.',
+  archiveChooseFile: 'Choisir un fichier…',
+  archiveImportAs: 'Importer sous le nom',
+  archiveImportSubmit: 'Importer',
+  archiveImporting: 'Restauration…',
+  archiveWrongPassphrase: 'Cette phrase de passe n’ouvre pas cette archive.',
+  archiveContents: (services, files, size) =>
+    `${services} service${services === 1 ? '' : 's'}, ${files} fichier${files === 1 ? '' : 's'}, ${size}`,
+  archivePackedAt: (app, when) => `Archivé le ${when} par Butin ${app}`,
+  archiveReHomedNote: (services) => `Les documents conservés hors du profil y ont été ramenés : ${services}.`,
+  archiveUnreadableNote: (count) =>
+    `${count} secret${count === 1 ? '' : 's'} enregistré${count === 1 ? '' : 's'} n’a pas pu être lu sur la machine source — reconnectez-vous à ces services.`,
+  archiveSourceEncryptedNote:
+    'Le profil source était chiffré ; cette copie ne l’est pas. Activez le chiffrement ici au besoin.',
+  archiveImported: (name) => `${name} importé`,
+  archiveDone: 'Terminé',
   profilesDialogTitle: 'Profils',
   profilesDialogBlurb: 'Chaque profil est un espace isolé — connexions, réglages et données distincts.',
 

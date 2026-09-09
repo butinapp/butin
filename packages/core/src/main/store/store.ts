@@ -36,6 +36,23 @@ export const setDataRoot = (dir: string): void => {
   dataRoot = dir
 }
 
+// Long writes into the profile's data tree — a capability run, a document download, an extract run. The
+// profile archive refuses to pack while any is in flight, because a `current`/`ledger`/document file caught
+// half-written would restore as corrupt data on the other machine.
+let writesInFlight = 0
+
+export const profileWritesInFlight = (): boolean => writesInFlight > 0
+
+export const trackProfileWrite = async <T>(fn: () => Promise<T>): Promise<T> => {
+  writesInFlight += 1
+
+  try {
+    return await fn()
+  } finally {
+    writesInFlight -= 1
+  }
+}
+
 // Current data root, so sibling stores (snapshots) share the same base + test seam.
 export const dataRootDir = (): string => dataRoot
 

@@ -43,6 +43,10 @@ const registryPath = (): string => join(homeRoot, 'profiles.json')
 // A profile's self-contained folder: its config.json + <plugin>/ data tree live here.
 export const profileDir = (id: string): string => join(homeRoot, 'profiles', id)
 
+// Where profile folders live. An import extracts into a dot-prefixed staging folder here (siblings of the real
+// profiles, so the final install is a same-volume rename) before it is adopted.
+export const profilesDir = (): string => join(homeRoot, 'profiles')
+
 const DEFAULT_PROFILE: ProfileRecord = {
   id: 'personal',
   name: 'Personal',
@@ -232,6 +236,55 @@ const copyProfileTree = (fromDir: string, toDir: string): void => {
       writeBytesSync(toDir, join(toDir, rel), bytes)
     }
   }
+}
+
+// A NAME no existing profile already shows. The slug is disambiguated separately, but the slug is invisible in
+// the app — two cards reading "Personal" are two cards the user cannot tell apart, and one of them holds their
+// real sessions. So the visible name is what has to differ.
+const uniqueName = (name: string, existing: ProfileRecord[]): string => {
+  const taken = new Set(existing.map((p) => p.name))
+
+  if (!taken.has(name)) {
+    return name
+  }
+
+  if (!taken.has(`${name} (imported)`)) {
+    return `${name} (imported)`
+  }
+
+  let n = 2
+
+  while (taken.has(`${name} (imported ${n})`)) {
+    n += 1
+  }
+
+  return `${name} (imported ${n})`
+}
+
+// Adopt an already-extracted tree as a new profile: a name and slug that clash with nothing, its own browser
+// partition, then the folder renamed into place and the registry written LAST. That order is what keeps a
+// failed import from leaving a registry entry pointing at a folder that isn't there. The new profile is not
+// made active — it appears alongside the existing ones, like a duplicate does.
+export const adoptProfileTree = (
+  stagingDir: string,
+  input: { name: string; color?: string; createdAt: string }
+): ProfileSummary => {
+  const file = readRegistry()
+  const name = uniqueName(input.name.trim() || 'Imported profile', file.profiles)
+  const id = uniqueId(name, file.profiles)
+  const record: ProfileRecord = {
+    id,
+    name,
+    color: input.color,
+    createdAt: input.createdAt,
+    partition: `persist:butin-${id}`
+  }
+
+  renameSync(stagingDir, profileDir(id))
+  file.profiles.push(record)
+  writeRegistry(file)
+
+  return { ...record, active: false, encryption: 'off' }
 }
 
 export const setActiveProfile = (id: string): void => {

@@ -19,7 +19,14 @@ import type {
   RunReport,
   ServiceDetailDto
 } from './ipc/plugins.js'
-import type { ProfileSummaryDto, VaultStateDto } from './ipc/profiles.js'
+import type {
+  ArchiveExportDto,
+  ArchiveImportDto,
+  ArchivePreviewDto,
+  ArchiveProgressDto,
+  ProfileSummaryDto,
+  VaultStateDto
+} from './ipc/profiles.js'
 import type { OverviewTileDto, PeopleDto, StoredReport } from './ipc/reports.js'
 import type { AppSettingsDto, FxConfigDto, TablePrefsDto } from './ipc/settings.js'
 
@@ -142,7 +149,11 @@ export const IPC = {
     duplicate: 'profiles:duplicate',
     delete: 'profiles:delete',
     switch: 'profiles:switch',
-    movePlugin: 'profiles:move-plugin'
+    movePlugin: 'profiles:move-plugin',
+    exportArchive: 'profiles:export-archive',
+    pickArchive: 'profiles:pick-archive',
+    inspectArchive: 'profiles:inspect-archive',
+    importArchive: 'profiles:import-archive'
   },
   vault: {
     status: 'vault:status',
@@ -161,9 +172,11 @@ export const IPC = {
 // Main → renderer push channels. These are request/response's counterpart: the generated preload wires them
 // with `.on` + an unsubscribe (not `.invoke`), and main `.send`s them. Kept apart from the invoke map so the
 // codegen never has to filter events out of it. One channel carries progress for every long-running job
-// (download / export / extract-all); the other signals the renderer to re-pull notifications.
+// (download / export / extract-all); the second carries a profile archive's pack/restore progress, which names
+// a profile rather than a plugin; the third signals the renderer to re-pull notifications.
 export const IPC_EVENT = {
   jobProgress: 'job:progress',
+  archiveProgress: 'archive:progress',
   notificationsChanged: 'notifications:changed'
 } as const
 
@@ -364,6 +377,17 @@ export type ButinApi = {
     // Move a plugin's stored state (stored session + config + cached data) from the ACTIVE profile to another. Fallible
     // (refuses a same/unknown/already-connected target, or an empty source), so it returns a Result.
     movePlugin: (pluginId: string, toProfileId: string) => Promise<Result<void>>
+    // Pack a profile — sessions, cached data, every downloaded file — into one passphrase-sealed archive for
+    // another computer. Opens a save dialog; a dismissed dialog resolves ok with { canceled: true }. Refuses a
+    // locked profile and one with a refresh in flight. Streams ticks on archive:progress.
+    exportArchive: (id: string, secret: string) => Promise<Result<ArchiveExportDto>>
+    // Native open dialog for an archive file; resolves the chosen path, or null on cancel.
+    pickArchive: () => Promise<string | null>
+    // Unseal an archive's index only, so the user can see what an import would land. Writes nothing.
+    inspectArchive: (path: string, secret: string) => Promise<Result<ArchivePreviewDto>>
+    // Restore an archive as a NEW profile (never merging into or replacing an existing one), under `name`.
+    // All-or-nothing: any failure leaves every existing profile untouched. Streams ticks on archive:progress.
+    importArchive: (path: string, secret: string, name: string) => Promise<Result<ArchiveImportDto>>
   }
   // Per-profile at-rest encryption.
   vault: {
@@ -395,9 +419,11 @@ export type ButinApi = {
   }
 
   // Cross-cutting, off any domain. `platform` is read synchronously at first paint (set in preload, not a
-  // channel); the two subscriptions wire a main→renderer push channel with an unsubscribe.
+  // channel); the subscriptions each wire a main→renderer push channel with an unsubscribe.
   platform: ButinPlatform
   onJobProgress: (cb: (p: JobProgressDto) => void) => () => void
+  // Pack/restore progress for a profile archive.
+  onArchiveProgress: (cb: (p: ArchiveProgressDto) => void) => () => void
   // Fires (no payload) when a refresh re-evaluates alerts; the renderer invalidates its notifications query.
   onNotificationsChanged: (cb: () => void) => () => void
 }

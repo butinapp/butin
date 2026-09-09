@@ -155,11 +155,13 @@ export const updatePluginEntry = (pluginId: string, mutate: (entry: PluginEntry)
 
 export const isSecretField = (field: string): boolean => /cookie|token|key|jwt/i.test(field)
 
-export const encryptValue = (value: string): { stored: string; enc: boolean } => {
+// Encrypt a secret for a GIVEN profile dir. A profile import re-keys into a tree that is not the active one,
+// so the vault check has to follow the target dir rather than the ambient config root.
+export const encryptValueFor = (dir: string, value: string): { stored: string; enc: boolean } => {
   // Inside an encrypted profile the whole config.json is sealed by the DEK, so per-field safeStorage
   // encryption is redundant AND harmful — it would re-pin the secret to the OS user, breaking the
   // portability the vault provides. Store the field in the clear and let the file's envelope protect it.
-  if (vaultExists(configRoot)) {
+  if (vaultExists(dir)) {
     return { stored: value, enc: false }
   }
 
@@ -169,6 +171,8 @@ export const encryptValue = (value: string): { stored: string; enc: boolean } =>
 
   return { stored: value, enc: false }
 }
+
+export const encryptValue = (value: string): { stored: string; enc: boolean } => encryptValueFor(configRoot, value)
 
 export const decryptValue = (stored: string, enc: boolean): string | undefined => {
   if (!enc || !safeStorage?.isEncryptionAvailable()) {

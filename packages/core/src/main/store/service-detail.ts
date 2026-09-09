@@ -1,6 +1,4 @@
 import type { AuthKind } from '@butinapp/sdk'
-import { readdir, stat } from 'node:fs/promises'
-import { join } from 'node:path'
 
 import type { FolderStatsDto, ServiceDetailDto, ServiceMechanicsDto } from '../../shared/ipc.js'
 import { getDocumentsOutputDir } from '../export/documents-config.js'
@@ -10,6 +8,7 @@ import { readLedger } from './ledger.js'
 import { countItems } from './overview.js'
 import { primarySeries } from './project-ledger.js'
 import { readCurrent, resolveDocumentsDir, serviceDir } from './store.js'
+import { walkFiles } from './walk.js'
 
 // Plain-language sentence per auth kind, for the Settings tab's "Under the hood" section — so a non-expert
 // reads how Butin gets the data, and the local-first story (your own session, no credential custody) shows.
@@ -93,39 +92,9 @@ export const buildServiceDetail = async (pluginId: string): Promise<ServiceDetai
 // Recursively total a folder's file count + bytes. Best-effort: an unreadable dir/file is skipped, never
 // thrown — a missing service folder (nothing fetched yet) returns zeroes.
 export const computeFolderStats = async (dir: string): Promise<{ fileCount: number; totalBytes: number }> => {
-  let fileCount = 0
-  let totalBytes = 0
+  const files = await walkFiles(dir)
 
-  const walk = async (d: string): Promise<void> => {
-    let entries
-
-    try {
-      entries = await readdir(d, { withFileTypes: true })
-    } catch {
-      return
-    }
-
-    for (const entry of entries) {
-      const full = join(d, entry.name)
-
-      if (entry.isDirectory()) {
-        await walk(full)
-      } else if (entry.isFile()) {
-        try {
-          const st = await stat(full)
-
-          fileCount += 1
-          totalBytes += st.size
-        } catch {
-          // a file that vanished between readdir and stat — skip it
-        }
-      }
-    }
-  }
-
-  await walk(dir)
-
-  return { fileCount, totalBytes }
+  return { fileCount: files.length, totalBytes: files.reduce((sum, f) => sum + f.size, 0) }
 }
 
 // Whole-folder footprint plus a separate count of downloaded documents (the files a normal erase/uninstall
