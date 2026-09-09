@@ -48,6 +48,25 @@ describe('cdpCookieToElectron', () => {
     expect(out.url).toBe('https://accounts.google.com/o/oauth2')
     expect(out.domain).toBe('.accounts.google.com')
   })
+
+  // Electron widens `domain` with a preceding dot, so a host-only cookie must carry none — otherwise it lands
+  // as a subdomain-scoped twin the server never updates.
+  it('omits domain for a host-only cookie (no leading dot)', () => {
+    const out = cdpCookieToElectron({ ...base, name: 'LSID', domain: 'accounts.google.com' })
+
+    expect(out.url).toBe('https://accounts.google.com/')
+    expect(out.domain).toBeUndefined()
+  })
+
+  // A `__Host-` cookie with any Domain attribute is rejected outright (EXCLUDE_INVALID_PREFIX), which is how
+  // Google's sign-in cookies went missing from a synced session.
+  it('omits domain for a __Host- prefixed cookie', () => {
+    const out = cdpCookieToElectron({ ...base, name: '__Host-GAPS', domain: 'accounts.google.com' })
+
+    expect(out.domain).toBeUndefined()
+    expect(out.path).toBe('/')
+    expect(out.secure).toBe(true)
+  })
 })
 
 describe('chromeCandidates', () => {
