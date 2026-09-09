@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { loadRun, loadRunProfile } from './run-data.js'
 
-const writeRun = (): string => {
+const writeRun = (manifestExtra: Record<string, unknown> = {}): string => {
   const dir = mkdtempSync(join(tmpdir(), 'run-'))
 
   mkdirSync(join(dir, 'requests'))
@@ -20,7 +20,8 @@ const writeRun = (): string => {
       startedAt: '',
       endedAt: '',
       requestCount: 1,
-      navigationCount: 0
+      navigationCount: 0,
+      ...manifestExtra
     })
   )
   writeFileSync(join(dir, 'navigation.jsonl'), '')
@@ -78,5 +79,22 @@ describe('loadRunProfile', () => {
 
     expect(profile.auth.value).toBe('external')
     expect(JSON.parse(readFileSync(join(dir, 'summary.json'), 'utf8')).version).toBe(2)
+  })
+
+  it('does not cache a run that is still recording — its manifest is rewritten under it', async () => {
+    const dir = writeRun({ complete: false, endedAt: new Date().toISOString() })
+
+    const profile = await loadRunProfile(dir)
+
+    expect(profile.auth.value).toBe('external')
+    expect(existsSync(join(dir, 'summary.json'))).toBe(false)
+  })
+
+  it('caches a run cut short by a crash — nothing is writing to it any more', async () => {
+    const dir = writeRun({ complete: false, endedAt: new Date(Date.now() - 10 * 60_000).toISOString() })
+
+    await loadRunProfile(dir)
+
+    expect(existsSync(join(dir, 'summary.json'))).toBe(true)
   })
 })

@@ -289,12 +289,22 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
   layout()
   window.on('resize', layout)
 
-  // Crash-resilient session persistence. Chromium holds auth session cookies in memory and drops them on
-  // exit, so they only survive if promoteSessionCookies runs — which the graceful-close path below does. But
-  // a recording can crash (a hostile login page can take the GPU down), and an abrupt exit never reaches that
-  // path, dropping a freshly captured login and forcing a fresh sign-in + MFA next launch. Promote on an
-  // interval too, so a captured session survives even when the window never closes cleanly.
-  const persistInterval = setInterval(() => void promoteSessionCookies(ses, [], { quiet: true }), 15_000)
+  // Crash-resilient session persistence. Chromium holds auth session cookies in memory and drops them on exit,
+  // so they only survive if promoteSessionCookies runs — which the graceful-close path below does. But a
+  // recording can end in a crash, and an abrupt exit never reaches that path, dropping a freshly captured login
+  // and forcing a fresh sign-in + MFA next launch. Promote on an interval too, so a captured session survives
+  // even when the window never closes cleanly.
+  //
+  // The manifest rides the same interval and for the same reason: a run dir without one is invisible in the UI,
+  // so an abrupt exit would otherwise discard a recording whose requests are all safely on disk.
+  const runIdentity = { label: opts.label, startUrl: opts.startUrl, partition }
+  const persistInterval = setInterval(() => {
+    void promoteSessionCookies(ses, [], { quiet: true })
+    void recorder.checkpoint(runIdentity)
+  }, 15_000)
+
+  // One immediately, so even a run that dies in its first seconds is listed.
+  void recorder.checkpoint(runIdentity)
 
   const applyPaused = () => {
     recorder.setPaused(paused)
@@ -437,7 +447,7 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
     stopping = true
     clearInterval(persistInterval)
     void recorder
-      .stop({ label: opts.label, startUrl: opts.startUrl, partition })
+      .stop(runIdentity)
       .then(async () => {
         if (opts.exportHar) {
           await writeHarForRun(runDir).catch((err) => console.error('[recorder] HAR export failed:', err))

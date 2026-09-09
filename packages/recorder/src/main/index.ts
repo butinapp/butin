@@ -1,6 +1,6 @@
 // @butinapp/recorder is a DEV-ONLY tool (pnpm record). It MUST NOT be imported by @butinapp/core — it is excluded from the shipped product by construction.
 import { BROWSER_UA } from '@butinapp/engine'
-import { app, BrowserWindow, Menu } from 'electron'
+import { app, BrowserWindow, crashReporter, Menu } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -14,13 +14,30 @@ import { registerRecorderHandlers } from './ipc.js'
 app.userAgentFallback = BROWSER_UA
 app.on('web-contents-created', (_event, contents) => contents.setUserAgent(BROWSER_UA))
 
-// Software rendering. A login page's anti-fraud WebGL / canvas readback — a browser-verification challenge is
-// the case in point — destabilizes a real GPU process (UnknownVizError / "GPU state invalid" crashes) and,
-// short of crashing, returns an inconsistent WebGL result the check scores as non-genuine. Rendering in
-// software dodges both, and the capture window presents a genuine browser identity so it clears the same
-// verification a login page runs. Recording is network capture, unaffected by the rendering backend. Must run
-// before the app is ready.
-app.disableHardwareAcceleration()
+// The recorder runs on the real GPU deliberately — do not disable hardware acceleration here. A page that
+// leans on WebGL and canvas readback can cost the compositor a frame, and SwiftShader is Chromium's last
+// fallback: with hardware off it is the only backend left, so a frame it cannot serve has nowhere to fall back
+// TO and the browser process goes down with the run. On the GPU the same failure degrades to software instead.
+
+// Name every child process Chromium loses, with its reason and exit code. When the app dies mid-recording the
+// only question that matters is which process went first — without this the trail is a bare exit code.
+// Registered before ready so a crash during startup is covered too.
+app.on('child-process-gone', (_event, details) => {
+  console.error(
+    `[recorder] child process gone — type=${details.type} name=${details.name ?? '-'} reason=${details.reason} exitCode=${details.exitCode}`
+  )
+})
+
+app.on('render-process-gone', (_event, contents, details) => {
+  console.error(
+    `[recorder] render process gone at ${contents.getURL()} — reason=${details.reason} exitCode=${details.exitCode}`
+  )
+})
+
+// A capture path that throws asynchronously must not take the recorder down mid-run: the requests already
+// written stay valid, and the log line says what failed.
+process.on('uncaughtException', (err) => console.error('[recorder] uncaught exception (ignored):', err))
+process.on('unhandledRejection', (reason) => console.error('[recorder] unhandled rejection (ignored):', reason))
 
 // Pin the app identity to match @butinapp/core (core/src/main/index.ts). userData holds the session
 // partitions on disk (userData/Partitions/<name>), so without this the recorder gets its OWN userData dir
@@ -34,6 +51,14 @@ app.setName('butin')
 // id (distinct from the app's `dev.butin.app`) so it gets a separate taskbar group showing the recorder icon.
 // No-op off Windows.
 app.setAppUserModelId('dev.butin.recorder')
+
+// Collect crash dumps locally. Without a crash handler connected, crashpad catches a native crash in the main
+// process, finds nowhere to write it, and self-terminates with one of its own 0xffff70xx termination codes — so
+// a browser-process crash leaves nothing behind but that exit code. With one, a minidump carrying the faulting
+// stack lands in app.getPath('crashDumps') instead. Crashpad resolves that directory from the app name, so this
+// MUST run after setName or the dumps go to a directory nothing reads. Nothing is uploaded: this is a local dev
+// tool, and a dump of a recording session would carry the page's memory.
+crashReporter.start({ uploadToServer: false })
 
 const createWindow = (): void => {
   // The recorder's own mark (Butin's hub with a red center) — the dev/Linux taskbar icon, so the recording
@@ -70,6 +95,12 @@ const createWindow = (): void => {
 }
 
 void app.whenReady().then(() => {
+  // A dump's own id and date stay blank unless a crash server processes it, so the notice points at the
+  // directory — the newest .dmp there is the last crash.
+  if (crashReporter.getLastCrashReport()) {
+    console.error(`[recorder] a previous run crashed — dumps in ${app.getPath('crashDumps')}`)
+  }
+
   // No application menu — like the main app. The recorder is a focused tool; the default Electron menu
   // (File/Edit/View/Window/Help with reload + DevTools) is noise here.
   Menu.setApplicationMenu(null)

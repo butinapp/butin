@@ -152,6 +152,11 @@ export interface RecordingManifest {
   hostCounts?: Record<string, number>
   /** True if any capture step errored (the run may be incomplete). */
   hadErrors?: boolean
+  /**
+   * False while the run is still going: the manifest is rewritten on an interval so a run that ends abruptly is
+   * still listed. Only `stop` writes true, so anything else marks a recording cut short by a crash.
+   */
+  complete?: boolean
 }
 
 export interface RecordingSummary {

@@ -313,6 +313,22 @@ the shared engine magic toolbar (`record` variant) + status bar. Domains list pe
 A taxonomy detection layer classifies a recording onto Butin's transport/auth/render axes. Build-excluded from the shipped app — its own electron-vite entry, not
 imported by core.
 
+**Session readiness is a hard rule.** A `Network.*` body command — `getResponseBody` · `getRequestPostData` · `streamResourceContent` — issued on a CDP child
+session that has not answered `Network.enable` aborts the browser process from native code: a `CHECK` inside Chromium's network agent, with no rejection to catch,
+so the entire run dies with it. A target can accept `Target.attachedToTarget`, answer `Target.setAutoAttach`, and still never answer the enable — the attach is not
+proof, the reply is. So every body read goes through `Recorder.send`, which refuses one on a session it has not seen enabled (`canReadBody`) and counts it as
+`unreadableBodies`. Add a body-reading command to `BODY_COMMANDS`, never a bare `sendCommand`.
+
+A run survives an abrupt end. The manifest is checkpointed on the same interval that promotes session cookies, so a run dir stays listable — and its captured
+requests usable — even when `stop` never runs; `manifest.complete` is false until it does, and `loadRunProfile` declines to cache a summary for a run still being
+written. `crashReporter` is started (local only, nothing uploaded), so a native crash leaves a minidump under `app.getPath('crashDumps')` rather than a bare exit
+code, and the next launch reports that one is waiting.
+
+Two env flags, both off by default. `BUTIN_RECORDER_TRACE=1` writes `trace.log`: one SYNCHRONOUS line per attached-only action, opened `>` and closed `<`. It
+exists because `log.jsonl` is appended asynchronously, so a hard abort discards precisely the tail that explains it — in a trace, an unmatched `>` names the call
+the process died inside. `BUTIN_RECORDER_NO_PAGE_TOUCH=1` keeps the debugger attached and every network record intact but stops the recorder reaching into the
+page: no `capturePage`, no storage snapshot, no rendered-DOM snapshot.
+
 ### `plugins/` → `@butinapp/plugins`
 
 Plugin folders in ONE package (no per-plugin `package.json`/`tsconfig`), one per service, auto-discovered + bundled into core at build (full auth-taxonomy coverage;
