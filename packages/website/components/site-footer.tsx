@@ -1,7 +1,6 @@
-import Link from 'next/link'
-
 import { BrandMark, Wordmark } from './brand'
 
+import { Link } from '@/components/site-link'
 import { GITHUB } from '@/lib/links'
 
 const columns: { title: string; links: { href: string; label: string; external?: boolean }[] }[] = [

@@ -1,10 +1,10 @@
 'use client'
 
-import Link from 'next/link'
 import { useState } from 'react'
 
 import { BrandMark, Wordmark } from './brand'
 
+import { Link } from '@/components/site-link'
 import { GITHUB } from '@/lib/links'
 
 const nav = [

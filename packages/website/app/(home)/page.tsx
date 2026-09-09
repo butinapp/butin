@@ -1,6 +1,5 @@
-import Link from 'next/link'
-
 import { BrandMark } from '@/components/brand'
+import { Link } from '@/components/site-link'
 import { GITHUB } from '@/lib/links'
 import { visibleServices } from '@/lib/services'
 

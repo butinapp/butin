@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 
 import { ServiceIcon } from '@/components/service-icon'
+import { Link } from '@/components/site-link'
 import { type Service, visibleServices } from '@/lib/services'
 
 export const metadata: Metadata = {
