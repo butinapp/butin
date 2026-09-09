@@ -11,7 +11,7 @@ import type { DomainProfile, EndpointCategory, RunData } from '../detect/types.j
 
 import { readAppLock, type AppLockStatus } from './app-lock.js'
 import { kickstart, planCapabilities, resolveEvidence, suggestIdentity } from './kickstart/index.js'
-import { createRecorderWindow } from './recorder-window.js'
+import { createRecorderWindow, DEFAULT_PARTITION } from './recorder-window.js'
 import { defaultFilters } from './recording/filters.js'
 import { domainLabel } from './recording/naming.js'
 import { deleteRecording } from './recording/storage.js'
@@ -67,6 +67,29 @@ const partitionForRecord = (r: ProfileRecord): string =>
 // ---- helpers ----------------------------------------------------------------
 
 const readJson = async <T>(path: string): Promise<T> => JSON.parse(await readFile(path, 'utf8')) as T
+
+// The profile id behind a partition — the key the real-Chrome sign-in hand-off uses for its persistent Chrome
+// user-data-dir. Resolving it from the registry (rather than parsing the partition) means a recording reuses
+// the very Chrome profile the app signed in for that Butin profile. Falls back to a filesystem-safe key drawn
+// from the partition when the app has never run or the partition matches no record.
+const chromeScopeForPartition = async (partition: string): Promise<string> => {
+  const path = profilesRegistry()
+
+  if (existsSync(path)) {
+    try {
+      const file = await readJson<{ profiles: ProfileRecord[] }>(path)
+      const match = file.profiles.find((p) => partitionForRecord(p) === partition)
+
+      if (match) {
+        return match.id
+      }
+    } catch {
+      // unreadable registry — fall through to the partition-derived key
+    }
+  }
+
+  return partition.replace(/^persist:/, '').replace(/[^a-z0-9._-]+/gi, '-')
+}
 
 // Read the user-authored merge table from domains.json (host → canonical surface name).
 // Returns an empty object when the file does not exist yet.
@@ -315,6 +338,7 @@ export const registerRecorderHandlers = (): void => {
         startUrl: input.startUrl,
         partition: input.partition,
         isolated: input.isolated ?? false,
+        chromeScopeId: await chromeScopeForPartition(input.partition ?? DEFAULT_PARTITION),
         captureAll: false,
         filters: defaultFilters(),
         // Default on: opening a recording usually means "capture from the first request". Unchecking the

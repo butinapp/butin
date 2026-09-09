@@ -4,13 +4,14 @@ import { existsSync, rmSync } from 'node:fs'
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { toSetDetails } from './cookies.js'
 import { applyBrowserIdentity } from './identity.js'
 
 // Real-Chrome sign-in fallback: when a service refuses the embedded browser (Google's "this browser or app
 // may not be secure"), open the user's installed Chrome for a hand sign-in, then mirror its cookies into a
 // target Electron partition. Profile-agnostic — the caller passes the partition to sync INTO and a `scopeId`
-// that names the persistent Chrome user-data-dir (the app keys it by profile; the recorder by partition), so
-// this lives in @butinapp/engine and both the app and the recorder can use it.
+// that names the persistent Chrome user-data-dir, so this lives in @butinapp/engine and both the app and the
+// recorder can use it.
 
 const TAG = 'chrome-login'
 
@@ -49,23 +50,23 @@ export const mapSameSite = (s: CdpCookie['sameSite']): 'unspecified' | 'no_restr
   return 'unspecified'
 }
 
-// A CDP cookie as the args Electron's `cookies.set` wants. The url is reconstructed from the host (leading
-// dot stripped) + scheme; a session cookie (or a non-positive expiry) carries no expirationDate.
-export const cdpCookieToElectron = (c: CdpCookie): CookiesSetDetails => {
-  const host = c.domain.replace(/^\./, '')
-
-  return {
-    url: `${c.secure ? 'https' : 'http'}://${host}${c.path || '/'}`,
+// A CDP cookie as the args Electron's `cookies.set` wants. CDP names the same fields differently (`expires`
+// for `expirationDate`, its own sameSite spelling) but describes the same cookie, so the attribute rules —
+// host-only scoping and the `__Host-`/`__Secure-` prefixes — come from `toSetDetails` rather than a second
+// copy here. Google's sign-in session leans on both: `LSID`/`OSID` are host-only, `__Host-GAPS`/`__Host-1PLSID`
+// carry the prefix, and any of them written with a Domain attribute is mis-scoped or rejected outright.
+export const cdpCookieToElectron = (c: CdpCookie): CookiesSetDetails =>
+  toSetDetails({
     name: c.name,
     value: c.value,
     domain: c.domain,
     path: c.path,
     secure: c.secure,
     httpOnly: c.httpOnly,
-    expirationDate: !c.session && c.expires > 0 ? c.expires : undefined,
+    session: c.session,
+    expirationDate: c.expires > 0 ? c.expires : undefined,
     sameSite: mapSameSite(c.sameSite)
-  }
-}
+  })
 
 // Preference-ordered Chrome/Chromium exe candidates for the current OS.
 export const chromeCandidates = (): string[] => {
@@ -141,8 +142,8 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 // The persistent Chrome user-data-dir for a given scope. Kept under Electron's userData, NOT under
 // ~/butin/profiles/<id>/ — the vault migration seals every file in a profile's tree, which would corrupt
 // Chrome's own cookie store. Outside the tree, it carries Chrome's own at-rest protection instead. `scopeId`
-// keys the dir (the app passes the active profile id; the recorder passes a partition-derived key) so each
-// scope keeps its own logged-in Chrome profile.
+// is the Butin profile id, so one signed-in Chrome profile is shared by every window that signs in for that
+// profile — the app's Magic Login and the recorder's capture window alike.
 export const chromeUserDataDir = (scopeId: string): string => join(app.getPath('userData'), 'chrome-login', scopeId)
 
 export const hasChromeSession = (scopeId: string): boolean => existsSync(chromeUserDataDir(scopeId))
@@ -206,8 +207,8 @@ const fetchCookiesViaCdp = async (port: number): Promise<CdpCookie[]> => {
   })
 }
 
-// Copy Chrome's cookies into an Electron session; returns how many landed. Some host-only / __Host- cookies
-// don't round-trip cleanly and are skipped.
+// Copy Chrome's cookies into an Electron session; returns how many landed. A rejected cookie is named rather
+// than swallowed — a silently dropped one reads downstream as a service refusing a session that looks captured.
 const syncCookies = async (port: number, ses: Session): Promise<number> => {
   let count = 0
 
@@ -215,8 +216,8 @@ const syncCookies = async (port: number, ses: Session): Promise<number> => {
     try {
       await ses.cookies.set(cdpCookieToElectron(c))
       count++
-    } catch {
-      // skip the cookies Electron rejects (host-only / __Host- prefixed)
+    } catch (err) {
+      log.warn(`could not sync ${c.name} (${c.domain}): ${(err as Error)?.message ?? String(err)}`)
     }
   }
 

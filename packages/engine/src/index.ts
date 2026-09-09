@@ -1,4 +1,4 @@
-export { clearServiceCookies, promoteSessionCookies } from './cookies.js'
+export { clearServiceCookies, copyCookies, promoteSessionCookies, toSetDetails } from './cookies.js'
 export { BROWSER_UA, SEC_CH_UA_HEADERS, ensureClientHintsPreload, applyBrowserIdentity } from './identity.js'
 export { popupWebPreferences } from './popups.js'
 export {

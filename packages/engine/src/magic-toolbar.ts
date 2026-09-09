@@ -11,7 +11,8 @@ import { pathToFileURL } from 'node:url'
 // The `variant` selects the chrome: `capture` (Magic Login) shows the readiness status + Capture button;
 // `navigate` (the plugin-less navigation browser) drops the capture-specific controls; `record` (the Butin
 // Recorder's capture window) swaps in a REC/elapsed/counts readout plus Pause + Stop and a record-specific
-// debug panel (Auto-open DevTools, Match Chrome headers), keeping the shared nav + Freeze/Auto-pause toggles.
+// debug panel (Auto-open DevTools, Match Chrome headers, and — for an isolated run — Keep this session),
+// keeping the shared nav, the Freeze/Auto-pause toggles and Clear-domain-cookies.
 //
 // A `Debug ▾` disclosure expands the strip into a panel for diagnosing a stuck/looping sign-in: the
 // recent navigation chain (with HTTP status), the per-host cookie footprint (the thing that explains an
@@ -50,7 +51,8 @@ const IPC = {
   stop: 'butin-magic:stop',
   togglePause: 'butin-magic:toggle-pause',
   setBrowserHeaders: 'butin-magic:set-browser-headers',
-  setAutoOpenDevTools: 'butin-magic:set-auto-devtools'
+  setAutoOpenDevTools: 'butin-magic:set-auto-devtools',
+  setKeepSession: 'butin-magic:set-keep-session'
 } as const
 
 // contextIsolation:true keeps the toolbar's privileged bridge out of the page's main world; main→toolbar
@@ -74,7 +76,8 @@ contextBridge.exposeInMainWorld('__magic', {
   stop: () => ipcRenderer.send('${IPC.stop}'),
   togglePause: () => ipcRenderer.send('${IPC.togglePause}'),
   setBrowserHeaders: (on) => ipcRenderer.send('${IPC.setBrowserHeaders}', on),
-  setAutoOpenDevTools: (on) => ipcRenderer.send('${IPC.setAutoOpenDevTools}', on)
+  setAutoOpenDevTools: (on) => ipcRenderer.send('${IPC.setAutoOpenDevTools}', on),
+  setKeepSession: (on) => ipcRenderer.send('${IPC.setKeepSession}', on)
 })
 `
 
@@ -133,13 +136,13 @@ const HTML_SOURCE = `<!doctype html>
 
       /* Record variant (Butin Recorder capture window): swap the capture chrome for a REC/elapsed/counts
          readout plus Pause + Stop, and a record-specific debug panel. */
-      #all, #recmeta, #pause, #stop, #autodevtools-row, #browser-headers-row { display: none }
+      #all, #recmeta, #pause, #stop, #autodevtools-row, #browser-headers-row, #keep-session-row { display: none }
       body.record #all { display: inline-block }
       body.record #recmeta { display: inline-flex }
       body.record #pause, body.record #stop { display: inline-block }
       body.record #autodevtools-row, body.record #browser-headers-row { display: inline-flex }
-      body.record #capture, body.record #chrome, body.record #autocapture-row,
-      body.record #footprint-section, body.record #history-section, body.record #clear,
+      body.record #capture, body.record #autocapture-row,
+      body.record #footprint-section, body.record #history-section,
       body.record #devtools { display: none }
       #all {
         flex: none; background: #3f3f46; color: #e4e4e7; padding: 2px 7px; border-radius: 4px;
@@ -209,6 +212,7 @@ const HTML_SOURCE = `<!doctype html>
         <label class="chk"><input type="checkbox" id="autopause" /> Auto-pause on HTTP error</label>
         <label class="chk" id="autodevtools-row"><input type="checkbox" id="autodevtools" /> Auto-open DevTools</label>
         <label class="chk" id="browser-headers-row"><input type="checkbox" id="browser-headers" /> Match Chrome headers</label>
+        <label class="chk" id="keep-session-row"><input type="checkbox" id="keep-session" /> Keep this session when I stop</label>
         <button id="devtools">DevTools</button>
         <button id="clear">Clear domain cookies &amp; reload</button>
       </div>
@@ -282,6 +286,11 @@ const HTML_SOURCE = `<!doctype html>
           row.appendChild(st); row.appendChild(u); historyEl.appendChild(row)
         }
       }
+      // The recorder shows this only for an ISOLATED run — every other run already writes to its profile's jar.
+      window.__setKeepSessionVisible = function (on) {
+        document.getElementById('keep-session-row').style.display = on ? 'inline-flex' : 'none'
+      }
+      window.__setKeepSession = function (on) { document.getElementById('keep-session').checked = !!on }
       window.__setFrozen = function (on) { freezeCb.checked = !!on }
       window.__setAutoPause = function (on) { autoPauseCb.checked = !!on }
       window.__setAutoCapture = function (on) { autoCaptureCb.checked = !!on }
@@ -326,6 +335,9 @@ const HTML_SOURCE = `<!doctype html>
       freezeCb.addEventListener('change', function () { window.__magic.setFreeze(freezeCb.checked) })
       autoPauseCb.addEventListener('change', function () { window.__magic.setAutoPause(autoPauseCb.checked) })
       autoCaptureCb.addEventListener('change', function () { window.__magic.setAutoCapture(autoCaptureCb.checked) })
+      document.getElementById('keep-session').addEventListener('change', function () {
+        window.__magic.setKeepSession(document.getElementById('keep-session').checked)
+      })
       document.getElementById('devtools').addEventListener('click', function () { window.__magic.openDevTools() })
       document.getElementById('reload').addEventListener('click', function () { window.__magic.reload() })
       document.getElementById('clear').addEventListener('click', function () {
@@ -426,7 +438,8 @@ export interface MagicToolbar {
 export interface MagicToolbarOpts {
   // Capture-variant callbacks (Magic Login) — optional so the navigate/record variants can omit them.
   onForceCapture?: () => void
-  // Clicked when the page blocks the built-in browser — hands off to a real-Chrome sign-in. Capture flow only.
+  // Clicked when the page blocks the built-in browser — hands off to a real-Chrome sign-in. The button stays
+  // hidden until setChromeFallback(true) reveals it, so a variant that never signs in simply never wires this.
   onChromeFallback?: () => void
   onNavigate: (url: string) => void
   onBack: () => void
@@ -445,6 +458,9 @@ export interface MagicToolbarOpts {
   onTogglePause?: () => void
   onSetBrowserHeaders?: (on: boolean) => void
   onSetAutoOpenDevTools?: (on: boolean) => void
+  // Carry an ISOLATED run's captured session into the profile's real partition when the window closes. Only
+  // the recorder offers it, and only for such a run — the checkbox stays hidden otherwise.
+  onSetKeepSession?: (on: boolean) => void
   // Remembered control state, pushed once the toolbar HTML loads so the panel/checkboxes open matching the
   // last session.
   initialFreeze?: boolean
@@ -455,6 +471,9 @@ export interface MagicToolbarOpts {
   initialBrowserHeaders?: boolean
   initialAutoOpenDevTools?: boolean
   initialCaptureAll?: boolean
+  // Reveal the keep-session checkbox (an isolated recording) and its initial state.
+  showKeepSession?: boolean
+  initialKeepSession?: boolean
   // Initial paused state — drives the first REC/PAUSED badge (record variant only).
   initialPaused?: boolean
   // 'navigate' drops the capture chrome (Capture button, readiness status, auto-capture, footprint,
@@ -489,6 +508,8 @@ export const createMagicToolbar = (opts: MagicToolbarOpts): MagicToolbar => {
     exec(`window.__setBrowserHeaders(${JSON.stringify(Boolean(opts.initialBrowserHeaders))})`)
     exec(`window.__setAutoOpenDevTools(${JSON.stringify(Boolean(opts.initialAutoOpenDevTools))})`)
     exec(`window.__setCaptureAll(${JSON.stringify(Boolean(opts.initialCaptureAll))})`)
+    exec(`window.__setKeepSession(${JSON.stringify(Boolean(opts.initialKeepSession))})`)
+    exec(`window.__setKeepSessionVisible(${JSON.stringify(Boolean(opts.showKeepSession))})`)
 
     // Seed the REC/PAUSED badge for the record variant (other variants drive #status via setStatus).
     if ((opts.variant ?? 'capture') === 'record') {
@@ -502,6 +523,7 @@ export const createMagicToolbar = (opts: MagicToolbarOpts): MagicToolbar => {
   view.webContents.ipc.on(IPC.forward, () => opts.onForward())
   view.webContents.ipc.on(IPC.forceCapture, () => opts.onForceCapture?.())
   view.webContents.ipc.on(IPC.chromeFallback, () => opts.onChromeFallback?.())
+  view.webContents.ipc.on(IPC.setKeepSession, (_e, on: boolean) => opts.onSetKeepSession?.(on))
   view.webContents.ipc.on(IPC.expand, (_e, on: unknown) => opts.onSetExpanded(Boolean(on)))
   view.webContents.ipc.on(IPC.freeze, (_e, on: unknown) => opts.onSetFreeze(Boolean(on)))
   view.webContents.ipc.on(IPC.autoPause, (_e, on: unknown) => opts.onSetAutoPause(Boolean(on)))

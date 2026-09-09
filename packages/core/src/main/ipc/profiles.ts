@@ -4,6 +4,7 @@ import { type ArchiveProgressDto, IPC_EVENT } from '../../shared/ipc.js'
 import { writeAppLock } from '../app-lock.js'
 import { exportProfileArchive } from '../archive/export-profile.js'
 import { importProfileArchive, inspectProfileArchive } from '../archive/import-profile.js'
+import { pluginById } from '../plugin/plugins.js'
 import { removeChromeSessionFor } from '../session/chrome-login.js'
 import {
   applyActiveProfile,
@@ -104,7 +105,13 @@ export const profileHandlers = {
   // Move a plugin's stored state out of the ACTIVE profile into the target. The renderer refreshes its
   // plugin/overview queries on success; no profile switch, so no reload here.
   movePlugin: (_event, pluginId: string, toProfileId: string) => {
-    const res = movePluginToProfile(pluginId, getActiveProfileId(), toProfileId)
+    const plugin = pluginById(pluginId)
+
+    if (!plugin) {
+      return { ok: false as const, error: 'unknown plugin' }
+    }
+
+    const res = movePluginToProfile(plugin, getActiveProfileId(), toProfileId)
 
     return res.ok ? { ok: true as const, data: undefined } : { ok: false as const, error: res.error }
   },
