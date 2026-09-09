@@ -10,6 +10,35 @@ You are adding or editing a Butin **plugin** (a `@butinapp/plugin-*` package). I
 the **target plugin id** (e.g. `stripe`) for `<id>` throughout. If you weren't given one, ask the user which
 service, its login URL, and whether this is a new plugin or an edit to an existing one.
 
+## 0. Scrub the recording out of every fixture — do this by default, not on request
+
+**A recording is one real person's account.** Every number in it — balances, payment amounts, interest rates,
+transaction descriptions, account and card numbers, ids, addresses, dates — is that person's. The natural way to
+write a fixture is to paste a captured response and trim it, and that is exactly how real data reaches a repo
+that is going to be published. So the fixtures are **invented, always**, and the recording is read only for the
+SHAPE: which fields exist, their types, their nesting, their nullability, the units they carry.
+
+Concretely, in `main.test.ts` and `sample.ts`:
+
+- **Replace every value.** Keep the key names, the nesting, and the wire's own units (a cent-string stays a
+  cent-string, an epoch-ms stays epoch-ms). Change the value. `"balance": <as captured>` → `"balance": 2500.75`.
+- **Use values that could not be mistaken for real ones:** sequential/repeating digits (`1112223`,
+  `1234567890123456`), round amounts (`250000`, `1500`, `500`/`1000` for a split), a rate like `4.25`, dates in a
+  plainly historical year. Sequences that visibly compute (`1500` = `500` + `1000`) also make the test readable.
+- **A masked or partial value is still the real value.** The last four digits of a card, a truncated id, a postal
+  code's first half — all identify. Invent those too.
+- **`sample.ts` draws from the toolkit, and its RANGES must not bracket the real figures.** A `g.money(lo, hi)`
+  band sitting tight around what the author actually owes narrows to them as surely as a literal would. Pick one
+  that spans the plausible population, centred nowhere in particular.
+- **Never paste a captured cookie, token, session id, or `X-*` header value** into a fixture, a test, or a code
+  comment — not even truncated.
+- **Code comments count.** An example value quoted in a comment (`// the wire sends { amount: '<as captured>' }`)
+  is a fixture too. Invent it. So is an example in a doc, a commit message, or this skill file.
+
+Arm the repo's own guard while you are at it: if `.pii-denylist` does not exist (the pre-commit hook says so),
+tell the user — it is gitignored personal data, so offer to seed it from this recording rather than writing it
+unasked. §8 has the verification pass that proves the scrub actually happened.
+
 Read first if you haven't this session: `CLAUDE.md` (the plugin contract + conventions). For an EDIT, open the existing `plugins/<id>/main.ts` +
 `main.test.ts` first and follow its established shape. Study `plugins/serper/main.ts` as the canonical
 reference (billing + usage + apiKeys + a `files`-download invoices table in one file, with fixture-tested
@@ -59,7 +88,8 @@ Then flesh out `src/main.ts`: real `session`/`auth`/`transport`, replace the stu
 the real ones, and add the exported pure `build*()` transforms. Keep **everything in `src/main.ts`**
 (descriptor + `collect()` bodies + pure `build*()`). Split a single capability into its own file ONLY when
 it gets genuinely large (e.g. a multi-parser HTML scraper). Tests in `src/main.test.ts` — feed each
-`build*()` a redacted/synthetic fixture and assert the normalized shape + money units.
+`build*()` a fixture with the recording's shape and invented values (§0) and assert the normalized shape +
+money units.
 
 **Canonical `main.ts` layout** — one shape, scaffold-stamped; **`plugins/vercel/main.ts` is the
 reference**. Types all up top, then code grouped by domain, so the file reads as a data dictionary followed by
@@ -182,9 +212,10 @@ tabs, the one thing the fetch/build split exists to prevent.
 > **The `sample` is ADDITIVE, never a replacement for real-shape tests.** A synthetic raw round-trips through
 > the same `build`, so `build(sample)` only proves the plumbing + contract-validity — it can NOT exercise
 > `build`'s tolerance of messy real shapes (the array-or-dict, null-field, dict-not-list cases that actually
-> break collectors). So **keep** the redacted real-capture fixture and the edge-case `build*()` unit tests
-> (claude keeps `fixtures/billing-bundle.json`; serper keeps inline `build*()` cases). Adding a `sample` does
-> not let you delete either.
+> break collectors). So **keep** the real-SHAPE fixture and the edge-case `build*()` unit tests (claude keeps
+> `fixtures/billing-bundle.json`; serper keeps inline `build*()` cases). Adding a `sample` does not let you
+> delete either. "Real-shape" means the recording's field layout with **every value invented** — see §0; a
+> fixture that still carries the capture's own numbers is the leak, not the coverage.
 
 **Synthetic raws live in a sibling `src/sample.ts`**, typed off the `Raw*` interfaces `main.ts` **exports** (add
 `export` to them). Richness: an INTRINSIC daily/timeseries dataset (rendered from one snapshot — usually
@@ -290,8 +321,8 @@ Run from the repo root:
 
 - `pnpm fix` (oxfmt + oxlint — REQUIRED after any codegen)
 - `pnpm typecheck`
-- `pnpm --filter @butinapp/plugin-<id> test` (then `pnpm test` for the full suite). Include a **samples test**
-  asserting every capability's `sample` is contract-valid (copy from serper/claude):
+- `pnpm --filter @butinapp/plugins exec vitest run <id>` (then `pnpm test` for the full suite). Include a
+  **samples test** asserting every capability's `sample` is contract-valid (copy from serper/claude):
   ```ts
   test('every capability declares a sample that is contract-valid', () => {
     for (const cap of <id>Plugin.capabilities) {
@@ -300,17 +331,33 @@ Run from the repo root:
     }
   })
   ```
-  The samples test is ADDITIVE — it does NOT replace the redacted real-capture fixture or the edge-case
+  The samples test is ADDITIVE — it does NOT replace the real-shape fixture or the edge-case
   `build*()` unit tests (see §4c). All three must be present and green.
 - `pnpm seed-demo --home ./.demo-home` — confirm there are **no** `[seed] <id>:… generic fallback` lines (every
   capability now has a sample). Spot-check a `~/<id>/current/<cap>.json` carries the plugin's real dataset ids.
 - The full suite includes a `currency-redundancy` guard (core) — if it flags `<id>`, drop the redundant
   `currency: '<reportingCurrency>'` literal (it's stamped automatically); keep only true per-value overrides.
+- **The scrub pass (§0), verified — not assumed.** Do not eyeball it: collect the distinctive values out of the
+  recording and grep the plugin for them. Read `summary.md` + the responses you actually transcribed, list every
+  amount, id, account/card number, transit, name, address, postal code and date you copied, and run one
+  alternation over the whole plugin — `main.ts` included, since a comment can quote a captured value:
+
+  ```bash
+  # Build the alternation from YOUR recording. Never write a real value into this file, or into any other
+  # document that gets committed — an example here is a leak exactly like a fixture is.
+  grep -nE "<account no>|<balance>|<payment amt>|<merchant>|<postal>" plugins/<id>/*.ts
+  ```
+
+  Expect zero hits. A hit is a leak even in a comment, even masked to four digits. Then re-read `sample.ts` and
+  ask of each numeric range whether it brackets the account you recorded; if it does, widen or shift it.
+
+  This is the last gate that runs. The repo's pre-commit hook prints `PII guard: no .pii-denylist` and passes
+  when the denylist is absent, so on a fresh checkout NOTHING mechanical is checking this but you.
 
 Then run the **`tidy-code`** skill over the new collectors before calling it done (inline single-use
 helpers, reuse `@butinapp/sdk/util`, match local idiom — behavior unchanged).
 
 Then open a PR for review. Report what you changed, the test results (verbatim if anything fails), and
 anything that still needs a live account to validate (real `collect()` paths, the capture/Magic Login flow).
-Privacy is non-negotiable: fixtures stay synthetic, no real cookies/tokens/vendor slugs in the tree,
-captured data lives under `~/butin/` only.
+Privacy is non-negotiable: fixtures carry the recording's shape and none of its values (§0, verified above), no
+real cookies/tokens/vendor slugs in the tree, captured data lives under `~/butin/` only.

@@ -33,8 +33,8 @@
         "titulaire": "0100000001",
         "nomTitulaire": "Tremblay",
         "prenomTitulaire": "Alex",
-        "adresse": " 1-100 rue Exemple Quebec QC  G1R 0A0",
-        "adresseFacturation": " 1-100 rue Exemple Quebec QC  G1R 0A0",
+        "adresse": " 1-100 rue Exemple Quebec QC  H0H 0H0",
+        "adresseFacturation": " 1-100 rue Exemple Quebec QC  H0H 0H0",
         "montant": 50.41,
         "solde": 0.0,
         "soldeEnSouffrance": 0.0,
@@ -106,7 +106,7 @@
       "titulaire": "0100000001",
       "contrat": {
         "noContrat": "0300000001",
-        "adresseConsommation": " 1-100 rue Exemple Quebec QC  G1R 0A0",
+        "adresseConsommation": " 1-100 rue Exemple Quebec QC  H0H 0H0",
         "idLieuConsommation": "0500000001",
         "noCompteContrat": "290000000001",
         "noInstallation": "0400000001",
@@ -371,7 +371,7 @@
       "portrait": {
         "noContrat": "0300000001",
         "adresseLieuConsoPartie1": " 1-100 rue Exemple",
-        "adresseLieuConsoPartie2": "Quebec QC  G1R 0A0",
+        "adresseLieuConsoPartie2": "Quebec QC  H0H 0H0",
         "tarifActuel": "D",
         "codeTarif": "D",
         "modeChauffage": "E",
