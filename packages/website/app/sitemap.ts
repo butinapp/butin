@@ -2,6 +2,10 @@ import type { MetadataRoute } from 'next'
 
 import { source } from '@/lib/source'
 
+// As in robots.ts: `output: 'export'` will not guess. `lastModified` below is therefore build time, which is the
+// honest answer for a site that only changes when it is rebuilt.
+export const dynamic = 'force-static'
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://butin.app'
 
