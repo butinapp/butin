@@ -2,7 +2,9 @@ import {
   applyBrowserIdentity,
   createMagicToolbar,
   createStatusBar,
+  detectSigninBlock,
   ensureClientHintsPreload,
+  launchChromeSignin,
   popupWebPreferences,
   promoteSessionCookies,
   STATUS_BAR_HEIGHT,
@@ -18,6 +20,9 @@ import { Recorder } from './recording/recorder.js'
 import { ensureRunDir, ensureSessionsRoot } from './recording/storage.js'
 import type { FilterConfig, RecorderLogLine } from './recording/types.js'
 import { recordingsRoot } from './store.js'
+
+/** The shared Butin partition a recording targets when the caller names none — the same session the app uses. */
+export const DEFAULT_PARTITION = 'persist:butin'
 
 /** Remembered debugging aids for the recorder window (toggled from the toolbar Debug panel). */
 export interface DebugSettings {
@@ -62,6 +67,13 @@ export interface CreateRecorderOptions {
    * browser-verification challenge. Cookies captured here never persist and never touch the app's session. Overrides `partition`.
    */
   isolated?: boolean
+  /**
+   * Butin profile id owning the sign-in, keying the persistent real-Chrome user-data-dir the "Sign in with
+   * Chrome" hand-off reuses. Same key the app uses, so a Google account signed in from Magic Login is already
+   * signed in here. An isolated run still uses its profile's key — the isolation empties the Electron cookie
+   * jar, not the identity.
+   */
+  chromeScopeId: string
   captureAll: boolean
   filters: FilterConfig
   autoRecord: boolean
@@ -128,7 +140,7 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
   // to a specific plugin's partition (persist:butin-<id>) when that isolation is needed. An isolated
   // recording instead uses an in-memory partition unique to this run (no `persist:` prefix → nothing is
   // read from or written to disk), so a browser-verification challenge sees an empty cookie jar with no stale clearance cookie.
-  const partition = opts.isolated ? `butin-iso-${runId}` : (opts.partition ?? 'persist:butin')
+  const partition = opts.isolated ? `butin-iso-${runId}` : (opts.partition ?? DEFAULT_PARTITION)
   const ses = session.fromPartition(partition)
 
   // Delegate identity to @butinapp/engine: sets the UA from the real Chromium version and (when
@@ -251,6 +263,33 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
         site.webContents.reload()
       }
     },
+    // The page refused the built-in browser (Google's "may not be secure"). Hand off to a real Chrome: the
+    // user signs in there, Butin gathers the cookies into this recording's partition, then the page reloads
+    // riding the seeded session — so the recording continues on an authenticated page.
+    onChromeFallback: () =>
+      void (async () => {
+        toolbar.setChromeFallback(false)
+        toolbar.setWarning('Opening Chrome. Sign in there, then close it and Butin brings the session home.')
+        recorder.log('info', 'chrome-signin', 'Opening a real Chrome for the blocked sign-in')
+
+        const res = await launchChromeSignin('https://accounts.google.com', {
+          partition,
+          scopeId: opts.chromeScopeId
+        })
+
+        if (site.webContents.isDestroyed()) {
+          return
+        }
+
+        if (res.ok) {
+          toolbar.setWarning(`Session brought home (${res.syncedCount ?? 0} cookies). Reloading.`)
+          recorder.log('info', 'chrome-signin', `Synced ${res.syncedCount ?? 0} cookies — reloading ${opts.startUrl}`)
+          await site.webContents.loadURL(opts.startUrl).catch(() => {})
+        } else {
+          toolbar.setWarning(res.error ?? 'Chrome sign-in did not complete.')
+          recorder.log('warn', 'chrome-signin', res.error ?? 'Chrome sign-in did not complete')
+        }
+      })(),
     onStop: () => window.close(),
     onTogglePause: () => {
       paused = !paused
@@ -349,6 +388,33 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
     toolbar.setNav(nav.canGoBack(), nav.canGoForward())
   }
 
+  // Every view that can hold a sign-in: the page plus any popup still alive.
+  const childContents: WebContents[] = []
+  const liveContents = (): WebContents[] => [site.webContents, ...childContents].filter((wc) => !wc.isDestroyed())
+
+  // A sign-in that refuses the embedded browser (Google's "may not be secure") reveals the toolbar's "Sign in
+  // with Chrome" hand-off; any other page hides it again. The block can land in EITHER the page OR a login
+  // popup — Google often runs the OAuth round-trip in a `window.open` and refuses it THERE while the page sits
+  // on the service's own login screen — so re-evaluate across every live view and offer the hand-off when ANY
+  // of them is blocked.
+  const refreshSigninBlock = (): void =>
+    void Promise.all(liveContents().map(detectSigninBlock)).then((results) => {
+      if (site.webContents.isDestroyed()) {
+        return
+      }
+
+      const blocked = results.some(Boolean)
+
+      toolbar.setChromeFallback(blocked)
+
+      if (blocked) {
+        toolbar.setWarning(
+          'This browser is blocked for sign-in. Click "Sign in with Chrome" to finish in your own Chrome.'
+        )
+        recorder.log('warn', 'signin-blocked', 'The page refused the built-in browser — offering the Chrome hand-off')
+      }
+    })
+
   // Capture popups / child windows. They open on the same partition (auth carries
   // over), get the browser identity, F12 handoff, and are attached to the same recorder so
   // their traffic lands in this run. Nested popups are wired recursively.
@@ -360,11 +426,14 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
     contents.on('did-create-window', (childWindow) => {
       const child = childWindow.webContents
 
+      childContents.push(child)
       recorder.attachTo(child, 'popup')
       bindDevToolsWithHandoff(child, recorder)
       logLoadFailures(child)
       bindFreezeRedirects(child)
       child.on('did-navigate', (_e, url) => pushUrl(_e, url))
+      child.on('did-finish-load', refreshSigninBlock)
+      child.on('did-navigate-in-page', refreshSigninBlock)
       wireChildWindows(child)
     })
   }
@@ -395,6 +464,8 @@ export async function createRecorderWindow(opts: CreateRecorderOptions): Promise
 
   site.webContents.on('did-navigate', pushUrl)
   site.webContents.on('did-navigate-in-page', pushUrl)
+  site.webContents.on('did-finish-load', refreshSigninBlock)
+  site.webContents.on('did-navigate-in-page', refreshSigninBlock)
   logLoadFailures(site.webContents)
   bindFreezeRedirects(site.webContents)
   wireChildWindows(site.webContents)

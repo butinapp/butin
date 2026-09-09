@@ -138,7 +138,7 @@ const HTML_SOURCE = `<!doctype html>
       body.record #recmeta { display: inline-flex }
       body.record #pause, body.record #stop { display: inline-block }
       body.record #autodevtools-row, body.record #browser-headers-row { display: inline-flex }
-      body.record #capture, body.record #chrome, body.record #autocapture-row,
+      body.record #capture, body.record #autocapture-row,
       body.record #footprint-section, body.record #history-section, body.record #clear,
       body.record #devtools { display: none }
       #all {
@@ -426,7 +426,8 @@ export interface MagicToolbar {
 export interface MagicToolbarOpts {
   // Capture-variant callbacks (Magic Login) — optional so the navigate/record variants can omit them.
   onForceCapture?: () => void
-  // Clicked when the page blocks the built-in browser — hands off to a real-Chrome sign-in. Capture flow only.
+  // Clicked when the page blocks the built-in browser — hands off to a real-Chrome sign-in. Available to any
+  // variant that signs in (capture and record); the button only appears once setChromeFallback(true) reveals it.
   onChromeFallback?: () => void
   onNavigate: (url: string) => void
   onBack: () => void

@@ -9,8 +9,8 @@ import { applyBrowserIdentity } from './identity.js'
 // Real-Chrome sign-in fallback: when a service refuses the embedded browser (Google's "this browser or app
 // may not be secure"), open the user's installed Chrome for a hand sign-in, then mirror its cookies into a
 // target Electron partition. Profile-agnostic — the caller passes the partition to sync INTO and a `scopeId`
-// that names the persistent Chrome user-data-dir (the app keys it by profile; the recorder by partition), so
-// this lives in @butinapp/engine and both the app and the recorder can use it.
+// that names the persistent Chrome user-data-dir, so this lives in @butinapp/engine and both the app and the
+// recorder can use it.
 
 const TAG = 'chrome-login'
 
@@ -141,8 +141,8 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 // The persistent Chrome user-data-dir for a given scope. Kept under Electron's userData, NOT under
 // ~/butin/profiles/<id>/ — the vault migration seals every file in a profile's tree, which would corrupt
 // Chrome's own cookie store. Outside the tree, it carries Chrome's own at-rest protection instead. `scopeId`
-// keys the dir (the app passes the active profile id; the recorder passes a partition-derived key) so each
-// scope keeps its own logged-in Chrome profile.
+// is the Butin profile id, so one signed-in Chrome profile is shared by every window that signs in for that
+// profile — the app's Magic Login and the recorder's capture window alike.
 export const chromeUserDataDir = (scopeId: string): string => join(app.getPath('userData'), 'chrome-login', scopeId)
 
 export const hasChromeSession = (scopeId: string): boolean => existsSync(chromeUserDataDir(scopeId))
