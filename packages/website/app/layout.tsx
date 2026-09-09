@@ -2,7 +2,11 @@ import './global.css'
 import { RootProvider } from 'fumadocs-ui/provider/next'
 import type { Metadata } from 'next'
 import { Inter, JetBrains_Mono, Space_Grotesk } from 'next/font/google'
-import type { ReactNode } from 'react'
+import { lazy, type ReactNode } from 'react'
+
+// Lazy so the Orama runtime and the downloaded index stay out of the initial bundle of a marketing page that may
+// never open search. Fumadocs preloads the dialog on hover/focus of the search trigger.
+const StaticSearchDialog = lazy(() => import('@/components/search-dialog'))
 
 const sans = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
 const display = Space_Grotesk({ subsets: ['latin'], variable: '--font-space', display: 'swap' })
@@ -37,7 +41,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
     >
       <body className="flex min-h-screen flex-col">
-        <RootProvider theme={{ defaultTheme: 'dark', enableSystem: false }}>{children}</RootProvider>
+        <RootProvider
+          theme={{ defaultTheme: 'dark', enableSystem: false }}
+          search={{ SearchDialog: StaticSearchDialog }}
+        >
+          {children}
+        </RootProvider>
       </body>
     </html>
   )
