@@ -82,3 +82,22 @@ export const formatDateTime = (value: string | number | Date, prefs: FormatPrefs
 // Largest unit whose magnitude is >= 1 (down to seconds), localized. Wording comes from the locale.
 export const formatRelative = (then: Date, now: Date, locale: string): string =>
   DateTime.fromJSDate(then).toRelative({ base: DateTime.fromJSDate(now), locale }) ?? ''
+
+// A byte count as a compact human size (B / KB / MB / GB / TB). Locale-independent: the unit suffixes are the
+// same everywhere Butin renders, and only the magnitude carries meaning.
+export const formatBytes = (n: number): string => {
+  if (n < 1024) {
+    return `${n} B`
+  }
+
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let value = n / 1024
+  let unit = 0
+
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024
+    unit += 1
+  }
+
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`
+}

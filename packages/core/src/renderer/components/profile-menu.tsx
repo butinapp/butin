@@ -1,12 +1,18 @@
 import { useLabels } from '@butinapp/ui/i18n'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@butinapp/ui/primitives'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import type { ProfileSummaryDto } from '../../shared/ipc.js'
 
-import { ManageProfiles, ProfileSwitcher, type ProfileEncryptionActions } from '@/chrome'
+import {
+  type ArchiveProgressRow,
+  ManageProfiles,
+  type ProfileArchiveActions,
+  type ProfileEncryptionActions,
+  ProfileSwitcher
+} from '@/chrome'
 
 // Top-bar profile control + the manage dialog. Owns all profile IPC (including per-profile encryption); feeds
 // the pure @butinapp/ui components. Switching triggers a main-side renderer reload, so there's no client-side
@@ -15,6 +21,11 @@ export const ProfileMenu = () => {
   const t = useLabels()
   const queryClient = useQueryClient()
   const [manageOpen, setManageOpen] = useState(false)
+  const [archiveProgress, setArchiveProgress] = useState<ArchiveProgressRow | undefined>()
+
+  // Pack/restore ticks arrive on their own channel (an archive job names a profile, not a plugin), and drive the
+  // progress bar inside whichever archive panel is open.
+  useEffect(() => window.butin.onArchiveProgress(setArchiveProgress), [])
   const { data: profiles = [] } = useQuery({ queryKey: ['profiles'], queryFn: () => window.butin.profiles.list() })
 
   const refresh = (next: ProfileSummaryDto[]): void => {
@@ -123,6 +134,41 @@ export const ProfileMenu = () => {
     }
   }
 
+  // Archive IPC. Each fallible call toasts its reason and resolves null, so the panel can show its own inline
+  // message without the error outliving the dialog.
+  const archiveActions: ProfileArchiveActions = {
+    onExport: async (id, secret) => {
+      const res = await window.butin.profiles.exportArchive(id, secret)
+
+      if (!res.ok) {
+        toast.error(res.error)
+
+        return null
+      }
+
+      return res.data
+    },
+    onPickArchive: () => window.butin.profiles.pickArchive(),
+    onInspect: async (path, secret) => {
+      const res = await window.butin.profiles.inspectArchive(path, secret)
+
+      return res.ok ? res.data : null
+    },
+    onImport: async (path, secret, name) => {
+      const res = await window.butin.profiles.importArchive(path, secret, name)
+
+      if (!res.ok) {
+        toast.error(res.error)
+
+        return null
+      }
+
+      invalidateProfiles()
+
+      return res.data
+    }
+  }
+
   return (
     <>
       <ProfileSwitcher
@@ -146,6 +192,9 @@ export const ProfileMenu = () => {
             onSwitch={(id) => void window.butin.profiles.switch(id)}
             onDelete={(id) => remove.mutate(id)}
             encryptionActions={encryptionActions}
+            archiveActions={archiveActions}
+            archiveProgress={archiveProgress}
+            onImported={(name) => toast.success(t.archiveImported(name))}
           />
         </DialogContent>
       </Dialog>

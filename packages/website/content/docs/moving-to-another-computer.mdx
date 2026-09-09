@@ -1,0 +1,73 @@
+---
+title: Moving to another computer
+description: Export a profile to one sealed file and import it on another machine, with nothing left behind.
+---
+
+A profile holds everything Butin has gathered for a set of accounts: the sessions you signed in with, every
+cached report, and every document it downloaded. **Export** packs all of it into one file you can carry to
+another computer on a USB key or through your own cloud storage; **Import** unpacks it there as a new profile.
+
+Both live in **Profiles** — the profile menu in the top bar, then **Manage profiles**.
+
+## Exporting
+
+Open the menu on a profile's card and choose **Export…**. Butin asks for a passphrase, then where to save the
+file (`<profile>-<date>.butin`).
+
+The passphrase is not optional, and it matters more than a normal one: the archive holds your live sessions in
+a form that works on any machine, so anyone who has both the file and the passphrase has your accounts. Pick
+something you don't use elsewhere.
+
+When the archive is written, Butin shows a **recovery code** once. It opens the archive if the passphrase is
+ever lost. Nothing else will — there is no reset, because there is no server holding a copy.
+
+A locked profile can't be exported — while it's locked, Butin doesn't hold the key its data is sealed with.
+Unlock it first.
+
+## Importing
+
+On the other computer, open **Manage profiles** and choose **Import profile…**, pick the file, and enter the
+passphrase (or the recovery code — either works).
+
+Butin then shows you what the archive holds — how many services and files, when it was packed — **before**
+writing anything, along with the name it will use. That name starts as the one it was exported under and you
+can change it right there, which is worth doing if you're importing onto a machine that already has a profile
+by that name.
+
+Confirm, and it lands as a **new profile**, sitting alongside whatever profiles that machine already has.
+Nothing you already have is changed, replaced, or merged. If the name is already taken, Butin adds
+_(imported)_ to it rather than leaving you with two profiles you can't tell apart.
+
+If anything goes wrong partway — a corrupted file, a full disk — the import is abandoned whole. There is no
+half-restored profile to clean up.
+
+## What comes across
+
+- **Your sessions**, so connected services keep working without signing in again.
+- **Every cached report** — the tabs look exactly as they did on the old machine, with their full history.
+- **Every downloaded document**, including files you'd pointed at a folder outside Butin. Those are brought
+  back into the profile's own `documents/` folder, since the old path may not exist on the new machine. Butin
+  tells you which services that applied to.
+- **Your settings** for each service, and your table layouts.
+
+A couple of things deliberately stay behind:
+
+- **The browser's own stored session.** Butin re-creates it from the session that travelled, the first time
+  you open a service's login window — there's nothing for you to do.
+- **Logs.** They describe a machine, not your data.
+
+## After importing
+
+The copy arrives **unencrypted**, even if the profile it came from was encrypted — encryption at rest is a
+choice each machine makes for itself. If you want it on this one, turn it on from the profile's menu under
+**Encryption**.
+
+If a service was signed in on the old machine but its stored secret couldn't be read there — usually because
+the profile had already been copied between machines by hand — Butin says so after the import, and you just
+sign in to that service again.
+
+## Keeping the archive
+
+An archive is a point-in-time copy, not a sync. Nothing on either machine changes after you make one, and the
+two profiles drift apart from then on. It also makes a perfectly good backup — keep it somewhere safe and it
+will restore the same way.

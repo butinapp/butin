@@ -1,6 +1,9 @@
-import { BrowserWindow } from 'electron'
+import { app, BrowserWindow, dialog, type IpcMainInvokeEvent } from 'electron'
 
+import { type ArchiveProgressDto, IPC_EVENT } from '../../shared/ipc.js'
 import { writeAppLock } from '../app-lock.js'
+import { exportProfileArchive } from '../archive/export-profile.js'
+import { importProfileArchive, inspectProfileArchive } from '../archive/import-profile.js'
 import { removeChromeSessionFor } from '../session/chrome-login.js'
 import {
   applyActiveProfile,
@@ -15,8 +18,22 @@ import {
   setActiveProfile
 } from '../store/profiles.js'
 
-import type { IpcHandlers } from './result.js'
+import { type IpcHandlers, safeResult } from './result.js'
 import { getMainWindow } from './window-ref.js'
+
+// A filename that reads as the profile it holds, with the date it was packed — an archive is a point-in-time
+// copy, and a folder of them is only navigable if each says when it was taken.
+const archiveFileName = (name: string): string =>
+  `${
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'profile'
+  }-${new Date().toISOString().slice(0, 10)}.butin`
+
+const sendArchiveProgress = (event: IpcMainInvokeEvent, p: ArchiveProgressDto): void => {
+  event.sender.send(IPC_EVENT.archiveProgress, p)
+}
 
 export const profileHandlers = {
   list: () => listProfiles(),
@@ -90,5 +107,54 @@ export const profileHandlers = {
     const res = movePluginToProfile(pluginId, getActiveProfileId(), toProfileId)
 
     return res.ok ? { ok: true as const, data: undefined } : { ok: false as const, error: res.error }
-  }
+  },
+
+  // Pack a profile for another computer. The save dialog comes first so a dismissed dialog costs nothing;
+  // the recovery code comes back for the one-time reveal.
+  exportArchive: (event, id: string, secret: string) =>
+    safeResult(async () => {
+      const profile = listProfiles().find((p) => p.id === id)
+
+      if (!profile) {
+        throw new Error('profile not found')
+      }
+
+      const picked = await dialog.showSaveDialog({
+        defaultPath: archiveFileName(profile.name),
+        filters: [{ name: 'Butin profile archive', extensions: ['butin'] }]
+      })
+
+      if (picked.canceled || !picked.filePath) {
+        return { canceled: true }
+      }
+
+      return await exportProfileArchive(id, picked.filePath, secret, app.getVersion(), (p) =>
+        sendArchiveProgress(event, { ...p, phase: 'packing' })
+      )
+    }),
+
+  // Native open dialog for an archive; null on cancel. Separate from inspect so the passphrase is only asked
+  // for once a file is actually chosen.
+  pickArchive: async () => {
+    const picked = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'Butin profile archive', extensions: ['butin'] }]
+    })
+
+    return picked.canceled ? null : (picked.filePaths[0] ?? null)
+  },
+
+  inspectArchive: (_event, path: string, secret: string) =>
+    safeResult(async () => await inspectProfileArchive(path, secret)),
+
+  // Restore as a NEW profile. The active profile is untouched, so there is no reload to do here — the
+  // renderer just refreshes its profile list.
+  importArchive: (event, path: string, secret: string, name: string) =>
+    safeResult(
+      async () =>
+        await importProfileArchive(path, secret, {
+          name,
+          onProgress: (p) => sendArchiveProgress(event, { ...p, phase: 'restoring' })
+        })
+    )
 } satisfies IpcHandlers['profiles']

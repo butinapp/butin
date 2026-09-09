@@ -11,6 +11,7 @@ import {
 import { downloadReportFiles, locateReportFiles } from '../export/documents.js'
 import { runExtractAll } from '../export/extract.js'
 import { pluginById } from '../plugin/plugins.js'
+import { trackProfileWrite } from '../store/store.js'
 
 import { type IpcHandlers, safeResult } from './result.js'
 
@@ -38,12 +39,8 @@ export const jobHandlers = {
 
       // A collect capability whose result has a downloadable table (a `files` view descriptor): download its
       // files through the shared pool, deriving items from the stored report (URL GET or the fetchFile hook).
-      const s = await downloadReportFiles(
-        pluginId,
-        capabilityId,
-        opts?.selection ?? 'all',
-        { force: opts?.force },
-        (p) =>
+      const s = await trackProfileWrite(() =>
+        downloadReportFiles(pluginId, capabilityId, opts?.selection ?? 'all', { force: opts?.force }, (p) =>
           sendJobProgress(event, {
             pluginId,
             capabilityId,
@@ -54,6 +51,7 @@ export const jobHandlers = {
             completed: p.completed,
             total: p.total
           })
+        )
       )
 
       return { kind: 'files', total: s.total, done: s.done, skipped: s.skipped, errors: s.errors }
@@ -63,15 +61,17 @@ export const jobHandlers = {
   // summary. Never let a run rejection cross IPC unhandled.
   runExtractAll: (event, pluginId: string): Promise<Result<ExtractOutcome>> =>
     safeResult(() =>
-      runExtractAll(pluginId, (p) =>
-        sendJobProgress(event, {
-          pluginId,
-          capabilityId: p.capabilityId,
-          phase: p.phase,
-          message: p.message,
-          completed: p.completed,
-          total: p.total
-        })
+      trackProfileWrite(() =>
+        runExtractAll(pluginId, (p) =>
+          sendJobProgress(event, {
+            pluginId,
+            capabilityId: p.capabilityId,
+            phase: p.phase,
+            message: p.message,
+            completed: p.completed,
+            total: p.total
+          })
+        )
       )
     )
 } satisfies IpcHandlers['jobs']

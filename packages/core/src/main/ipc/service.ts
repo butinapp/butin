@@ -14,7 +14,7 @@ import { getPluginEnabled, getPluginInstalled, getPluginOnboardedAt } from '../s
 import { clearCredentials, createCredentialStore } from '../store/credentials.js'
 import { clearPluginConfig, getPublicConfig, setPluginConfig } from '../store/plugin-config.js'
 import { buildServiceDetail, getFolderStats } from '../store/service-detail.js'
-import { clearReports, listReportTimes, newestReportTime, readCurrent } from '../store/store.js'
+import { clearReports, listReportTimes, newestReportTime, readCurrent, trackProfileWrite } from '../store/store.js'
 import { clearRequestCache } from '../transport/request-cache.js'
 
 import { failureCtx, type IpcHandlers, safeResult } from './result.js'
@@ -161,7 +161,7 @@ export const serviceHandlers = {
   runCapability: (_event, pluginId: string, capabilityId: string, force?: boolean): Promise<Result<RunReport>> =>
     safeResult(
       async () => {
-        const data = await runCapability(pluginId, capabilityId, { force })
+        const data = await trackProfileWrite(() => runCapability(pluginId, capabilityId, { force }))
         const report = await readCurrent(pluginId, capabilityId)
 
         return { report: data, lastRunAt: report?.lastRunAt }

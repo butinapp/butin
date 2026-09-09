@@ -28,7 +28,9 @@ export const setScryptParamsForTest = (params: ScryptParams): void => {
   defaultScryptParams = params
 }
 
-type Slot = { kdf: ScryptParams; salt: string; iv: string; tag: string; wrapped: string }
+// A key wrapped under one secret. Two of these (a password slot + a recovery slot) guard the same key, so
+// either secret opens it. Used by the profile vault and by the portable profile archive.
+export type Slot = { kdf: ScryptParams; salt: string; iv: string; tag: string; wrapped: string }
 
 export type VaultMigration = { phase: 'encrypt' | 'decrypt'; startedAt: string }
 
@@ -82,7 +84,7 @@ export const unsealBytes = (key: Buffer, data: Buffer): Buffer => {
 export const isSealed = (data: Buffer): boolean =>
   data.length >= MAGIC.length && data.subarray(0, MAGIC.length).equals(MAGIC)
 
-const wrapDek = (secret: string, dek: Buffer): Slot => {
+export const wrapDek = (secret: string, dek: Buffer): Slot => {
   const salt = randomBytes(SALT_LEN)
   const kdf = defaultScryptParams
   const iv = randomBytes(IV_LEN)
@@ -93,7 +95,7 @@ const wrapDek = (secret: string, dek: Buffer): Slot => {
 }
 
 // Unwrap a slot's DEK with a secret. null (not throw) on the wrong secret — the caller tries the next slot.
-const unwrapDek = (secret: string, slot: Slot): Buffer | null => {
+export const unwrapDek = (secret: string, slot: Slot): Buffer | null => {
   try {
     const decipher = createDecipheriv('aes-256-gcm', deriveKek(secret, fromB64(slot.salt), slot.kdf), fromB64(slot.iv))
 
@@ -109,7 +111,7 @@ const unwrapDek = (secret: string, slot: Slot): Buffer | null => {
 // ~100 bits. 256 % 32 === 0, so the byte→symbol map is unbiased.
 const RC_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
-const generateRecoveryCode = (): string => {
+export const generateRecoveryCode = (): string => {
   const bytes = randomBytes(20)
   let out = ''
 
@@ -121,7 +123,7 @@ const generateRecoveryCode = (): string => {
 }
 
 // Normalize a typed-back recovery key: case-fold + drop the grouping hyphens/spaces, so formatting is forgiven.
-const normalizeRecovery = (code: string): string => code.toUpperCase().replace(/[^A-Z0-9]/g, '')
+export const normalizeRecovery = (code: string): string => code.toUpperCase().replace(/[^A-Z0-9]/g, '')
 
 const readVaultFile = (dir: string): VaultFile => JSON.parse(readFileSync(vaultPath(dir), 'utf8')) as VaultFile
 

@@ -26,6 +26,13 @@ export { UnlockScreen } from './shell/unlock-screen.js'
 export type { UnlockProfile } from './shell/unlock-screen.js'
 export { ProfileEncryptionControls } from './shell/profile-encryption-controls.js'
 export type { ProfileEncryptionActions } from './shell/profile-encryption-controls.js'
+export { ProfileExportPanel, ProfileImportPanel } from './shell/profile-archive-controls.js'
+export type {
+  ArchiveExportRow,
+  ArchivePreviewRow,
+  ArchiveProgressRow,
+  ProfileArchiveActions
+} from './shell/profile-archive-controls.js'
 
 // Service roster + onboarding + per-service panels
 export { ProvidersPage } from './providers.js'

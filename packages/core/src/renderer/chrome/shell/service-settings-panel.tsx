@@ -1,6 +1,6 @@
 import { deriveDailySpend, type DailyPoint, type Ledger, type LedgerRow, type StoredColumn } from '@butinapp/shapes'
 import { type VerifyResult } from '@butinapp/ui'
-import { formatRelative, useLabels } from '@butinapp/ui/i18n'
+import { formatBytes, formatRelative, useLabels } from '@butinapp/ui/i18n'
 import { Button, Card, CardContent, cn, Switch, Tooltip, TooltipContent, TooltipTrigger } from '@butinapp/ui/primitives'
 import { ConnDot, connLabel, type ConnState } from '@butinapp/ui/shell'
 import {
@@ -458,24 +458,6 @@ const hostOf = (url: string): string => {
   } catch {
     return url
   }
-}
-
-// Convert a byte count to a compact human size (B / KB / MB / GB / TB).
-const formatBytes = (n: number): string => {
-  if (n < 1024) {
-    return `${n} B`
-  }
-
-  const units = ['KB', 'MB', 'GB', 'TB']
-  let value = n / 1024
-  let unit = 0
-
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024
-    unit += 1
-  }
-
-  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`
 }
 
 // One at-a-glance tile. `pending` (the async folder-stat tiles) shows a spinner + shimmer until the value
