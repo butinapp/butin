@@ -61,6 +61,13 @@ URL. Both jobs are in [`.github/workflows/website.yml`](../../.github/workflows/
   content-type from the extension, so the card would ship as `application/octet-stream` and unfurls would
   quietly render nothing. `pnpm og` regenerates `app/opengraph-image.png`. The same reasoning is why the
   search index is `/static.json` and not `/api/search`.
+- **Prefetching is off, deliberately** — `components/site-link.tsx`, which the whole site imports instead of
+  `next/link`. Next 16 prefetches a per-*segment* payload (`/__next.<segment>/…`), and the export only writes
+  that tree under each already-resolved page, so hovering any nav link from `/` fetched
+  `/__next.docs/$oc$slug.txt`, took a 307 to the percent-encoded form, and 404'd — every hover, on every page.
+  `experimental.clientSegmentCache: false` would target it but was removed in 16.2.9. Clicking still fetches
+  the per-route payload (`docs.txt`) that the export *does* write, so navigation is unaffected. Revisit on a
+  Next bump.
 - **Hostnames.** `butin.app` + `www.butin.app` are declared in `wrangler.jsonc` as Worker **custom domains**,
   so Cloudflare owns those DNS records. **Never add an A/AAAA record for either** — an existing record makes
   the attachment fail with `100117`. `www` and `butin.io` both 301 to the apex via zone rulesets declared in
