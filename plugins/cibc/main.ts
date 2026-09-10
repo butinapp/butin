@@ -373,7 +373,7 @@ export const buildCibcTransactions = (rows: RawTransaction[]): CapabilityResult 
           ],
           rows: flow,
           key: ['month', 'direction'],
-          rollup: true
+          retention: 'rollup'
         }).timeseries({ x: 'month', y: 'amount', stackBy: 'direction', granularity: 'monthly', title: 'Monthly flow' }),
       table<TransactionRow>({
         id: 'transactions',

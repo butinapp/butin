@@ -10,6 +10,7 @@ export type {
   Accrual,
   ResetPeriod,
   Column,
+  Retention,
   TableDataset,
   RecordDataset,
   Dataset

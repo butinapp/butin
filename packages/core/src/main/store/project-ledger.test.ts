@@ -314,3 +314,57 @@ test('rowDailyOf returns undefined without a keyed cumulative column', () => {
   expect(rowDailyOf(l)).toBeUndefined()
   expect(rowDailyOf({ schemaVersion: 1, datasets: [], series: [] })).toBeUndefined()
 })
+
+// A roster log: alice was in the latest fetch, bob was last seen months ago.
+const rosterLog = (over: Partial<DatasetLog> = {}): DatasetLog => ({
+  id: 'members',
+  key: 'id',
+  retention: 'snapshot',
+  lastFetchedAt: '2026-09-09T00:00:00Z',
+  columns: [
+    { key: 'id', role: 'identifier' },
+    { key: 'role', role: 'category' }
+  ],
+  rows: [
+    {
+      id: 'alice',
+      firstSeen: '2026-07-01T00:00:00Z',
+      seenTo: '2026-09-09T00:00:00Z',
+      versions: [{ from: '2026-07-01T00:00:00Z', data: { id: 'alice', role: 'admin' } }]
+    },
+    {
+      id: 'bob',
+      firstSeen: '2026-07-01T00:00:00Z',
+      seenTo: '2026-07-01T00:00:00Z',
+      versions: [{ from: '2026-07-01T00:00:00Z', data: { id: 'bob', role: 'admin' } }]
+    }
+  ],
+  ...over
+})
+const ledgerOf = (log: DatasetLog): Ledger => ({ schemaVersion: 1, datasets: [log], series: [] })
+const idsOf = (l: Ledger, id: string): unknown[] =>
+  projectCurrent(l)
+    .get(id)!
+    .rows.map((r) => r.id)
+
+test('a snapshot omits a row the latest fetch no longer carried', () => {
+  expect(idsOf(ledgerOf(rosterLog()), 'members')).toEqual(['alice'])
+})
+
+test('a snapshot with no fetch clock falls back to its newest seenTo', () => {
+  // Ledgers written before the fetch clock existed carry no lastFetchedAt; the newest seenTo IS the last fetch.
+  expect(idsOf(ledgerOf(rosterLog({ lastFetchedAt: undefined })), 'members')).toEqual(['alice'])
+})
+
+test('a departed row returning to the roster is active again', () => {
+  const back = rosterLog()
+
+  back.rows[1]!.seenTo = '2026-09-09T00:00:00Z'
+
+  expect(idsOf(ledgerOf(back), 'members')).toEqual(['alice', 'bob'])
+})
+
+test('an append log still projects every row ever seen', () => {
+  // The retention default: history outliving a provider's rolling window is the whole point of the ledger.
+  expect(idsOf(ledgerOf(rosterLog({ retention: undefined })), 'members')).toEqual(['alice', 'bob'])
+})

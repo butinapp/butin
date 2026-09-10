@@ -654,7 +654,9 @@ export const buildChatgptMembersResult = (members: WorkspaceMember[]): Capabilit
       { key: 'seatType', label: 'Seat', role: 'category' }
     ],
     rows: sorted.map((m) => ({ ...m, name: m.name ?? '(unknown)' })),
-    key: 'userId'
+    key: 'userId',
+    // A roster is the complete current-state set: a user the service stops returning has lost access.
+    retention: 'snapshot'
   })
 
   return capabilityResult({ sections: [roster.table({ title: 'Members' })] })

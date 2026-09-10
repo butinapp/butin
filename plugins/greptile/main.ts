@@ -837,7 +837,9 @@ export const buildGreptileMembersResult = (members: GreptileMember[]): Capabilit
           { key: 'status', label: 'Status', role: 'status' }
         ],
         rows: members,
-        key: 'email'
+        key: 'email',
+        // A roster is the complete current-state set: a user the service stops returning has lost access.
+        retention: 'snapshot'
       }).table({ title: 'Members' })
     ]
   })

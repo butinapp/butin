@@ -18,6 +18,7 @@ import {
   renameProfile,
   setActiveProfile
 } from '../store/profiles.js'
+import { repairSnapshotCurrents } from '../store/repair-snapshots.js'
 
 import { type IpcHandlers, safeResult } from './result.js'
 import { getMainWindow } from './window-ref.js'
@@ -83,6 +84,8 @@ export const profileHandlers = {
     applyActiveProfile(id)
     // Keep the recorder's heartbeat in sync — the held-open profile just changed.
     writeAppLock(id)
+    // The data root just repointed: repair the profile we switched TO, as launch does for the initial one.
+    void repairSnapshotCurrents()
 
     for (const w of BrowserWindow.getAllWindows()) {
       if (w !== mainWindow) {

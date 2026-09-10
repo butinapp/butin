@@ -1,3 +1,4 @@
+import type { Retention } from '@butinapp/sdk/data'
 import type { Ledger, StoredDataset, StoredSummary } from '@butinapp/shapes'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -88,12 +89,12 @@ test('a row missing its key value is skipped (not persisted)', () => {
   expect(led.datasets[0]!.rows).toEqual([])
 })
 
-// A monthly rollup dataset keyed by 'month' (a sortable bucket), with the re-derived-rollup flag.
-const monthlyDs = (rows: Record<string, unknown>[], rollup = true): StoredDataset => ({
+// A monthly bucket series keyed by 'month' (a sortable key), re-derived on each fetch.
+const monthlyDs = (rows: Record<string, unknown>[], retention?: Retention): StoredDataset => ({
   id: 'monthly',
   shape: 'table',
   key: 'month',
-  rollup,
+  retention,
   columns: [
     { key: 'month', role: 'timestamp' },
     { key: 'amount', role: 'money' }
@@ -107,11 +108,14 @@ test('rollup heals a re-dated bucket: an above-range orphan is dropped, deep his
     undefined,
     obs(
       [
-        monthlyDs([
-          { month: '2026-01', amount: 10 },
-          { month: '2026-05', amount: 50 },
-          { month: '2026-07', amount: 70 }
-        ])
+        monthlyDs(
+          [
+            { month: '2026-01', amount: 10 },
+            { month: '2026-05', amount: 50 },
+            { month: '2026-07', amount: 70 }
+          ],
+          'rollup'
+        )
       ],
       [],
       '2026-07-01T00:00:00Z'
@@ -122,10 +126,13 @@ test('rollup heals a re-dated bucket: an above-range orphan is dropped, deep his
     a,
     obs(
       [
-        monthlyDs([
-          { month: '2026-05', amount: 55 },
-          { month: '2026-06', amount: 60 }
-        ])
+        monthlyDs(
+          [
+            { month: '2026-05', amount: 55 },
+            { month: '2026-06', amount: 60 }
+          ],
+          'rollup'
+        )
       ],
       [],
       '2026-07-02T00:00:00Z'
@@ -144,22 +151,16 @@ test('without rollup a keyed table is an append log — the stale bucket is reta
     undefined,
     obs(
       [
-        monthlyDs(
-          [
-            { month: '2026-05', amount: 50 },
-            { month: '2026-07', amount: 70 }
-          ],
-          false
-        )
+        monthlyDs([
+          { month: '2026-05', amount: 50 },
+          { month: '2026-07', amount: 70 }
+        ])
       ],
       [],
       '2026-07-01T00:00:00Z'
     )
   )
-  const b = appendObservation(
-    a,
-    obs([monthlyDs([{ month: '2026-06', amount: 60 }], false)], [], '2026-07-02T00:00:00Z')
-  )
+  const b = appendObservation(a, obs([monthlyDs([{ month: '2026-06', amount: 60 }])], [], '2026-07-02T00:00:00Z'))
 
   expect(b.datasets[0]!.rows.map((r) => r.id).sort()).toEqual(['2026-05', '2026-06', '2026-07'])
 })
@@ -169,16 +170,19 @@ test('a rollup fetch with no rows retains everything (a transient empty fetch ne
     undefined,
     obs(
       [
-        monthlyDs([
-          { month: '2026-05', amount: 50 },
-          { month: '2026-06', amount: 60 }
-        ])
+        monthlyDs(
+          [
+            { month: '2026-05', amount: 50 },
+            { month: '2026-06', amount: 60 }
+          ],
+          'rollup'
+        )
       ],
       [],
       '2026-07-01T00:00:00Z'
     )
   )
-  const b = appendObservation(a, obs([monthlyDs([])], [], '2026-07-02T00:00:00Z'))
+  const b = appendObservation(a, obs([monthlyDs([], 'rollup')], [], '2026-07-02T00:00:00Z'))
 
   expect(b.datasets[0]!.rows.map((r) => r.id).sort()).toEqual(['2026-05', '2026-06'])
 })
@@ -287,4 +291,62 @@ afterAll(() => {
       rmSync(dir, { recursive: true, force: true })
     }
   }
+})
+
+// A roster: a snapshot table keyed by member id, where a fetch is the COMPLETE set.
+const rosterDs = (rows: Record<string, unknown>[]): StoredDataset => ({
+  id: 'members',
+  shape: 'table',
+  key: 'id',
+  retention: 'snapshot',
+  columns: [
+    { key: 'id', role: 'identifier' },
+    { key: 'role', role: 'category' }
+  ],
+  rows
+})
+
+test('a snapshot log records the fetch clock its rows are judged against', () => {
+  const a = appendObservation(
+    undefined,
+    obs(
+      [
+        rosterDs([
+          { id: 'alice', role: 'admin' },
+          { id: 'bob', role: 'admin' }
+        ])
+      ],
+      [],
+      '2026-07-01T00:00:00Z'
+    )
+  )
+  // Bob has left: the roster no longer carries him.
+  const b = appendObservation(a, obs([rosterDs([{ id: 'alice', role: 'admin' }])], [], '2026-09-09T00:00:00Z'))
+  const log = b.datasets[0]!
+
+  expect(log.retention).toBe('snapshot')
+  expect(log.lastFetchedAt).toBe('2026-09-09T00:00:00Z')
+  // Nothing is deleted — Bob is retained with the date he was last actually seen.
+  expect(log.rows.find((r) => r.id === 'bob')!.seenTo).toBe('2026-07-01T00:00:00Z')
+})
+
+test('an empty snapshot fetch retains rows and does not advance the fetch clock', () => {
+  const a = appendObservation(
+    undefined,
+    obs(
+      [
+        rosterDs([
+          { id: 'alice', role: 'admin' },
+          { id: 'bob', role: 'admin' }
+        ])
+      ],
+      [],
+      '2026-07-01T00:00:00Z'
+    )
+  )
+  // A transient failure returns an empty roster — it must not depart the whole company.
+  const b = appendObservation(a, obs([rosterDs([])], [], '2026-09-09T00:00:00Z'))
+
+  expect(b.datasets[0]!.lastFetchedAt).toBe('2026-07-01T00:00:00Z')
+  expect(b.datasets[0]!.rows).toHaveLength(2)
 })

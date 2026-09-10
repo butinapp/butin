@@ -7,6 +7,7 @@ import {
   type DailySource,
   type DatasetLog,
   type Ledger,
+  type LedgerRow,
   type PresentationManifest,
   type StoredDataset,
   type StoredSummary
@@ -16,12 +17,26 @@ import {
 const newest = (versions: DatasetLog['rows'][number]['versions']): Record<string, unknown> =>
   versions[versions.length - 1]!.data
 
-// Latest projection per dataset: each row's newest version. Keyed by dataset id.
+// The fetch a snapshot log's rows are judged against. Ledgers written before the clock was recorded carry no
+// lastFetchedAt; there the newest seenTo IS the last fetch, since some row appeared in it.
+const fetchClock = (d: DatasetLog): string =>
+  d.lastFetchedAt ?? d.rows.reduce((newest, r) => (r.seenTo > newest ? r.seenTo : newest), '')
+
+// A snapshot fetch is the complete set, so a row missing from the last one has departed — it stays in the log
+// (with the date it was last seen) but is no longer current. An append log has no such notion: every key it
+// ever saw is still current, which is what keeps history alive past a provider's rolling window.
+const isCurrent = (d: DatasetLog, row: LedgerRow, clock: string): boolean =>
+  d.retention !== 'snapshot' || row.seenTo >= clock
+
+// Latest projection per dataset: each row's newest version, minus anything departed. Keyed by dataset id.
 export const projectCurrent = (led: Ledger): Map<string, { id: string; rows: Record<string, unknown>[] }> => {
   const out = new Map<string, { id: string; rows: Record<string, unknown>[] }>()
 
   for (const d of led.datasets) {
-    out.set(d.id, { id: d.id, rows: d.rows.map((r) => ({ ...newest(r.versions) })) })
+    const clock = fetchClock(d)
+    const rows = d.rows.filter((r) => isCurrent(d, r, clock)).map((r) => ({ ...newest(r.versions) }))
+
+    out.set(d.id, { id: d.id, rows })
   }
 
   return out
