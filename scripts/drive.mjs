@@ -40,7 +40,9 @@ const userDataDir = process.env.BUTIN_USERDATA ?? (await mkdtemp(join(tmpdir(), 
 const shotsDir = await mkdtemp(join(tmpdir(), 'butin-shots-'))
 
 const app = await electron.launch({
-  args: [coreDir, `--user-data-dir=${userDataDir}`],
+  // Chromium's setuid sandbox wants a root-owned helper binary that an unpacked Electron on a CI runner does not
+  // have, and the launch dies before any window exists. Off only under CI — this app drives the real web locally.
+  args: [coreDir, `--user-data-dir=${userDataDir}`, ...(process.env.CI ? ['--no-sandbox'] : [])],
   env: { ...process.env, BUTIN_HOME: butinHome }
 })
 

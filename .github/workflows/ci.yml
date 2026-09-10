@@ -46,6 +46,14 @@ jobs:
           restore-keys: ${{ runner.os }}-turbo-build-
       - run: pnpm build
 
+      # A green build proves the bundle was emitted, not that it runs. Launching it and waiting for a window is
+      # what catches a toolchain change that compiles clean and yields an app that never opens. Electron needs a
+      # display server, hence xvfb; the runner image usually ships it, so only install when it is absent.
+      - name: Smoke — launch the built app
+        run: |
+          command -v xvfb-run > /dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq xvfb; }
+          xvfb-run -a pnpm drive
+
   test:
     name: test (${{ matrix.shard.name }})
     runs-on: ubuntu-latest

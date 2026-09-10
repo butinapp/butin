@@ -28,6 +28,14 @@ updates:
     open-pull-requests-limit: 5
     # Routine bumps arrive batched, but a major is left OUT of both groups so it lands as its own PR — a breaking
     # change read on its own, never buried in a batch that otherwise merges on a glance.
+    # Dependabot resolves versions, not peer ranges, so it will keep proposing a Vite major that electron-vite
+    # does not accept — electron-vite 5 pins `vite: ^5 || ^6 || ^7`, and Vite 8 swaps rollup for rolldown, which
+    # breaks the config translation and yields an app that builds clean and never opens a window. Lift this once
+    # electron-vite 6 (`^6 || ^7 || ^8`) is out of beta.
+    ignore:
+      - dependency-name: vite
+        update-types:
+          - version-update:semver-major
     groups:
       prod:
         dependency-type: production
