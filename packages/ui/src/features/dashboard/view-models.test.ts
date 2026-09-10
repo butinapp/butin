@@ -1,5 +1,7 @@
-import { rawRecord, rawTable, type CapabilityResult } from '@butinapp/sdk/data'
+import type { CapabilityResult } from '@butinapp/sdk/data'
 import { expect, test } from 'vitest'
+
+import { recordFixture, tableFixture } from '../../test/datasets.js'
 
 import {
   CATEGORICAL_HUES,
@@ -19,7 +21,7 @@ import {
   type ChartPoint
 } from './view-models.js'
 
-const account = rawRecord(
+const account = recordFixture(
   'account',
   [
     { key: 'currentMtd', label: 'This month', role: 'money', currency: 'USD' },
@@ -28,7 +30,7 @@ const account = rawRecord(
   { currentMtd: 42.1, plan: 'Pro' }
 )
 
-const invoices = rawTable(
+const invoices = tableFixture(
   'invoices',
   [
     { key: 'date', label: 'Date', role: 'timestamp' },
@@ -68,8 +70,8 @@ test('defaultTableSort: first timestamp column, descending; undefined when none'
 test('findCumulativeColumn locates the first keyed table with a cumulative column', () => {
   const result: CapabilityResult = {
     datasets: [
-      rawTable('plain', [{ key: 'x', role: 'count' }], []),
-      rawTable(
+      tableFixture('plain', [{ key: 'x', role: 'count' }], []),
+      tableFixture(
         'members',
         [
           { key: 'email', role: 'label' },
@@ -86,14 +88,16 @@ test('findCumulativeColumn locates the first keyed table with a cumulative colum
 
 test('findCumulativeColumn ignores a cumulative column on an unkeyed table, and returns undefined when none', () => {
   const unkeyed: CapabilityResult = {
-    datasets: [rawTable('t', [{ key: 'spend', role: 'money', currency: 'USD', accrual: 'cumulative' }], [])]
+    datasets: [tableFixture('t', [{ key: 'spend', role: 'money', currency: 'USD', accrual: 'cumulative' }], [])]
   }
 
   expect(findCumulativeColumn(unkeyed)).toBeUndefined()
-  expect(findCumulativeColumn({ datasets: [rawTable('t', [{ key: 'x', role: 'count' }], [], 'x')] })).toBeUndefined()
+  expect(
+    findCumulativeColumn({ datasets: [tableFixture('t', [{ key: 'x', role: 'count' }], [], 'x')] })
+  ).toBeUndefined()
 })
 
-const acct = rawRecord(
+const acct = recordFixture(
   'account',
   [
     { key: 'used', label: 'Usage limit', role: 'money', currency: 'USD' },
@@ -140,14 +144,14 @@ test('statCards: undefined fields renders every record field as a bare card', ()
 })
 
 test('statCards: a non-numeric value or max=0 yields no progress bar', () => {
-  const ds = rawRecord('r', [{ key: 'plan', label: 'Plan', role: 'label' }], { plan: 'Pro' })
+  const ds = recordFixture('r', [{ key: 'plan', label: 'Plan', role: 'label' }], { plan: 'Pro' })
 
   expect(statCards(ds, [{ key: 'plan', max: 10 }], 'en-US')[0]!.progress).toBeUndefined()
   expect(statCards(acct, [{ key: 'seats', max: 0 }], 'en-US')[0]!.progress).toBeUndefined()
 })
 
 test('stackedSeries pivots long rows into per-category series aligned to a sorted x axis', () => {
-  const ds = rawTable(
+  const ds = tableFixture(
     'm',
     [
       { key: 'month', role: 'timestamp' },
@@ -173,7 +177,7 @@ test('stackedSeries pivots long rows into per-category series aligned to a sorte
 })
 
 test('stackedSeries sums duplicate (x, category) cells and fills a missing cell with 0', () => {
-  const ds = rawTable(
+  const ds = tableFixture(
     'm',
     [
       { key: 'd', role: 'timestamp' },
@@ -312,7 +316,7 @@ test('tableModel honors a columns filter, in the given order', () => {
   ])
 })
 
-const monthly = rawTable(
+const monthly = tableFixture(
   'monthly',
   [
     { key: 'month', label: 'Month', role: 'timestamp' },
@@ -339,7 +343,7 @@ test('seriesData extends a month axis to nowMonth when later than the last row',
 })
 
 test('seriesData passes non-month x values through in row order', () => {
-  const daily = rawTable(
+  const daily = tableFixture(
     'daily',
     [
       { key: 'day', label: 'Day', role: 'timestamp' },
@@ -377,7 +381,7 @@ test('categoricalTone is stable per value and cycles the hues', () => {
 })
 
 test('seriesData on an empty table is empty', () => {
-  const empty = rawTable(
+  const empty = tableFixture(
     'm',
     [
       { key: 'month', label: 'M', role: 'timestamp' },

@@ -133,9 +133,6 @@ export interface RawUnleashTokensResponse {
 
 // ── billing ─────────────────────────────────────────────────────────────────────────
 
-// Unleash's amounts arrive pre-formatted ("US $464.00", "US $3,232.00") → read the dollar value out.
-export { parseDollarAmount }
-
 // Recurring monthly subscription fee (USD): base + the per-seat rate applied to seats beyond the minSeats
 // included in the base. null when the Pro prices or seat count aren't available (never guess a figure).
 export const computeRecurringFee = (

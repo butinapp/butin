@@ -25,6 +25,7 @@
 
 import { type BrowserContext, type BrowserPage, type CollectContext, type DocumentBytes } from '@butinapp/sdk'
 import { capabilityResult, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { isPdfBytes, squish } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 const LEGACY_ORIGIN = 'https://accesd.mouv.desjardins.com'
@@ -194,11 +195,6 @@ export const buildConfirmBody = (form: SelectionForm, ref: DebitStatementRef): s
 export const parsePdfPath = (html: string): string | null =>
   html.match(/\/coreleADReleve\/secondaire\/ObtenirReleveMensuelPDF\.do\?[^'"\s\\]+/)?.[0] ?? null
 
-// True if the bytes are a PDF (the `%PDF` magic). The confirm POST may hand back the statement PDF
-// directly rather than an HTML redirect, so we sniff before trying to parse the body as HTML.
-export const isPdfBytes = (bytes: Uint8Array): boolean =>
-  bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46
-
 // ObtenirReleveMensuelPDF.do hands the statement back wrapped in a Java-serialized byte[] (stream header
 // `AC ED 00 05 … [B`), not a raw application/pdf. The real document sits inside, from its `%PDF` magic to
 // the final `%%EOF`. Slice it out; if the bytes are already a raw PDF (`%PDF` at offset 0) this is a no-op.
@@ -231,13 +227,12 @@ export const describeEmptySelection = (html: string): Record<string, unknown> =>
     html.match(/<meta[^>]*http-equiv=["']refresh["'][^>]*url=([^"'>]+)/i)?.[1] ??
     html.match(/<form[^>]*action=["']([^"']+)["']/i)?.[1] ??
     null,
-  snippet: html
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 220)
+  snippet: squish(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+  ).slice(0, 220)
 })
 
 // --- the documents port (live replay) ---

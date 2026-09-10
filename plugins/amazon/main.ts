@@ -1,7 +1,7 @@
 import { type CollectContext, defineCapability, definePlugin } from '@butinapp/sdk'
 import { type CapabilityResult, capabilityResult, table } from '@butinapp/sdk/data'
 import { billing } from '@butinapp/sdk/presets'
-import { currentMonthKey, parseDollarAmount, round2 } from '@butinapp/sdk/util'
+import { currentMonthKey, isPdfBytes, parseDollarAmount, round2, squish } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import { sampleAmazonBilling } from './sample.js'
@@ -91,8 +91,8 @@ export const parseOrders = (html: string): AmazonOrder[] => {
     // Each header field is a caps label + its value, in the same `.a-column`; the value is the column text with
     // the label prefix removed.
     $c.find('.a-text-caps').each((_, caps) => {
-      const label = $(caps).text().replace(/\s+/g, ' ').trim()
-      const column = $(caps).closest('.a-column').text().replace(/\s+/g, ' ').trim()
+      const label = squish($(caps).text())
+      const column = squish($(caps).closest('.a-column').text())
       const value = column.startsWith(label) ? column.slice(label.length).trim() : column
 
       if (/^(Order placed|Subscription charged on)$/i.test(label)) {
@@ -110,7 +110,7 @@ export const parseOrders = (html: string): AmazonOrder[] => {
     // Each item's product title links to its `/dp/<ASIN>` detail page; the title text IS the line item.
     const items = $c
       .find('.yohtmlc-product-title')
-      .map((_, t) => $(t).text().replace(/\s+/g, ' ').trim())
+      .map((_, t) => squish($(t).text()))
       .get()
       .filter(Boolean)
 
@@ -371,8 +371,8 @@ const fetchAmazonInvoicePdf = async (ctx: CollectContext, row: Record<string, un
     headers: { Accept: 'application/pdf,*/*' }
   })
   const bytes = new Uint8Array(res.data)
-  // `%PDF` magic bytes — a non-PDF body (an error/sign-in page) must fail loudly, not save a corrupt file.
-  const isPdf = bytes.length > 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46
+  // A non-PDF body (an error/sign-in page) must fail loudly, not save a corrupt file.
+  const isPdf = isPdfBytes(bytes)
 
   ctx.log(`invoice ${orderId}: downloaded ${bytes.length}b (pdf=${isPdf})`, { orderId, bytes: bytes.length, isPdf })
 

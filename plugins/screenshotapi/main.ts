@@ -2,7 +2,7 @@ import { defineCapability, definePlugin, type CollectContext, type DocumentBytes
 import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { fetchStripeHostedInvoicePdf } from '@butinapp/sdk/integrations'
 import { billing, usage, type UsageMetricInput } from '@butinapp/sdk/presets'
-import { centsToMajor, epochSecDay, isoDay, round2 } from '@butinapp/sdk/util'
+import { centsToMajor, epochSecDay, isoDay, normalizeCurrency, round2 } from '@butinapp/sdk/util'
 
 import { sampleScreenshotapiBilling, sampleScreenshotapiUsage } from './sample.js'
 
@@ -218,7 +218,7 @@ export const buildScreenshotapiBilling = (
     subscription,
     invoices,
     totalBilled,
-    currency: (sub.currency ?? 'usd').toUpperCase()
+    currency: normalizeCurrency(sub.currency)
   }
 }
 

@@ -17,7 +17,7 @@ import {
   type MembersInput,
   type UsageMetricInput
 } from '@butinapp/sdk/presets'
-import { byDayAsc, byDayDesc, currentMonthKey, epochMsDay, isoDay, round2 } from '@butinapp/sdk/util'
+import { byDayAsc, byDayDesc, epochMsDay, fullName, isoDay, normalizeCurrency, round2 } from '@butinapp/sdk/util'
 
 import { sampleHubspotBilling, sampleHubspotMembers, sampleHubspotUsage } from './sample.js'
 
@@ -245,10 +245,8 @@ export const buildHubspotBilling = (
     }))
     .sort(byDayDesc)
 
-  const currency = (invoiceList?.transactions?.[0]?.currencyCode ?? 'USD').toUpperCase()
-
-  const ym = currentMonthKey()
-  const currentMtd = round2(invoices.filter((i) => i.date?.startsWith(ym)).reduce((sum, i) => sum + i.amount, 0))
+  const currency = normalizeCurrency(invoiceList?.transactions?.[0]?.currencyCode)
+  const currentMtd = billing.invoicedMtd(invoices)
 
   const up = upcoming?.upcomingPayments?.[0]
   const upcomingPayment: HubspotUpcomingPayment | null = up
@@ -548,7 +546,7 @@ export const buildHubspotMembers = (
   raw: RawHubspotUsersResponse | RawHubspotUser[] | null | undefined
 ): MembersInput => ({
   members: usersOf(raw).map((u, i) => {
-    const name = [u.firstName, u.lastName].filter(Boolean).join(' ').trim()
+    const name = fullName(u.firstName, u.lastName)
 
     return {
       id: u.id != null ? String(u.id) : String(i),

@@ -7,7 +7,7 @@ import {
   type StripePortalSession
 } from '@butinapp/sdk/integrations'
 import { billing, members, usage, type MembersInput } from '@butinapp/sdk/presets'
-import { centsToMajor, epochSecDay, monthMinus, round2 } from '@butinapp/sdk/util'
+import { centsToMajor, epochSecDay, monthMinus, normalizeCurrency, round2 } from '@butinapp/sdk/util'
 
 import { sampleDepotBilling, sampleDepotSettings, sampleDepotUsage } from './sample.js'
 
@@ -309,7 +309,7 @@ export const buildBillingReport = (
     status: inv.status ?? 'unknown',
     amount: centsToMajor(inv.total ?? inv.amount_due),
     amountPaid: centsToMajor(inv.amount_paid),
-    currency: (inv.currency ?? 'usd').toUpperCase(),
+    currency: normalizeCurrency(inv.currency),
     hostedUrl: inv.hosted_invoice_url,
     pdfUrl: inv.invoice_pdf || undefined,
     lines: (inv.lines?.data ?? []).map((l) => ({

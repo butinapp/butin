@@ -1,7 +1,7 @@
 import { type CollectContext } from '@butinapp/sdk'
 import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing } from '@butinapp/sdk/presets'
-import { byDayDesc, currentMonthKey, isoDay, parseDollarAmount, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, currentMonthKey, isoDay, parseDollarAmount, round2, squish } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import { type Dashboard, GITHUB_ORIGIN, makeDashboard } from './dashboard.js'
@@ -122,8 +122,6 @@ export interface RawGheLicensing {
   } | null
 }
 
-export { parseDollarAmount }
-
 // --- data-view row shapes ---
 
 interface MeteredRecord {
@@ -207,7 +205,7 @@ export const parsePaymentHistory = (html: string): GitHubPayment[] => {
       date: $time.text().trim() || undefined,
       timestamp: $time.attr('title') || undefined,
       id,
-      method: $row.find('.method').first().text().trim().replace(/\s+/g, ' '),
+      method: squish($row.find('.method').first().text()),
       amount: parseDollarAmount(amountFormatted),
       amountFormatted: amountFormatted || '—',
       status: $row.find('.status .Label').first().text().trim() || 'unknown',

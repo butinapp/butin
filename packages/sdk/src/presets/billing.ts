@@ -84,6 +84,12 @@ export const monthlySpend = (invoices: BillingInvoiceInput[]): MonthPoint[] => {
     .map(([month, amount]) => ({ month, amount: round2(amount) }))
 }
 
+// What the current calendar month has been invoiced, rounded once at the end so a sum of cent-precise amounts
+// doesn't carry IEEE-754 noise into a money cell. `month` overrides the month for a test or a back-fill.
+// Undated invoices can't belong to a month, so they're skipped.
+export const invoicedMtd = (invoices: BillingInvoiceInput[], month = currentMonthKey()): number =>
+  round2(invoices.filter((i) => i.date?.startsWith(month)).reduce((sum, i) => sum + i.amount, 0))
+
 // The change from the previous period, in the same money unit (positive = spending more). The baseline depends
 // on what currentMtd measures: an invoiced/last-invoice figure IS the latest month in the series, so it's
 // compared against the prior month; a live figure (accrued/upcoming/flat) is compared against the last full

@@ -8,7 +8,7 @@ import {
 } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, type BillingInvoiceInput, type BillingStat, type MembersInput } from '@butinapp/sdk/presets'
-import { centsToMajor, epochSecDay, monthStart, round2, startCase } from '@butinapp/sdk/util'
+import { centsToMajor, epochSecDay, monthStart, normalizeCurrency, round2, startCase } from '@butinapp/sdk/util'
 
 import { sampleClaudeAnalytics, sampleClaudeBilling, sampleClaudeMembers } from './sample.js'
 
@@ -215,7 +215,7 @@ export const classifyInvoice = (inv: RawInvoice): InvoiceCategory | null => {
 }
 
 export const buildClaudeBillingReport = (raw: RawBillingBundle, capturedAt: string): ClaudeBillingReport => {
-  const currency = (raw.overage.currency ?? raw.invoices[0]?.currency ?? raw.prepaid.currency ?? 'CAD').toUpperCase()
+  const currency = normalizeCurrency(raw.overage.currency ?? raw.invoices[0]?.currency ?? raw.prepaid.currency, 'CAD')
 
   const invoices: InvoiceRecord[] = []
 
@@ -230,7 +230,7 @@ export const buildClaudeBillingReport = (raw: RawBillingBundle, capturedAt: stri
       date: epochSecDay(inv.created_ts) ?? '',
       createdTs: inv.created_ts,
       amount: centsToMajor(inv.total),
-      currency: (inv.currency ?? currency).toUpperCase(),
+      currency: normalizeCurrency(inv.currency ?? currency),
       status: inv.status ?? 'paid',
       numSeats: inv.num_seats ?? null,
       category,

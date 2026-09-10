@@ -1,7 +1,7 @@
 import { defineCapability, definePlugin, type CollectContext } from '@butinapp/sdk'
 import { addSections, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, keys, type ApiKeysInput, type BillingInvoiceInput, type BillingStat } from '@butinapp/sdk/presets'
-import { asArray, byDayDesc, centsToMajor, currentMonthKey, epochSecDay, round2 } from '@butinapp/sdk/util'
+import { asArray, byDayDesc, centsToMajor, epochSecDay, normalizeCurrency } from '@butinapp/sdk/util'
 
 import { sampleFirecrawlInvoices, sampleFirecrawlTeam } from './sample.js'
 
@@ -131,15 +131,12 @@ export const buildFirecrawlBilling = (raw: RawFirecrawlInvoice[] | undefined | n
   const invoices = list.map(normalizeInvoice).sort(byDayDesc)
   const newest = list.slice().sort((a, b) => (b.created ?? 0) - (a.created ?? 0))[0]
 
-  const ym = currentMonthKey()
-  const currentMtd = invoices.filter((i) => (i.date ?? '').startsWith(ym)).reduce((sum, i) => sum + i.amount, 0)
-
   return {
     invoices,
-    currentMtd: round2(currentMtd),
+    currentMtd: billing.invoicedMtd(invoices),
     plan: planOf(newest),
     paymentMethod: paymentMethodOf(newest),
-    currency: (newest?.currency ?? 'usd').toUpperCase()
+    currency: normalizeCurrency(newest?.currency)
   }
 }
 

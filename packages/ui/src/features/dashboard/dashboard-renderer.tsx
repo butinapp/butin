@@ -17,7 +17,7 @@ import { useState, type ReactNode } from 'react'
 import { Badge } from '../../components/badge.js'
 import { Button } from '../../components/button.js'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/card.js'
-import type { DataTableColumn, DataTableState } from '../../components/data-table-model.js'
+import { selection, type DataTableColumn, type DataTableState } from '../../components/data-table-model.js'
 import { DataTable } from '../../components/data-table.js'
 import { Progress } from '../../components/progress.js'
 import { Sparkline } from '../../components/sparkline.js'
@@ -537,18 +537,7 @@ const DailyDetail = ({
   const groups = groupDailyByMonth(series)
   // Newest month open, the rest collapsed.
   const [open, setOpen] = useState<Set<string>>(() => new Set(groups[0] ? [groups[0].month] : []))
-  const toggle = (month: string): void =>
-    setOpen((prev) => {
-      const next = new Set(prev)
-
-      if (next.has(month)) {
-        next.delete(month)
-      } else {
-        next.add(month)
-      }
-
-      return next
-    })
+  const toggle = (month: string): void => setOpen((prev) => selection.toggle(prev, month))
   const trend = groups[0]?.points ?? []
 
   return (

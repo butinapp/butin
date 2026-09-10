@@ -9,7 +9,7 @@ import {
 } from '@butinapp/sdk'
 import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, usage, type BillingInvoiceInput, type MembersInput } from '@butinapp/sdk/presets'
-import { byDayDesc, centsToMajor, currentMonthKey, epochSecDay, round2, startCase } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, epochSecDay, fullName, round2, startCase } from '@butinapp/sdk/util'
 
 import { sampleInfisicalBilling, sampleInfisicalMembers, sampleInfisicalUsage } from './sample.js'
 
@@ -260,8 +260,7 @@ export const buildInfisicalBilling = (input: InfisicalBillingInput): InfisicalBi
     })
     .sort(byDayDesc)
 
-  const ym = currentMonthKey()
-  const currentMtd = round2(invoices.filter((i) => i.date?.startsWith(ym)).reduce((sum, i) => sum + i.amount, 0))
+  const currentMtd = billing.invoicedMtd(invoices)
 
   const card = (input.paymentMethods ?? [])[0]
   const paymentMethod = card
@@ -585,9 +584,7 @@ export interface RawMemberships {
 export const buildInfisicalMembers = (raw: RawMemberships | undefined): MembersInput => {
   const members = (raw?.users ?? [])
     .map((m) => {
-      const first = m.user?.firstName ?? ''
-      const last = m.user?.lastName ?? ''
-      const name = [first, last].filter(Boolean).join(' ').trim()
+      const name = fullName(m.user?.firstName, m.user?.lastName)
 
       return {
         id: m.id ?? m.user?.id ?? '',

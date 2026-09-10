@@ -9,7 +9,7 @@ import {
 } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, type BillingInvoiceInput, type MembersInput } from '@butinapp/sdk/presets'
-import { byDayDesc, centsToMajor, currentMonthKey, isoDay, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, currentMonthKey, isoDay } from '@butinapp/sdk/util'
 
 import { sampleLinearBilling, sampleLinearMembers } from './sample.js'
 
@@ -232,11 +232,8 @@ export const buildLinearBilling = (
 }
 
 // Spend incurred in the current calendar month — the running MTD figure the Overview rollup reads.
-export const currentMonthSpend = (invoices: LinearInvoice[], now = new Date()): number => {
-  const ym = currentMonthKey(now)
-
-  return round2(invoices.filter((i) => (i.date ?? '').startsWith(ym)).reduce((sum, i) => sum + i.amount, 0))
-}
+export const currentMonthSpend = (invoices: LinearInvoice[], now = new Date()): number =>
+  billing.invoicedMtd(invoices, currentMonthKey(now))
 
 // --- Summary tab (its spend.mtd summary is what the cross-service Overview rolls up) ---
 // The billing.summary preset (account stat + monthly-spend chart + spend.mtd summary), plus plan /

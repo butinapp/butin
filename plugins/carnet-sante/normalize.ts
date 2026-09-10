@@ -1,3 +1,4 @@
+import { fullName } from '@butinapp/sdk/util'
 import { z } from 'zod'
 
 // The wire→clean layer: zod schemas for the gov API's per-domain shapes + the pure normalizers that flatten
@@ -209,7 +210,7 @@ export const normalizeMedications = (raw: unknown): CleanMedication[] =>
         .map((p) => p.Description)
         .filter(Boolean)
         .join(' / '),
-      prescriber: [o.PrenomPrescripteur, o.NomPrescripteur].filter(Boolean).join(' '),
+      prescriber: fullName(o.PrenomPrescripteur, o.NomPrescripteur),
       pharmacy: o.Pharmacie ?? '',
       prescribedAt: o.Date?.slice(0, 10) ?? '',
       durationDays: o.Duree ?? null,

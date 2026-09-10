@@ -1,6 +1,6 @@
 import { defineCapability, definePlugin, type CollectContext } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
-import { isoDay } from '@butinapp/sdk/util'
+import { fullName, isoDay } from '@butinapp/sdk/util'
 
 import {
   type CleanAccess,
@@ -97,8 +97,6 @@ const pick = (obj: unknown, ...keys: string[]): string | undefined => {
 
   return undefined
 }
-
-const fullName = (prenom?: string, nom?: string): string => [prenom, nom].filter(Boolean).join(' ')
 
 // Walks a JSON payload and collects every string that decodes to a PDF — used where the API inlines a
 // report as a base64 field rather than exposing it at a URL.

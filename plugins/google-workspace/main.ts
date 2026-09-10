@@ -1,7 +1,7 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
 import { addSections, capabilityResult, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, usage } from '@butinapp/sdk/presets'
-import { epochSecDay, round2 } from '@butinapp/sdk/util'
+import { epochSecDay, normalizeCurrency, round2 } from '@butinapp/sdk/util'
 
 import { sampleGoogleWorkspace } from './sample.js'
 
@@ -325,7 +325,7 @@ export const buildGoogleWorkspaceBilling = (args: BuildBillingArgs): GoogleBilli
   const monthlyRunRate = priced.length ? round2(priced.reduce((sum, m) => sum + m, 0)) : null
 
   return {
-    currency: (args.currency ?? 'USD').toUpperCase(),
+    currency: normalizeCurrency(args.currency),
     subscriptions,
     monthlyRunRate
   }

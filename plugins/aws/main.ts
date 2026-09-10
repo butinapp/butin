@@ -10,7 +10,7 @@ import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts'
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { DateTime } from '@butinapp/sdk/libs'
-import { currentMonthKey, isoDay, round2 } from '@butinapp/sdk/util'
+import { currentMonthKey, fullName, isoDay, isPdfBytes, round2 } from '@butinapp/sdk/util'
 
 import { sampleAwsBilling, sampleAwsInvoices, sampleAwsMembers } from './sample.js'
 
@@ -426,11 +426,10 @@ export interface AwsMember {
 
 export const mapIdentityUser = (u: IdentityUserLike): AwsMember => {
   const primaryEmail = u.Emails?.find((e) => e.Primary)?.Value ?? u.Emails?.[0]?.Value ?? null
-  const fullName = [u.Name?.GivenName, u.Name?.FamilyName].filter(Boolean).join(' ')
 
   return {
     id: u.UserId ?? '',
-    name: u.DisplayName ?? (fullName || null),
+    name: u.DisplayName ?? (fullName(u.Name?.GivenName, u.Name?.FamilyName) || null),
     email: primaryEmail,
     status: u.UserStatus === 'DISABLED' ? 'suspended' : 'active',
     username: u.UserName ?? null
@@ -699,8 +698,8 @@ const fetchAwsInvoicePdf = async (
     headers: { Accept: 'application/pdf,*/*' }
   })
   const bytes = new Uint8Array(res.data)
-  // `%PDF` magic bytes — a non-PDF body (an expired-URL error page) must fail loudly, not save a corrupt file.
-  const isPdf = bytes.length > 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46
+  // A non-PDF body (an expired-URL error page) must fail loudly, not save a corrupt file.
+  const isPdf = isPdfBytes(bytes)
 
   ctx.log(`aws: downloaded invoice ${invoiceId} (${bytes.length}b, pdf=${isPdf})`)
 

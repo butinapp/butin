@@ -1,5 +1,6 @@
 import { type BrowserContext, type BrowserPage, type CollectContext } from '@butinapp/sdk'
 import { type Dataset } from '@butinapp/sdk/data'
+import { isPdfBytes } from '@butinapp/sdk/util'
 import { expect, test } from 'vitest'
 
 import {
@@ -9,7 +10,6 @@ import {
   describeEmptySelection,
   extractPdf,
   fetchDebitStatementFile,
-  isPdfBytes,
   parseAvailableStatements,
   parsePdfPath,
   parseSelectionForm,
@@ -160,12 +160,6 @@ test('parsePdfPath extracts the one-time D1/K download URL from the confirm resp
 
 test('parsePdfPath returns null when the confirm yielded no document', () => {
   expect(parsePdfPath('<html><body>Aucun relevé disponible.</body></html>')).toBeNull()
-})
-
-test('isPdfBytes detects the %PDF magic so a confirm that streams the PDF directly is returned as-is', () => {
-  expect(isPdfBytes(new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31]))).toBe(true) // "%PDF-1"
-  expect(isPdfBytes(new TextEncoder().encode('<html><script>location='))).toBe(false)
-  expect(isPdfBytes(new Uint8Array([0x25, 0x50]))).toBe(false)
 })
 
 test('extractPdf unwraps the Java-serialized byte[] AccèsD wraps the PDF in (and no-ops on a raw PDF)', () => {

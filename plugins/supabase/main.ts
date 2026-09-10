@@ -9,7 +9,7 @@ import {
   type MembersInput,
   type UsageMetricInput
 } from '@butinapp/sdk/presets'
-import { byDayDesc, centsToMajor, epochSecDay, isoDay, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, epochSecDay, isoDay, normalizeCurrency, round2 } from '@butinapp/sdk/util'
 
 import { sampleSupabaseBilling, sampleSupabaseMembers, sampleSupabaseUsage } from './sample.js'
 
@@ -184,7 +184,7 @@ export const buildSupabaseBilling = (
       cycleStart: isoDay(rawUpcoming.billing_cycle_start),
       cycleEnd: isoDay(rawUpcoming.billing_cycle_end),
       customerBalance: rawUpcoming.customer_balance ?? 0,
-      currency: (rawUpcoming.currency ?? 'USD').toUpperCase(),
+      currency: normalizeCurrency(rawUpcoming.currency),
       lines: (rawUpcoming.lines ?? []).map((l) => ({
         itemName: l.item_name ?? l.description ?? 'unknown',
         description: l.description,

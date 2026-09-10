@@ -4,7 +4,6 @@
 // defineCapability · meta/session/auth/transport/config) is the root '@butinapp/sdk' — this is the separate
 // "what a capability returns" tier. Prefer the high-altitude presets ('@butinapp/sdk/presets') over
 // hand-building datasets/views. The internal zod *Schema objects stay off this surface — annotate the TYPES.
-export { rawTable, rawRecord } from './dataset.js'
 export type {
   SemanticRole,
   BadgeTone,

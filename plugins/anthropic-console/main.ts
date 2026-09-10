@@ -9,7 +9,7 @@ import {
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { DateTime } from '@butinapp/sdk/libs'
 import { billing, members, type BillingInvoiceInput, type MembersInput } from '@butinapp/sdk/presets'
-import { MONTH_ABBR, asArray, centsToMajor, getReportingZone, isoDay } from '@butinapp/sdk/util'
+import { MONTH_ABBR, asArray, centsToMajor, getReportingZone, isoDay, normalizeCurrency } from '@butinapp/sdk/util'
 
 import { sampleAnthropicAnalytics, sampleAnthropicBilling, sampleAnthropicMembers } from './sample.js'
 
@@ -532,7 +532,7 @@ const fetchAnthropicBilling = async (ctx: CollectContext, orgId: string): Promis
       spendLimits,
       paymentMethod,
       billingEmails,
-      currency: (prepaid?.currency ?? 'USD').toUpperCase()
+      currency: normalizeCurrency(prepaid?.currency)
     },
     capturedAt: new Date().toISOString()
   }

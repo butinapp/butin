@@ -8,7 +8,7 @@ import {
 } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, usage, type MembersInput, type UsageMetricInput } from '@butinapp/sdk/presets'
-import { byDayAsc, byDayDesc, centsToMajor, epochSecDay, isoDay } from '@butinapp/sdk/util'
+import { byDayAsc, byDayDesc, centsToMajor, epochSecDay, isoDay, normalizeCurrency } from '@butinapp/sdk/util'
 
 import { sampleIntercomAdmins, sampleIntercomBilling, sampleIntercomUsage } from './sample.js'
 
@@ -299,7 +299,7 @@ export const buildIntercomBilling = (
 // in-progress period's running total), the monthly-spend trend chart, and the Δ-vs-last-month the preset
 // derives. The plan, totals, line items, and the invoice list are the Billing tab's detail — not here.
 export const buildIntercomSummaryResult = (report: IntercomBillingReport): CapabilityResult => {
-  const ccy = report.currency.toUpperCase()
+  const ccy = normalizeCurrency(report.currency)
 
   return billing.summary({
     currentMtd: report.currentMtd,
@@ -355,7 +355,7 @@ interface BillingInvoiceRow {
 }
 
 export const buildIntercomBillingTab = (report: IntercomBillingReport): CapabilityResult => {
-  const ccy = report.currency.toUpperCase()
+  const ccy = normalizeCurrency(report.currency)
   const sub = report.subscription
   const period =
     sub.currentPeriodStart && sub.currentPeriodEnd ? `${sub.currentPeriodStart} → ${sub.currentPeriodEnd}` : null

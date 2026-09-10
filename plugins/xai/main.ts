@@ -2,7 +2,16 @@ import { defineCapability, defineConfigSchema, definePlugin, type CollectContext
 import { addSections, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { DateTime } from '@butinapp/sdk/libs'
 import { billing, keys, members, usage, type ApiKeysInput } from '@butinapp/sdk/presets'
-import { byDayAsc, byDayDesc, centsToMajor, epochSecDay, getReportingZone, monthKey, round2 } from '@butinapp/sdk/util'
+import {
+  byDayAsc,
+  byDayDesc,
+  centsToMajor,
+  epochSecDay,
+  fullName,
+  getReportingZone,
+  monthKey,
+  round2
+} from '@butinapp/sdk/util'
 
 import {
   decodeMessage,
@@ -347,7 +356,7 @@ export interface XaiMember {
 
 // PublicUser: #1 userId · #3 email · #4 profileImage · #5 givenName · #6 familyName · #7 profileImageUrl.
 const parseMember = (user: ProtoMessage): XaiMember => {
-  const name = [getString(user, 5), getString(user, 6)].filter(Boolean).join(' ')
+  const name = fullName(getString(user, 5), getString(user, 6))
 
   return { id: getString(user, 1) ?? '', name: name || undefined, email: getString(user, 3) }
 }

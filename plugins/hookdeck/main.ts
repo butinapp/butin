@@ -8,7 +8,7 @@ import {
   type MembersInput,
   type UsageMetricInput
 } from '@butinapp/sdk/presets'
-import { byDayDesc, centsToMajor, currentMonthKey, isoDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, isoDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
 
 import { sampleHookdeckBilling, sampleHookdeckMembers, sampleHookdeckUsage } from './sample.js'
 
@@ -222,13 +222,10 @@ export const buildBillingReport = (
 
   const last = invoices[0]
 
-  const ym = currentMonthKey()
-  const mtd = invoices.filter((i) => (i.date ?? '').startsWith(ym)).reduce((sum, i) => sum + i.amount, 0)
-
   return {
     invoices,
     totalBilled: round2(invoices.reduce((sum, i) => sum + i.amount, 0)),
-    currentMtd: round2(mtd),
+    currentMtd: billing.invoicedMtd(invoices),
     lastInvoice: last ? { date: last.date, amount: last.amount, status: last.status } : undefined,
     plan: s.plan?.name || s.name || undefined,
     planExternalId: s.plan?.external_plan_id || undefined,

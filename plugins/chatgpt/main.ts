@@ -7,7 +7,15 @@ import {
 } from '@butinapp/sdk'
 import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, usage } from '@butinapp/sdk/presets'
-import { byDayDesc, centsToMajor, currentMonthKey, epochSecDay, isoDay, round2 } from '@butinapp/sdk/util'
+import {
+  byDayDesc,
+  centsToMajor,
+  currentMonthKey,
+  epochSecDay,
+  isoDay,
+  normalizeCurrency,
+  round2
+} from '@butinapp/sdk/util'
 
 import { sampleChatgptBilling, sampleChatgptMembers, sampleChatgptUsage } from './sample.js'
 
@@ -357,7 +365,7 @@ export const buildWorkspaceBilling = (
         number: inv.number ?? null,
         date: epochSecDay(inv.created) ?? '',
         amount: invoiceAmount(inv),
-        currency: (inv.currency ?? 'usd').toUpperCase(),
+        currency: normalizeCurrency(inv.currency),
         status: inv.status ?? 'unknown',
         billingReason: inv.billing_reason ?? null,
         hostedUrl: inv.hosted_invoice_url ?? null,
@@ -389,14 +397,11 @@ export const buildWorkspaceBilling = (
   // The capture month in the reporting zone — capturedAt is a UTC instant, so slicing it raw would read the
   // next month near the boundary and miss the current month's seat spend.
   const currentMonth = currentMonthKey(new Date(capturedAt))
-  const monthSpend = workspaces
-    .flatMap((w) => w.invoices)
-    .filter((inv) => inv.date.slice(0, 7) === currentMonth)
-    .reduce((sum, inv) => sum + inv.amount, 0)
+  const allInvoices = workspaces.flatMap((w) => w.invoices)
 
   // 0 stays (the Overview reads the current-month bar) rather than nulling out and dropping the service from the
   // Overview when the current month has no seat invoice yet.
-  return { capturedAt, workspaces, currentMtd: round2(monthSpend) }
+  return { capturedAt, workspaces, currentMtd: billing.invoicedMtd(allInvoices, currentMonth) }
 }
 
 // Summary tab — the overview the cross-service Overview rolls up (spend.mtd): the current-month seat-spend

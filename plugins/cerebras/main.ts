@@ -9,6 +9,7 @@ import {
   epochSecDay,
   isoDay,
   monthMinus,
+  normalizeCurrency,
   round2
 } from '@butinapp/sdk/util'
 
@@ -519,7 +520,7 @@ export const buildCerebrasBilling = (
     accountBalance: centsToMajor(rawCustomer?.balance),
     accountEmail: rawCustomer?.email,
     delinquent: rawCustomer?.delinquent ?? false,
-    currency: (rawInvoices?.[0]?.currency ?? rawCustomer?.currency ?? 'usd').toUpperCase(),
+    currency: normalizeCurrency(rawInvoices?.[0]?.currency ?? rawCustomer?.currency),
     latestAmount: invoices[0]?.amount ?? 0
   }
 }
