@@ -32,7 +32,7 @@ const onAuthLeg = (url: string): boolean => {
   return AUTH_HOST.test(hostOf(url)) || OAUTH_MARKERS.some((m) => u.includes(m))
 }
 
-interface CookieSetting {
+type CookieSetting = {
   name: string
   value: string
 }

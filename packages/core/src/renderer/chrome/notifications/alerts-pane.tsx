@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 
 import type { AlertConfigView, AlertFacet, AlertWindow } from './types.js'
 
-export interface AlertsPaneLabels {
+export type AlertsPaneLabels = {
   changeTitle: string
   healthTitle: string
   fxMissing: string

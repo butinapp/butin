@@ -4,7 +4,7 @@ import type { ButinClient, GraphqlRequest, RequestOptions } from '@butinapp/sdk'
 // and a partial result carries `data` alongside `errors`.
 type GraphqlEnvelope<T> = { data?: T; errors?: { message?: string }[] }
 
-// `graphql` for both transports, built on whichever `request` the client already has. It posts the operation the
+// `graphql` for any transport, built on whichever `request` the client already has. It posts the operation the
 // way a service's own client does — operation name beside the document — and returns `data` unwrapped, raising on
 // any `errors`. Raising is the point: a GraphQL endpoint answers 200 on a failed query, so a caller that reads
 // `data` blindly renders an empty tab instead of reporting the failure. The operation name rides in the message

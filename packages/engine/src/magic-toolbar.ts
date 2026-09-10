@@ -413,7 +413,7 @@ const ensureFiles = (): { htmlUrl: string; preloadPath: string } => {
 // The status indicator's tone: capture readiness (ready/waiting) or the recorder's REC/paused state.
 export type ToolbarStatus = { text: string; tone: 'ready' | 'waiting' | 'rec' | 'paused' }
 
-export interface MagicToolbar {
+export type MagicToolbar = {
   view: WebContentsView
   setUrl: (url: string) => void
   setNav: (canBack: boolean, canForward: boolean) => void
@@ -435,7 +435,7 @@ export interface MagicToolbar {
   setCaptureAll: (on: boolean) => void
 }
 
-export interface MagicToolbarOpts {
+export type MagicToolbarOpts = {
   // Capture-variant callbacks (Magic Login) — optional so the navigate/record variants can omit them.
   onForceCapture?: () => void
   // Clicked when the page blocks the built-in browser — hands off to a real-Chrome sign-in. The button stays

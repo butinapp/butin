@@ -56,7 +56,7 @@ const CURRENCY_CODE = /^[A-Z]{3}$/
 // ── types (the data dictionary) ──────────────────────────────────────────────────────
 
 /** The per-page tokens the admin console embeds in its HTML and replays on every batchexecute call. */
-export interface GoogleAdminTokens {
+export type GoogleAdminTokens = {
   /** `SNlM0e` — the `at` XSRF token. */
   at: string
   /** `FdrFJe` — the `f.sid` session id. */
@@ -65,14 +65,14 @@ export interface GoogleAdminTokens {
   bl: string
 }
 
-interface SkuPricing {
+type SkuPricing = {
   /** Current per-seat monthly price, USD dollars; null if not priced (e.g. Voice, free). */
   currentMonthly: number | null
   /** Per-seat price at next renewal, USD dollars, when it differs. */
   renewalMonthly: number | null
 }
 
-export interface GoogleSubscription {
+export type GoogleSubscription = {
   /** Google SKU id, e.g. "GOOGLE.GAU_2021". */
   skuId: string
   /** Display name, e.g. "Google Workspace Business Standard". */
@@ -94,7 +94,7 @@ export interface GoogleSubscription {
   monthlyEstimate: number | null
 }
 
-export interface GoogleBilling {
+export type GoogleBilling = {
   currency: string
   subscriptions: GoogleSubscription[]
   /** Current monthly recurring spend (Σ monthlyEstimate), USD dollars. Also `currentMtd`. null when
@@ -102,7 +102,7 @@ export interface GoogleBilling {
   monthlyRunRate: number | null
 }
 
-export interface GoogleSeatUsage {
+export type GoogleSeatUsage = {
   skuId: string
   skuName: string
   planName: string
@@ -114,7 +114,7 @@ export interface GoogleSeatUsage {
   utilization: number | null
 }
 
-export interface GoogleUsage {
+export type GoogleUsage = {
   seats: GoogleSeatUsage[]
   /** Total assigned seats across all SKUs. */
   totalAssigned: number
@@ -309,7 +309,7 @@ export const parseSubscriptions = (subsRaw: unknown, pricing: Record<string, Sku
 
 // ── billing: pure normalizer (the fixture-test target) ──────────────────────────────────
 
-interface BuildBillingArgs {
+type BuildBillingArgs = {
   subsRaw: unknown
   pricingRaw: unknown
   /** Currency read off the subscriptions (the admin RPCs report a single billing currency); USD fallback. */
@@ -342,7 +342,7 @@ export const subscriptionsCurrency = (subsRaw: unknown): string | undefined => {
   return typeof ccy === 'string' && CURRENCY_CODE.test(ccy) ? ccy : undefined
 }
 
-interface SubscriptionRow {
+type SubscriptionRow = {
   skuName: string | null
   planName: string | null
   status: string | null
@@ -440,7 +440,7 @@ export const buildGoogleWorkspaceUsage = (subsRaw: unknown): GoogleUsage => {
   }
 }
 
-interface SeatRow {
+type SeatRow = {
   skuName: string | null
   planName: string | null
   seatsAssigned: number | null
@@ -549,7 +549,7 @@ const runRpc = async (
 // Summary, Billing, and Usage all read the same KyAUjc subscriptions + KRm3O pricing RPCs; every capability's
 // fetch returns this raw bundle. The core query cache dedupes the underlying reads across the runs. Pricing is
 // best-effort.
-export interface GoogleWorkspaceData {
+export type GoogleWorkspaceData = {
   subsRaw: unknown
   pricingRaw: unknown
 }

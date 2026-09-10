@@ -84,7 +84,7 @@ function isTextLike(mimeType: string): boolean {
   return /json|text|xml|javascript|event-stream|x-www-form-urlencoded/i.test(mimeType)
 }
 
-interface Pending {
+type Pending = {
   wcId: number
   sessionId: string
   kind: ContextKind
@@ -123,7 +123,7 @@ interface Pending {
   streamChunks: Buffer[]
 }
 
-interface WsPending {
+type WsPending = {
   index: number
   wcId: number
   sessionId: string
@@ -131,7 +131,7 @@ interface WsPending {
   ws: RecordedWebSocket
 }
 
-interface Attachment {
+type Attachment = {
   wc: WebContents
   kind: ContextKind
   /**
@@ -152,13 +152,13 @@ interface Attachment {
 }
 
 /** What names a run in its manifest — supplied by the window layer, which owns the recording's identity. */
-export interface RunIdentity {
+export type RunIdentity = {
   label: string
   startUrl: string
   partition: string
 }
 
-export interface RecorderOptions {
+export type RecorderOptions = {
   runDir: string
   captureAll: boolean
   /** User-editable skip-list; undefined falls back to built-in defaults. */

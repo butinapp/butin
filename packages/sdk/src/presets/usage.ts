@@ -7,7 +7,7 @@ import { round2 } from '../util/money.js'
 import { dailySeries, type TrendPoint } from './blocks.js'
 
 // One metered line — tokens/requests/seats/GB. value is a plain count; cost (USD) is optional on-demand spend.
-export interface UsageMetricInput {
+export type UsageMetricInput = {
   label: string
   value: number
   unit?: string
@@ -15,7 +15,7 @@ export interface UsageMetricInput {
   cost?: number | null
 }
 
-export interface UsageInput {
+export type UsageInput = {
   periodStart?: string
   periodEnd?: string
   metrics: UsageMetricInput[]
@@ -24,7 +24,7 @@ export interface UsageInput {
   dailyTitle?: string
 }
 
-interface MetricRow {
+type MetricRow = {
   label: string
   value: number
   unit: string | null

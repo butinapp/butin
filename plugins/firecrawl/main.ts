@@ -18,27 +18,27 @@ const API = 'https://www.firecrawl.dev'
 // ── types ─────────────────────────────────────────────────────────────────────────
 // Firecrawl proxies Stripe invoices verbatim, so money is in CENTS and `created` is unix seconds.
 
-export interface RawStripePrice {
+export type RawStripePrice = {
   nickname?: string | null
 }
 
-export interface RawStripeLine {
+export type RawStripeLine = {
   description?: string | null
   amount?: number
   plan?: { nickname?: string | null } | null
   price?: RawStripePrice | null
 }
 
-export interface RawStripeCard {
+export type RawStripeCard = {
   brand?: string
   last4?: string
 }
 
-export interface RawStripeCharge {
+export type RawStripeCharge = {
   payment_method_details?: { type?: string; card?: RawStripeCard | null } | null
 }
 
-export interface RawFirecrawlInvoice {
+export type RawFirecrawlInvoice = {
   id?: string
   created?: number // unix seconds
   total?: number // grand total, cents
@@ -54,14 +54,14 @@ export interface RawFirecrawlInvoice {
   lines?: { data?: RawStripeLine[] }
 }
 
-export interface RawFirecrawlTeam {
+export type RawFirecrawlTeam = {
   teamId?: string
   apiKey?: string
   apiKeys?: Array<{ id?: number; name?: string; key?: string }>
 }
 
 // Normalized invoice — USD dollars, dated 'YYYY-MM-DD'. Shape-compatible with the SDK's BillingInvoiceInput.
-export interface FirecrawlInvoice extends BillingInvoiceInput {
+export type FirecrawlInvoice = BillingInvoiceInput & {
   /** Stripe invoice id — the stable ledger key (number is nullable, and a month can carry several invoices). */
   id: string
   date?: string
@@ -73,7 +73,7 @@ export interface FirecrawlInvoice extends BillingInvoiceInput {
   pdfUrl?: string | null
 }
 
-export interface FirecrawlBilling {
+export type FirecrawlBilling = {
   invoices: FirecrawlInvoice[]
   currentMtd: number // USD spend in the current calendar month
   plan?: string
@@ -142,7 +142,7 @@ export const buildFirecrawlBilling = (raw: RawFirecrawlInvoice[] | undefined | n
 
 // Row type for the downloadable invoice history table. `name` carries the download filename — not rendered;
 // `id` (Stripe invoice id) rides hidden as the ledger key.
-interface FirecrawlInvoiceRow {
+type FirecrawlInvoiceRow = {
   id: string
   date: string | null
   number: string | null

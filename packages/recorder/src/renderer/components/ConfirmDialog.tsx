@@ -10,7 +10,7 @@ import {
 } from '@butinapp/ui/primitives'
 import { useState, type ReactNode } from 'react'
 
-interface Props {
+type Props = {
   /** The element that opens the dialog (asChild — pass a Button or similar). */
   trigger: ReactNode
   title: string

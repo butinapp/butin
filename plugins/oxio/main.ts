@@ -41,7 +41,7 @@ const INVOICE_PAGE_SIZE = 24
 
 // ── types: the GraphQL wire shapes (only the fields the queries below select) ────────
 
-export interface RawOxioContact {
+export type RawOxioContact = {
   firstName?: string | null
   lastName?: string | null
   email?: string | null
@@ -49,7 +49,7 @@ export interface RawOxioContact {
   mobilePhone?: string | null
 }
 
-export interface RawOxioAddress {
+export type RawOxioAddress = {
   line1?: string | null
   locality?: string | null
   region?: string | null
@@ -57,13 +57,13 @@ export interface RawOxioAddress {
 }
 
 /** A product's display name per language, keyed `product.<slug>.<name|description|features>`. */
-export interface RawOxioTranslation {
+export type RawOxioTranslation = {
   languageId?: string | null
   key?: string | null
   value?: string | null
 }
 
-export interface RawOxioProduct {
+export type RawOxioProduct = {
   slug?: string | null
   name?: string | null
   productCategory?: { slug?: string | null } | null
@@ -72,13 +72,13 @@ export interface RawOxioProduct {
   rawSpecificationValue?: Record<string, unknown> | null
 }
 
-export interface RawOxioSubscription {
+export type RawOxioSubscription = {
   /** ISO instant the subscription ended; null while it is active. */
   unassignedAt?: string | null
   version?: { id?: string | null; price?: number | null; product?: RawOxioProduct | null } | null
 }
 
-export interface RawOxioAccount {
+export type RawOxioAccount = {
   status?: string | null
   /** The customer number shown on the bill, zero-padded there to 8 digits. */
   gaiiaId?: number | null
@@ -99,7 +99,7 @@ export interface RawOxioAccount {
   productSubscriptions?: { edges?: ({ node?: RawOxioSubscription | null } | null)[] | null } | null
 }
 
-export interface RawOxioBillingParameters {
+export type RawOxioBillingParameters = {
   billDay?: number | null
   nextBillDate?: string | null
   availableFunds?: number | null
@@ -110,7 +110,7 @@ export interface RawOxioBillingParameters {
   isDelinquent?: boolean | null
 }
 
-export interface RawOxioPaymentMethod {
+export type RawOxioPaymentMethod = {
   id?: string | null
   createdAt?: string | null
   autoPaymentEnabled?: boolean | null
@@ -123,7 +123,7 @@ export interface RawOxioPaymentMethod {
   bankAccount?: { maskedIdentificationNumber?: string | null } | null
 }
 
-export interface RawOxioInvoice {
+export type RawOxioInvoice = {
   id?: string | null
   /** Still owed on this bill, in cents — the list carries no grand total. */
   amountRemaining?: number | null
@@ -135,7 +135,7 @@ export interface RawOxioInvoice {
   dueDate?: string | null
 }
 
-export interface RawOxioReferral {
+export type RawOxioReferral = {
   id?: string | null
   firstName?: string | null
   lastName?: string | null
@@ -148,22 +148,22 @@ export interface RawOxioReferral {
 }
 
 /** Summary + Plan + Account all read the account; Summary + Billing both read the billing parameters. */
-export interface OxioSummaryRaw {
+export type OxioSummaryRaw = {
   account: RawOxioAccount | null
   params: RawOxioBillingParameters | null
 }
 
-export interface OxioBillingRaw {
+export type OxioBillingRaw = {
   params: RawOxioBillingParameters | null
   invoices: RawOxioInvoice[]
   paymentMethods: RawOxioPaymentMethod[]
 }
 
-export interface OxioPlanRaw {
+export type OxioPlanRaw = {
   account: RawOxioAccount | null
 }
 
-export interface OxioAccountRaw {
+export type OxioAccountRaw = {
   account: RawOxioAccount | null
   referrals: RawOxioReferral[]
 }
@@ -398,7 +398,7 @@ const fetchOxioSummary = async (ctx: CollectContext): Promise<OxioSummaryRaw> =>
 
 // ── Billing: the cycle, how it is paid, and every bill PDF ──────────────────────────
 
-interface OxioCycleRow {
+type OxioCycleRow = {
   billDay: number | null
   nextBillDate: string | null
   nextCharge: number | null
@@ -409,7 +409,7 @@ interface OxioCycleRow {
   paymentStatus: string | null
 }
 
-interface OxioPaymentRow {
+type OxioPaymentRow = {
   id: string
   method: string
   last4: string | null
@@ -418,7 +418,7 @@ interface OxioPaymentRow {
   createdAt: string | null
 }
 
-interface OxioInvoiceRow {
+type OxioInvoiceRow = {
   id: string
   fromDate: string | null
   invoiceNumber: string | null
@@ -586,7 +586,7 @@ const fetchOxioInvoicePdf = async (ctx: CollectContext, row: Record<string, unkn
 
 // ── Plan: what the subscription actually buys ───────────────────────────────────────
 
-interface OxioServiceRow {
+type OxioServiceRow = {
   plan: string | null
   provider: string | null
   download: number | null
@@ -596,7 +596,7 @@ interface OxioServiceRow {
   address: string | null
 }
 
-interface OxioSubscriptionRow {
+type OxioSubscriptionRow = {
   product: string
   category: string | null
   price: number | null
@@ -604,7 +604,7 @@ interface OxioSubscriptionRow {
   ended: string | null
 }
 
-interface OxioRequestRow {
+type OxioRequestRow = {
   type: string
   status: string | null
 }
@@ -687,7 +687,7 @@ const fetchOxioPlan = async (ctx: CollectContext): Promise<OxioPlanRaw> => ({ ac
 
 // ── Account: who the account belongs to, and its referrals ──────────────────────────
 
-interface OxioHolderRow {
+type OxioHolderRow = {
   name: string | null
   email: string | null
   mobilePhone: string | null
@@ -700,12 +700,12 @@ interface OxioHolderRow {
   referralCode: string | null
 }
 
-interface OxioAddressRow {
+type OxioAddressRow = {
   service: string | null
   mailing: string | null
 }
 
-interface OxioReferralRow {
+type OxioReferralRow = {
   id: string
   name: string | null
   contact: string | null

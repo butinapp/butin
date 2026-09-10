@@ -38,13 +38,13 @@ const PERIOD_MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', '
 // ── types ─────────────────────────────────────────────────────────────────────────
 
 // org resolution
-interface OrgSummary {
+type OrgSummary = {
   uuid?: string
   name?: string
 }
 
 // billing wire shapes (only the fields we use)
-export interface RawConsoleInvoice {
+export type RawConsoleInvoice = {
   /** 'usage_invoice' (the monthly API bill) | 'prepaid_credits' (a top-up). */
   type: string
   invoice_status: string
@@ -56,34 +56,34 @@ export interface RawConsoleInvoice {
   download_url: string | null
   hosted_invoice_url: string | null
 }
-export interface RawCurrentSpend {
+export type RawCurrentSpend = {
   /** Open-period spend in CENTS. */
   amount?: number
   resets_at?: string | null
 }
-export interface RawSpendLimit {
+export type RawSpendLimit = {
   /** Threshold in CENTS, despite the `_usd` name. */
   limit_usd: number
   /** 'notify_only' (alert) | 'notify_and_pause' (hard cap). */
   limit_action: string
 }
-export interface RawSpendLimitsV2 {
+export type RawSpendLimitsV2 = {
   spend_limits?: RawSpendLimit[]
 }
-export interface RawPaymentMethod {
+export type RawPaymentMethod = {
   brand?: string
   last4?: string
 }
-export interface RawBillingEmails {
+export type RawBillingEmails = {
   primary_email?: string | null
 }
-interface RawInvoicesPage {
+type RawInvoicesPage = {
   invoices?: RawConsoleInvoice[]
   has_more?: boolean
   next_page?: string | null
 }
 
-export interface RawBillingBundle {
+export type RawBillingBundle = {
   invoices: RawConsoleInvoice[]
   currentSpend: RawCurrentSpend
   spendLimits: RawSpendLimitsV2
@@ -95,7 +95,7 @@ export interface RawBillingBundle {
 
 type InvoiceKind = 'usage' | 'credits'
 
-interface BillingInvoice {
+type BillingInvoice = {
   /** YYYY-MM-DD: usage invoices dated by their service-period month, credits by effective_at (see below). */
   date: string
   effectiveTs: number
@@ -108,7 +108,7 @@ interface BillingInvoice {
   hostedUrl: string | null
 }
 
-export interface AnthropicBillingReport {
+export type AnthropicBillingReport = {
   capturedAt: string
   currency: string
   /** Open-period (MTD) spend in USD. */
@@ -125,13 +125,13 @@ export interface AnthropicBillingReport {
 }
 
 // usage / member-analytics wire shapes
-export interface RawMember {
+export type RawMember = {
   id: string
   email: string
   name: string
   role: string
 }
-export interface RawApiKey {
+export type RawApiKey = {
   id: string
   name: string
   workspace_id: string | null
@@ -141,19 +141,19 @@ export interface RawApiKey {
   partial_key_hint?: string
   created_by: { id: string }
 }
-export interface RawKeyUsage {
+export type RawKeyUsage = {
   api_keys: Array<{ id: string; last_used_at: string }>
 }
-export interface RawUsageCost {
+export type RawUsageCost = {
   costs: Record<string, Array<{ key_id: string; total: number }>>
 }
 /** One month's usage_cost response, tagged with its period + display label. */
-export interface MonthlyCost {
+export type MonthlyCost = {
   periodStart: string
   label: string
   cost: RawUsageCost
 }
-export interface RawAnalyticsBundle {
+export type RawAnalyticsBundle = {
   members: RawMember[]
   apiKeys: RawApiKey[]
   keyUsage: RawKeyUsage
@@ -162,13 +162,13 @@ export interface RawAnalyticsBundle {
   orgCurrentSpendCents: number
 }
 
-interface MonthColumn {
+type MonthColumn = {
   periodStart: string
   label: string
 }
 
 /** One API key's details, shown in a member's expanded row and the API Keys tab. */
-export interface ApiKeyDetail {
+export type ApiKeyDetail = {
   id: string
   name: string
   partialKeyHint: string
@@ -184,7 +184,7 @@ export interface ApiKeyDetail {
   expiresAt: string | null
 }
 
-export interface AnthropicMemberRow {
+export type AnthropicMemberRow = {
   /** created_by user id (or "unattributed"). */
   creatorId: string
   email: string | null
@@ -202,7 +202,7 @@ export interface AnthropicMemberRow {
   /** This creator's API keys (details for the expanded row), newest-spend first. */
   keys: ApiKeyDetail[]
 }
-export interface AnthropicAnalyticsReport {
+export type AnthropicAnalyticsReport = {
   capturedAt: string
   /** Month columns, newest first. */
   months: MonthColumn[]
@@ -212,7 +212,7 @@ export interface AnthropicAnalyticsReport {
 }
 
 // roster wire shape
-export interface RawRosterMember {
+export type RawRosterMember = {
   id?: string
   email?: string
   name?: string | null
@@ -401,7 +401,7 @@ export const buildAnthropicSummaryResult = (report: AnthropicBillingReport): Cap
 // invoices, with downloadable PDFs) plus an account record (open spend / reset / cap / payment card / billing
 // email). The headline MTD + monthly chart live on Summary.
 
-interface BillingInvoiceRow {
+type BillingInvoiceRow = {
   // Hidden — the invoice's stable identity (kind + issue instant), keys the dataset so invoices accumulate in
   // the ledger past the fetched page window and version their status (open → paid) over time.
   id: string
@@ -414,7 +414,7 @@ interface BillingInvoiceRow {
   name: string
 }
 
-interface BillingAccountRow {
+type BillingAccountRow = {
   currentSpend: number
   resetsAt: string | null
   pauseLimit: number | null
@@ -553,7 +553,7 @@ export const monthLabel = (periodStart: string): string => {
   return `${MONTH_ABBR[Number(m) - 1]} ${y}`
 }
 
-interface MonthRange {
+type MonthRange = {
   start: string
   end: string
   label: string
@@ -598,7 +598,7 @@ export const buildAnthropicAnalytics = (raw: RawAnalyticsBundle, capturedAt: str
   const newestByKey = costByMonth[0]?.byKey ?? new Map<string, number>()
   const lastUsedByKey = new Map(raw.keyUsage.api_keys.map((k) => [k.id, k.last_used_at]))
 
-  interface Acc {
+  type Acc = {
     creatorId: string
     activeKeys: number
     centsByMonth: Map<string, number>
@@ -724,13 +724,13 @@ export const buildAnthropicAnalytics = (raw: RawAnalyticsBundle, capturedAt: str
 // The analytics report → an overview record + a per-member spend table (this month + last month + key count),
 // with a usage.primary summary (org open-period spend) for the rollup.
 
-interface UsageOverviewRow {
+type UsageOverviewRow = {
   orgCurrentSpend: number
   members: number
   activeKeys: number
 }
 
-interface UsageMemberRow {
+type UsageMemberRow = {
   who: string | null
   role: string | null
   keys: number
@@ -742,7 +742,7 @@ interface UsageMemberRow {
 }
 
 // One API key flattened onto a row shared by the Usage tab's per-member detail and the API Keys tab.
-export interface FlatKeyRow {
+export type FlatKeyRow = {
   id: string
   creatorId: string
   name: string | null

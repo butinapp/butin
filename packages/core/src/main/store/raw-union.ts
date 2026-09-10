@@ -10,7 +10,7 @@ const SCHEMA_VERSION = 1
 // The keyed union of a capability's raw fetched rows — the source an incremental `build` re-runs over so a
 // partial fetch still renders the whole history. `key` names the identity field; `rows` are merged by it across
 // fetches, retaining rows the service has stopped returning. Captured data, so it routes through secure-fs (sealed at rest under an encrypted profile).
-export interface RawUnion {
+export type RawUnion = {
   schemaVersion: number
   key: string
   rows: Record<string, unknown>[]

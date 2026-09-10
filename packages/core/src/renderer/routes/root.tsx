@@ -25,7 +25,7 @@ import { usePluginState } from '@/use-plugin-state'
 import { titleBarInset, useTitleBarOverlaySync } from '@/use-titlebar'
 
 // Carried in the router context so beforeLoad guards can read cached IPC data (the plugin list).
-export interface RouterContext {
+export type RouterContext = {
   queryClient: QueryClient
 }
 

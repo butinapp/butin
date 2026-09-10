@@ -64,12 +64,12 @@ export const grafanaConfigSchema = defineConfigSchema([
 export type GrafanaConfig = ConfigOf<typeof grafanaConfigSchema>
 
 // billing — portal `/api/orgs/<slug>/invoices` + `/api/orgs/<slug>`
-interface RawLink {
+type RawLink = {
   rel?: string
   href?: string
 }
 
-export interface RawGrafanaInvoice {
+export type RawGrafanaInvoice = {
   id?: string
   amount?: number // invoice grand total, DOLLARS (decimal, e.g. 11385.69)
   amountUnpaid?: number // outstanding balance, dollars; 0 = fully paid
@@ -80,10 +80,10 @@ export interface RawGrafanaInvoice {
   orgSlug?: string
   links?: RawLink[]
 }
-export interface RawGrafanaInvoiceList {
+export type RawGrafanaInvoiceList = {
   items?: RawGrafanaInvoice[]
 }
-interface RawSubscription {
+type RawSubscription = {
   product?: string
   plan?: string
   publicName?: string
@@ -92,13 +92,13 @@ interface RawSubscription {
   startDate?: string
 }
 
-export interface RawGrafanaOrg {
+export type RawGrafanaOrg = {
   subscriptions?: { current?: RawSubscription | null } | null
   gcloudMonthlyCost?: number // base plan fee/mo, DOLLARS (Pro's $8) — NOT the metered spend
   contractType?: string
 }
 
-export interface GrafanaInvoice {
+export type GrafanaInvoice = {
   id: string
   date?: string // 'YYYY-MM-DD' (sent, else created, else due)
   status: string // 'open' | 'paid'
@@ -107,7 +107,7 @@ export interface GrafanaInvoice {
   datePaid?: string // 'YYYY-MM-DD', if paid
   hostedUrl?: string
 }
-export interface GrafanaBilling {
+export type GrafanaBilling = {
   planName: string
   product?: string // the raw product id (e.g. 'grafana-cloud-pro')
   billingCycle?: string // 'monthly' | 'annual'
@@ -122,7 +122,7 @@ export interface GrafanaBilling {
 }
 
 // usage — portal `/api/orgs/<slug>` (aggregate) + `/api/instances?orgSlug=<slug>` (per-stack)
-export interface RawGrafanaOrgUsage {
+export type RawGrafanaOrgUsage = {
   subscriptions?: { current?: { publicName?: string; planBillingCycle?: string } | null } | null
   hmUsage?: number // metrics active series — billable
   hmCurrentUsage?: number // metrics active series — current
@@ -134,7 +134,7 @@ export interface RawGrafanaOrgUsage {
   hgUsage?: number // billable Grafana active users
   hgCurrentActiveUsers?: number // current Grafana active users (all stacks)
 }
-interface RawGrafanaInstance {
+type RawGrafanaInstance = {
   name?: string
   url?: string
   status?: string
@@ -154,18 +154,18 @@ interface RawGrafanaInstance {
   hpInstanceBillingUsage?: number // profiles ingested, GB — billable
 }
 
-export interface RawGrafanaInstanceList {
+export type RawGrafanaInstanceList = {
   items?: RawGrafanaInstance[]
 }
 
-export interface GrafanaProductUsage {
+export type GrafanaProductUsage = {
   key: string
   label: string
   unit: string // 'GB' | 'active series' | 'checks' | 'users'
   billed: number // billable usage for the current period
   current?: number // live usage where the API distinguishes it from billable
 }
-export interface GrafanaStack {
+export type GrafanaStack = {
   name: string
   url?: string
   region?: string
@@ -184,7 +184,7 @@ export interface GrafanaStack {
   tracesGb: number
   profilesGb: number
 }
-export interface GrafanaUsage {
+export type GrafanaUsage = {
   planName: string
   billingCycle?: string
   activeUsers: number // current Grafana active users across all stacks
@@ -194,7 +194,7 @@ export interface GrafanaUsage {
 }
 
 // members — portal `/api/orgs/<slug>/members` (an array, or an { items } wrapper)
-export interface RawGrafanaMember {
+export type RawGrafanaMember = {
   id?: number | string
   userId?: number
   login?: string
@@ -202,7 +202,7 @@ export interface RawGrafanaMember {
   email?: string
   role?: string // 'Viewer' | 'Editor' | 'Admin'
 }
-export interface RawGrafanaMemberList {
+export type RawGrafanaMemberList = {
   items?: RawGrafanaMember[]
 }
 
@@ -311,7 +311,7 @@ export const buildGrafanaSummaryResult = (billingData: GrafanaBilling, currentMt
 // subscription account record (plan, billing cycle, trial status, start date, base fee, all-time billed) and
 // the invoice history. Grafana invoices have no PDF, so the hosted portal page rides a plain url column.
 
-interface BillingAccountRow {
+type BillingAccountRow = {
   plan: string
   product: string | null
   billingCycle: string | null
@@ -321,7 +321,7 @@ interface BillingAccountRow {
   totalBilled: number
 }
 
-interface BillingInvoiceRow {
+type BillingInvoiceRow = {
   // Hidden — the invoice id rides as the ledger key so an open invoice's status/unpaid balance accumulates as
   // it's paid off past the fetch window.
   id: string
@@ -462,7 +462,7 @@ export const buildGrafanaUsage = (
 // Compose the usage CapabilityResult: the per-product consumption metrics (units carried per row) + a
 // per-stack breakdown table. No money — all metrics are plain counts.
 
-interface StackRow {
+type StackRow = {
   name: string
   region: string | null
   version: string | null
@@ -533,10 +533,10 @@ export const buildGrafanaMembers = (
 
 // ── MTD (data-plane Prometheus instant query — the live month-to-date spend) ────────────
 
-interface RawDataFrame {
+type RawDataFrame = {
   data?: { values?: unknown[][] }
 }
-interface RawQueryResponse {
+type RawQueryResponse = {
   results?: Record<string, { frames?: RawDataFrame[] } | undefined>
 }
 
@@ -606,7 +606,7 @@ const orgSlug = (ctx: CollectContext<GrafanaConfig>): string => ctx.config.orgSl
 // The portal org + invoices, the resolved org slug (the invoice hosted-URL fallback needs it), and the live
 // data-plane month-to-date figure. Summary + Billing share this bundle; the core query cache dedupes the
 // underlying GETs across the two runs.
-export interface GrafanaBillingRaw {
+export type GrafanaBillingRaw = {
   org: RawGrafanaOrg | null
   invoiceList: RawGrafanaInvoiceList | null
   currentMtd: number | null
@@ -625,7 +625,7 @@ const fetchGrafanaBilling = async (ctx: CollectContext<GrafanaConfig>): Promise<
 }
 
 // The portal aggregate consumption + the per-stack instance list.
-export interface GrafanaUsageRaw {
+export type GrafanaUsageRaw = {
   org: RawGrafanaOrgUsage | null
   instanceList: RawGrafanaInstanceList | null
 }

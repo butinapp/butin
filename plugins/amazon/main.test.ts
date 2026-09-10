@@ -236,7 +236,7 @@ test('build over a merged union spans retained-old + updated + new orders', () =
   expect(account.value.currentMtd).toBe(37)
 })
 
-interface OrderRow {
+type OrderRow = {
   orderId: string
   date: string | null
   total: number

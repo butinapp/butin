@@ -5,7 +5,7 @@
 
 import { MS_PER_DAY } from '../util/date.js'
 
-export interface SamplePerson {
+export type SamplePerson = {
   id: string
   firstName: string
   lastName: string
@@ -13,7 +13,7 @@ export interface SamplePerson {
   email: string
 }
 
-export interface SampleConfig {
+export type SampleConfig = {
   users: number
   documents: number
   days: number
@@ -24,7 +24,7 @@ export type SampleSize = 'small' | 'medium' | 'large' | 'xlarge'
 
 // A single random day (within a look-back) read every way a wire payload asks for it — so a sample that needs
 // both the date string and its epoch reads ONE day, never two diverging draws.
-export interface SampleDay {
+export type SampleDay = {
   date: string // 'YYYY-MM-DD'
   iso: string // midnight UTC, 'YYYY-MM-DDT00:00:00.000Z'
   epochMs: number // midnight UTC, ms
@@ -33,7 +33,7 @@ export interface SampleDay {
 }
 
 // A calendar month a fixed count back from the reference month — deterministic (no random), for monthly ledgers.
-export interface SampleMonth {
+export type SampleMonth = {
   yearMonth: string // 'YYYY-MM'
   ym: string // 'YYYYMM'
   startEpochMs: number // first of the month, midnight UTC, ms
@@ -41,7 +41,7 @@ export interface SampleMonth {
   label: string // 'June 2026'
 }
 
-export interface SampleGen {
+export type SampleGen = {
   // person(i) is the i-th member of a fixed shared cast (stable across every plugin → a coherent Overview);
   // person() with no index fabricates a one-off person from the local seed.
   person: (i?: number) => SamplePerson

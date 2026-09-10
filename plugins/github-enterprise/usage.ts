@@ -37,11 +37,11 @@ export const GITHUB_PRODUCTS: Array<{ slug: string; label: string }> = [
 
 // --- raw shapes (only the fields we use) ---
 
-export interface RawUsageTotal {
+export type RawUsageTotal = {
   usage?: { totalGrossAmount?: number }
 }
 
-export interface RawNetUsageRow {
+export type RawNetUsageRow = {
   grossAmount?: number
   netAmount?: number
   discountAmount?: number
@@ -54,37 +54,37 @@ export interface RawNetUsageRow {
   usageAt?: string
 }
 
-export interface RawNetUsage {
+export type RawNetUsage = {
   usage?: RawNetUsageRow[]
 }
 
 /** One product's raw net-usage response, tagged with the product we asked for. */
-export interface ProductNetUsage {
+export type ProductNetUsage = {
   slug: string
   label: string
   raw: RawNetUsage
 }
 
 /** The raw usage bundle a fetch returns: the authoritative gross total + each product's net-usage rows. */
-export interface GithubUsageRaw {
+export type GithubUsageRaw = {
   total: RawUsageTotal
   perProduct: ProductNetUsage[]
 }
 
-interface SkuUsage {
+type SkuUsage = {
   sku: string
   name: string
   gross: number
 }
 
-interface UsageRecord {
+type UsageRecord = {
   gross: number
   discount: number
   net: number
   products: number
 }
 
-interface ProductRow {
+type ProductRow = {
   product: string
   net: number
   gross: number
@@ -92,7 +92,7 @@ interface ProductRow {
   skus: string
 }
 
-interface DailyRow {
+type DailyRow = {
   date: string
   net: number
   gross: number

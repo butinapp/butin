@@ -7,13 +7,13 @@ import { groupBy, sortBy, sumBy } from 'lodash-es'
 // re-exported here so @butinapp/ui consumers can import them from this module. The DERIVATION below lives here.
 export type { MonthPoint, OverviewPlugin }
 
-export interface MonthStats {
+export type MonthStats = {
   mtd: number
   lastFullMonth: number
   annualizedRunRate: number
 }
 
-export interface Mover {
+export type Mover = {
   pluginId: string
   pluginName: string
   color?: string
@@ -22,7 +22,7 @@ export interface Mover {
   pct: number
 }
 
-export interface ByServiceRow {
+export type ByServiceRow = {
   pluginId: string
   pluginName: string
   color?: string
@@ -214,13 +214,13 @@ export const byServiceRows = (
 export const windowTotal = (row: ByServiceRow, months: string[], nowMonth: string): number =>
   round2(sumBy(months, (m) => (m === nowMonth ? row.mtd : (row.byMonth[m] ?? 0))))
 
-export interface SpendBreakdownRow {
+export type SpendBreakdownRow = {
   currency: string
   mtd: number
   convertible: boolean
 }
 
-export interface SpendBreakdown {
+export type SpendBreakdown = {
   rows: SpendBreakdownRow[]
   unconverted: number
 }
@@ -266,7 +266,7 @@ export const pickHeadline = (p: OverviewPlugin): Summary | undefined => {
   return summaries.find((s) => s.headline) ?? order.flatMap((sec) => summaries.filter((s) => s.section === sec))[0]
 }
 
-export interface Partitioned {
+export type Partitioned = {
   spend: OverviewPlugin[]
   balances: OverviewPlugin[]
   others: OverviewPlugin[]

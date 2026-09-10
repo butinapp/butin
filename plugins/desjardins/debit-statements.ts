@@ -77,7 +77,7 @@ const withSelectionFrame = async <T>(
 
 // One downloadable monthly bank-account statement: folio (account) + year + month, plus the year's
 // dropdown CODE (e.g. '07' for 2019) that the confirm POST echoes alongside the literal year.
-export interface DebitStatementRef {
+export type DebitStatementRef = {
   folio: string
   year: number
   month: number
@@ -85,7 +85,7 @@ export interface DebitStatementRef {
 }
 
 // The per-page hidden fields the confirm POST must echo back verbatim.
-export interface SelectionForm {
+export type SelectionForm = {
   strutsToken: string
   token: string
   nombreDeFolio: string
@@ -286,7 +286,7 @@ const fetchDebitStatementPdf = async (ctx: CollectContext, ref: DebitStatementRe
 
 // One downloadable monthly bank-account statement row: the rendered label + date, plus the ref fields
 // (folio / year / month / yearCode) carried for the capability's fetchFile to replay the live flow.
-interface DebitStatementRow {
+type DebitStatementRow = {
   name: string
   date: string
   // Not rendered — carried for fetchFile to replay the modale→selection→confirm→download flow.

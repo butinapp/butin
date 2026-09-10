@@ -42,7 +42,7 @@ const HISTORY_MONTHS = 13
 
 // ── types (the data dictionary) ──────────────────────────────────────────────────────
 
-export interface DnsimpleInvoice {
+export type DnsimpleInvoice = {
   /** Invoice number, e.g. `3656932-00000`. */
   id: string
   /** 'YYYY-MM-DD' (UTC) from the row's `<time datetime>`. */
@@ -58,12 +58,12 @@ export interface DnsimpleInvoice {
 }
 
 /** One line of the current plan's estimated next charge. */
-export interface DnsimpleLineItem {
+export type DnsimpleLineItem = {
   label: string
   amount: number
 }
 
-export interface DnsimpleBillingReport {
+export type DnsimpleBillingReport = {
   /** Current plan name, e.g. "Teams plan". */
   planName: string
   /** Per-line breakdown of the estimated next charge (dollars). */
@@ -91,13 +91,13 @@ export interface DnsimpleBillingReport {
 // ── raw wire shapes (what each capability's fetch returns; build* parses them) ──────────
 
 /** The billing page HTML + the walked invoice-page HTMLs — the raw both the Summary and Billing tabs build from. */
-export interface DnsimpleBillingRaw {
+export type DnsimpleBillingRaw = {
   billingHtml: string
   invoicePagesHtml: string[]
 }
 
 /** The General page HTML + the domain-list HTML — the raw the Account tab builds from. */
-export interface DnsimpleAccountRaw {
+export type DnsimpleAccountRaw = {
   accountHtml: string
   domainsHtml: string
 }
@@ -316,7 +316,7 @@ export const buildDnsimpleSummaryResult = (report: DnsimpleBillingReport): Capab
 // The per-invoice download is a CSRF-protected form POST (not a plain GET), so it is NOT surfaced as a
 // downloadable link — it wouldn't resolve outside the authenticated Electron partition.
 
-interface DnsimpleInvoiceRow {
+type DnsimpleInvoiceRow = {
   id: string | null
   date: string | null
   summary: string | null
@@ -324,7 +324,7 @@ interface DnsimpleInvoiceRow {
   status: string | null
 }
 
-interface DnsimplePaymentMethodRow {
+type DnsimplePaymentMethodRow = {
   cardBrand: string | null
   cardLast4: string | null
   cardExpiry: string | null
@@ -442,7 +442,7 @@ export const buildDnsimpleMembers = (html: string): MembersInput => {
 // empty list / shape drift (returns []). The row selectors are best-effort against DNSimple's `model-table`
 // structure; confirm them against a live account on first run.
 
-export interface DnsimpleDomain {
+export type DnsimpleDomain = {
   name: string
   status: string
   /** 'YYYY-MM-DD' registry expiry, when shown. */
@@ -484,7 +484,7 @@ export const parseDomains = (html: string): DnsimpleDomain[] => {
   return domains.sort((a, b) => a.name.localeCompare(b.name))
 }
 
-interface DnsimpleDomainRow {
+type DnsimpleDomainRow = {
   name: string
   status: string
   expiresOn: string | null
@@ -495,7 +495,7 @@ interface DnsimpleDomainRow {
 // The General page (`/a/<id>/account`) renders label→value <tr> pairs in its action-cards; the billing-
 // notification address sits as the <p> after its bold label in the Notifications card. Pure — fixture-tested.
 
-export interface DnsimpleAccountProfile {
+export type DnsimpleAccountProfile = {
   name?: string
   identifier?: string
   country?: string
@@ -620,14 +620,14 @@ export const buildDnsimpleAccountResult = (
 // Both come off `/a/<id>/account/api_tokens`: the rate-limit grid (requests/hour, remaining, reset) and the
 // access-tokens table. Pure — fixture-tested; tolerant of an empty token list (a fresh account has none).
 
-export interface DnsimpleApiLimits {
+export type DnsimpleApiLimits = {
   limit?: number
   remaining?: number
   /** ISO datetime the current window resets. */
   resetAt?: string
 }
 
-export interface DnsimpleAccessToken {
+export type DnsimpleAccessToken = {
   name: string
   created?: string
   lastUsed?: string

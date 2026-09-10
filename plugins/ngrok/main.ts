@@ -76,11 +76,11 @@ const loadCsrf = (ctx: CollectContext): Promise<string> =>
 // ── types (the data dictionary) ───────────────────────────────────────────────────────
 // Connect-RPC wraps epoch seconds in `{ seconds }` objects and reports all money as cent strings.
 
-interface RawSeconds {
+type RawSeconds = {
   seconds?: string
 }
 
-export interface RawSubscription {
+export type RawSubscription = {
   intervalMonths?: number
   renewsAt?: RawSeconds
   plan?: { productId?: string; quantity?: string; description?: string }
@@ -89,7 +89,7 @@ export interface RawSubscription {
   additionalUsageToDateInCents?: number
 }
 
-export interface RawInvoice {
+export type RawInvoice = {
   total?: string
   amountDue?: string
   amountPaid?: string
@@ -100,17 +100,17 @@ export interface RawInvoice {
   dueAt?: RawSeconds
 }
 
-export interface RawInvoiceList {
+export type RawInvoiceList = {
   invoices?: RawInvoice[]
 }
 
-interface RawOwner {
+type RawOwner = {
   title?: string
   name?: string
   description?: string
 }
 
-interface RawCredential {
+type RawCredential = {
   description?: string
   createdAt?: RawSeconds
   id?: { id?: string }
@@ -118,11 +118,11 @@ interface RawCredential {
   active?: boolean
 }
 
-export interface RawApiKeyList {
+export type RawApiKeyList = {
   apiKeys?: RawCredential[]
 }
 
-export interface RawAuthtokenList {
+export type RawAuthtokenList = {
   dashAuthtokens?: RawCredential[]
 }
 
@@ -136,7 +136,7 @@ const secDay = (s?: RawSeconds): string | undefined => epochSecDay(s?.seconds ? 
 //   • Billing — the detail: the subscription account record (plan, seats, period, renewal) + the invoice
 //     history. ngrok's invoice link is a hosted console URL (not a PDF), so it's a url-column table.
 
-export interface NgrokBilling {
+export type NgrokBilling = {
   plan: string
   seats: number
   intervalMonths: number
@@ -196,14 +196,14 @@ export const buildNgrokSummaryResult = (billingData: NgrokBilling): CapabilityRe
     ]
   })
 
-interface BillingAccountRow {
+type BillingAccountRow = {
   plan: string
   seats: number
   period: string | null
   renewsAt: string | null
 }
 
-interface BillingInvoiceRow {
+type BillingInvoiceRow = {
   date: string | null
   amount: number
   status: string
@@ -256,7 +256,7 @@ export const buildNgrokBillingTab = (billing: NgrokBilling): CapabilityResult =>
 
 // Summary + Billing share the same two billing RPCs; both capabilities fetch the same raw bundle and the
 // core query cache dedupes the underlying reads. build derives NgrokBilling from the raw wire shape.
-export interface RawNgrokBilling {
+export type RawNgrokBilling = {
   subscription: RawSubscription | null
   invoices: RawInvoiceList | null
 }
@@ -278,7 +278,7 @@ const fetchNgrokBilling = async (ctx: CollectContext): Promise<RawNgrokBilling> 
 
 export type NgrokCredentialKind = 'API key' | 'Auth token'
 
-export interface NgrokCredential {
+export type NgrokCredential = {
   kind: NgrokCredentialKind
   id: string
   owner: string
@@ -327,7 +327,7 @@ export const buildNgrokKeysResult = (credentials: NgrokCredential[]): Capability
     }))
   })
 
-export interface RawNgrokCredentials {
+export type RawNgrokCredentials = {
   apiKeys: RawApiKeyList | null
   authtokens: RawAuthtokenList | null
 }
@@ -353,12 +353,12 @@ const fetchNgrokKeys = async (ctx: CollectContext): Promise<RawNgrokCredentials>
 const TEAM_MEMBERS_LIST = 'svc.dash.DashTeamMembersService/List'
 const INVITATIONS_LIST = 'svc.dash.DashInvitationsService/List'
 
-interface RawPermissions {
+type RawPermissions = {
   isAdmin?: boolean
   team?: string
 }
 
-interface RawMember {
+type RawMember = {
   id?: { id?: string }
   email?: string
   name?: string
@@ -368,11 +368,11 @@ interface RawMember {
   status?: string
 }
 
-export interface RawTeamMemberList {
+export type RawTeamMemberList = {
   teamMembers?: RawMember[]
 }
 
-export interface RawInvitationList {
+export type RawInvitationList = {
   invitations?: RawMember[]
 }
 
@@ -401,7 +401,7 @@ export const buildNgrokMembers = (
   ]
 })
 
-export interface RawNgrokMembers {
+export type RawNgrokMembers = {
   teamMembers: RawTeamMemberList | null
   invitations: RawInvitationList | null
 }

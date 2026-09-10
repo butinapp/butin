@@ -90,7 +90,7 @@ export const resolveLinearAuth = async (ctx: AuthContext): Promise<AuthAttachmen
 
 // ── types (the data dictionary) ──────────────────────────────────────────────────────
 
-export interface RawLinearInvoice {
+export type RawLinearInvoice = {
   created?: string // ISO timestamp, e.g. "2026-05-19T16:55:43.000Z"
   dueDate?: string | null
   status?: string
@@ -99,14 +99,14 @@ export interface RawLinearInvoice {
   kind?: string
 }
 
-export interface RawLinearPaymentMethod {
+export type RawLinearPaymentMethod = {
   type?: string
   country?: string
   brand?: string
   last4?: string
 }
 
-export interface RawBillingDetails {
+export type RawBillingDetails = {
   success?: boolean
   name?: string | null
   email?: string | null
@@ -115,17 +115,17 @@ export interface RawBillingDetails {
   invoices?: RawLinearInvoice[]
 }
 
-export interface RawBillingDetailsResponse {
+export type RawBillingDetailsResponse = {
   billingDetails?: RawBillingDetails
 }
 
-export interface RawBillingInvoicesResponse {
+export type RawBillingInvoicesResponse = {
   billingInvoices?: { success?: boolean; invoices?: RawLinearInvoice[] }
 }
 
 // Summary + Billing both read the same two GraphQL operations; the raw bundle their fetch returns. build runs
 // buildLinearBilling over it, so the demo sample is a raw GraphQL shape that exercises the real transform.
-export interface RawLinearBilling {
+export type RawLinearBilling = {
   details: RawBillingDetailsResponse | null
   invoiceList: RawBillingInvoicesResponse | null
 }
@@ -133,7 +133,7 @@ export interface RawLinearBilling {
 // The dashboard `users` query returns the workspace roster — id / name / email plus the admin / guest /
 // active flags. `admin` → 'admin', `guest` → 'guest', otherwise 'member'; suspended (inactive) members are
 // surfaced with a 'suspended' role so they're visibly distinct.
-export interface RawLinearUser {
+export type RawLinearUser = {
   id?: string
   name?: string | null
   email?: string | null
@@ -142,26 +142,26 @@ export interface RawLinearUser {
   active?: boolean
 }
 
-export interface RawUsersResponse {
+export type RawUsersResponse = {
   users?: { nodes?: RawLinearUser[] }
 }
 
 // Normalized invoice (dollars). `kind` (subscription / one-off …) is Linear-specific, surfaced as a column.
-export interface LinearInvoice extends BillingInvoiceInput {
+export type LinearInvoice = BillingInvoiceInput & {
   date?: string
   amount: number
   status: string
   kind: string
 }
 
-export interface LinearPaymentMethod {
+export type LinearPaymentMethod = {
   type: string
   brand?: string
   last4?: string
   country?: string
 }
 
-export interface LinearBillingReport {
+export type LinearBillingReport = {
   invoices: LinearInvoice[]
   latestAmount: number
   plan?: string
@@ -258,7 +258,7 @@ export const buildLinearSummaryResult = (report: LinearBillingReport): Capabilit
 // The full invoice history as a downloadable table (each row downloads the Stripe invoice PDF; the visible
 // link opens the hosted invoice page), plus the payment method, billing contact, and tax id as a keyvalue record.
 
-interface LinearInvoiceRow {
+type LinearInvoiceRow = {
   date: string | null
   amount: number
   status: string
@@ -270,7 +270,7 @@ interface LinearInvoiceRow {
   name: string
 }
 
-interface LinearAccountRow {
+type LinearAccountRow = {
   contact: string | null
   email: string | null
   card: string | null

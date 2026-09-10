@@ -9,7 +9,7 @@ import { dataRootDir } from './store.js'
 // deployment (local file → hosted blob → company endpoint) swaps the implementation, nothing else.
 export type BundleRef = { id: string; path?: string; createdAt: string }
 
-export interface ReportStore {
+export type ReportStore = {
   put(bundle: ExportBundle): Promise<BundleRef>
   list(): Promise<BundleRef[]>
   get(ref: BundleRef): Promise<ExportBundle>

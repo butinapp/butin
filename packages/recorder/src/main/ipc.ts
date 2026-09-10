@@ -20,7 +20,7 @@ import { resolveRepoRoot } from './repo-root.js'
 import { domainsFile, profilesRegistry, recorderPrefsFile, recordingsRoot } from './store.js'
 
 // Published on window.recorder — one entry per IPC channel.
-export interface DomainSummary {
+export type DomainSummary = {
   surface: string
   runCount: number
   authKind: AuthKind
@@ -31,7 +31,7 @@ export interface DomainSummary {
 
 // One selectable app profile: its name + the browser partition a recording targets to share that
 // profile's captured session. `active` is the profile the app currently has open.
-export interface ProfileOption {
+export type ProfileOption = {
   id: string
   name: string
   partition: string
@@ -39,7 +39,7 @@ export interface ProfileOption {
 }
 
 // Preview of what a kickstart will produce, shown in the Create-plugin dialog before any file is written.
-export interface PluginSuggestion {
+export type PluginSuggestion = {
   id: string
   name: string
   vendor: string
@@ -49,7 +49,7 @@ export interface PluginSuggestion {
 }
 
 // The outcome of a kickstart: where the files landed + the prompt that was copied to the clipboard.
-export interface KickstartOutcome {
+export type KickstartOutcome = {
   pluginPath: string
   briefPath: string
   prompt: string

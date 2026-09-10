@@ -91,21 +91,21 @@ const financingType = (raw?: string): string => (raw ? (FINANCING_LABELS[raw] ??
 
 // --- the obtenirListeMesComptes shape (only the fields we read) ---
 
-interface DesjBankAccount {
+type DesjBankAccount = {
   descriptions?: string[]
   type?: string
   montantAvecDevise?: string
   codeISODevise?: string
 }
 
-interface DesjFinancingProduct {
+type DesjFinancingProduct = {
   descriptions?: string[]
   montantAvecDevise?: string
   codeISODevise?: string
   produitFinancementRessourceType?: string
 }
 
-interface DesjInvestmentResource {
+type DesjInvestmentResource = {
   descriptions?: string[]
   montant?: string
   type?: string
@@ -113,7 +113,7 @@ interface DesjInvestmentResource {
   numeroCompte?: string
 }
 
-export interface DesjComptesResponse {
+export type DesjComptesResponse = {
   dataTiroirComptesBancaires?: { montantComptes?: string; listeCompte?: DesjBankAccount[] }
   dataTiroirCartesPretsMarges?: { montantPretsCartesMarges?: string; listeProduitFinancement?: DesjFinancingProduct[] }
   dataTiroirEpargnePlacements?: { montantTotal?: string; epargnePlacementRessources?: DesjInvestmentResource[] }
@@ -121,25 +121,25 @@ export interface DesjComptesResponse {
 
 // --- normalized holdings ---
 
-export interface DesjAccount {
+export type DesjAccount = {
   name: string
   amount: number
 }
 
-export interface DesjCredit {
+export type DesjCredit = {
   name: string
   type: string
   amount: number
 }
 
-export interface DesjInvestment {
+export type DesjInvestment = {
   name: string
   /** 'YYYY-MM-DD' maturity, or '' when none. */
   maturity: string
   amount: number
 }
 
-export interface DesjHoldings {
+export type DesjHoldings = {
   accounts: DesjAccount[]
   credit: DesjCredit[]
   investments: DesjInvestment[]
@@ -176,25 +176,25 @@ export const parseHoldings = (res: DesjComptesResponse): DesjHoldings => {
   }
 }
 
-interface DesjTotalsRow {
+type DesjTotalsRow = {
   bank: number
   investments: number
   credit: number
   net: number
 }
 
-interface DesjAccountRow {
+type DesjAccountRow = {
   name: string
   amount: number
 }
 
-interface DesjCreditRow {
+type DesjCreditRow = {
   name: string
   type: string
   amount: number
 }
 
-interface DesjInvestmentRow {
+type DesjInvestmentRow = {
   name: string
   maturity: string
   amount: number
@@ -294,7 +294,7 @@ const buildAccountsResult = (raw: DesjComptesResponse): CapabilityResult => buil
 
 // One card from /detention-carte-credit (only the fields we read). The signed token authorizes the
 // statement reads; it is opaque and account-scoped.
-export interface DesjCard {
+export type DesjCard = {
   numeroCompteJeton?: string
   numeroCompteJetonSigne?: string
   descriptionLongue?: string
@@ -303,7 +303,7 @@ export interface DesjCard {
 }
 
 // One statement from /relevesListe → sommaireRelevesListe[].
-export interface DesjStatement {
+export type DesjStatement = {
   numeroCompteJeton?: string
   dateReleve?: string
   typeReleve?: string
@@ -331,7 +331,7 @@ const statementDownloadUrl = (jeton: string, signed: string, typeReleve: string,
   `&numeroCompteSigne=${encodeURIComponent(signed)}` +
   `&typeReleve=${encodeURIComponent(typeReleve)}&format=pdf&dateReleve=${encodeURIComponent(dateReleve)}`
 
-interface DesjStatementRow {
+type DesjStatementRow = {
   date: string
   card: string
   type: string
@@ -475,7 +475,7 @@ export const fetchAllStatements = async (ctx: CollectContext, cards: DesjCard[])
   return all
 }
 
-export interface DesjStatementsBundle {
+export type DesjStatementsBundle = {
   cards: DesjCard[]
   statements: DesjStatement[]
 }

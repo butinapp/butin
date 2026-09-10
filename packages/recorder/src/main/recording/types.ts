@@ -7,7 +7,7 @@
 export const SCHEMA_VERSION = 1
 
 /** User-editable capture filter (defaults in filters.ts). */
-export interface FilterConfig {
+export type FilterConfig = {
   /** CDP resourceTypes to skip (e.g. Image, Font, Script). */
   skipResourceTypes: string[]
   /** Drop requests whose host contains any of these substrings. */
@@ -16,7 +16,7 @@ export interface FilterConfig {
 
 export type ContextKind = 'page' | 'popup' | 'iframe' | 'worker' | 'service_worker'
 
-export interface CaptureContext {
+export type CaptureContext = {
   /** Which browsing context emitted the request. */
   kind: ContextKind
   /** URL of the iframe/worker/popup target, when the request came from a sub-target. */
@@ -29,7 +29,7 @@ export interface CaptureContext {
   sessionId?: string
 }
 
-export interface RecordedRequest {
+export type RecordedRequest = {
   /** Monotonic capture order across every context in the run (1-based). */
   index: number
   /** ISO timestamp when this record was written (≈ when the response finished). */
@@ -106,7 +106,7 @@ export interface RecordedRequest {
   }
 }
 
-export interface RecordedWebSocketFrame {
+export type RecordedWebSocketFrame = {
   ts: string
   direction: 'sent' | 'received'
   /** WebSocket opcode: 1 text, 2 binary, 8 close, 9 ping, 10 pong. */
@@ -116,7 +116,7 @@ export interface RecordedWebSocketFrame {
   base64Encoded: boolean
 }
 
-export interface RecordedWebSocket {
+export type RecordedWebSocket = {
   index: number
   url: string
   context?: CaptureContext
@@ -130,7 +130,7 @@ export interface RecordedWebSocket {
   closeCode?: number
 }
 
-export interface RecordingManifest {
+export type RecordingManifest = {
   runId: string
   label: string
   startUrl: string
@@ -159,7 +159,7 @@ export interface RecordingManifest {
   complete?: boolean
 }
 
-export interface RecordingSummary {
+export type RecordingSummary = {
   runId: string
   label: string
   startedAt: string
@@ -170,7 +170,7 @@ export interface RecordingSummary {
   host?: string
 }
 
-export interface StartRecordingPayload {
+export type StartRecordingPayload = {
   label: string
   startUrl: string
   reuseSession: boolean
@@ -179,12 +179,12 @@ export interface StartRecordingPayload {
   exportHar?: boolean
 }
 
-export interface StartRecordingResult {
+export type StartRecordingResult = {
   runId: string
 }
 
 /** One line of network.jsonl — a fast, tail-able index over a run. */
-export interface NetworkLogLine {
+export type NetworkLogLine = {
   index: number
   ts: string
   method: string
@@ -203,7 +203,7 @@ export interface NetworkLogLine {
 }
 
 /** One line of navigation.jsonl — the page-by-page journey, linked to screenshots. */
-export interface NavigationLogLine {
+export type NavigationLogLine = {
   index: number
   ts: string
   url: string
@@ -219,7 +219,7 @@ export type LogLevel = 'info' | 'warn' | 'error'
  * went wrong (navigations, Electron load failures, pause/resume, capture errors). Separate from
  * network.jsonl (the request index): this is the run's diagnostic narrative, not its captured traffic.
  */
-export interface RecorderLogLine {
+export type RecorderLogLine = {
   ts: string
   level: LogLevel
   /** Short machine tag: 'start' | 'navigate' | 'load-failed' | 'pause' | 'resume' | 'stop' | 'warning'. */

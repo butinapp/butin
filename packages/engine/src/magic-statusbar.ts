@@ -74,7 +74,7 @@ const ensureFile = (): string => {
   return cachedUrl
 }
 
-export interface StatusBar {
+export type StatusBar = {
   view: WebContentsView
   // `text` overrides the default "Loading…" with e.g. "Loading github.com…".
   setLoading: (on: boolean, text?: string) => void

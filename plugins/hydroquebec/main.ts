@@ -34,7 +34,7 @@ const HISTORY_OPS = `${LSW}/historique-des-operations`
 const INVOICE_HREF = /noFacture=(\d+)&(?:amp;)?idFacturePDF=([0-9A-Fa-f]+)/
 
 // ── types: the wire shapes (Raw*) then the fetch bundle ────────────────────────────────
-export interface RawRelation {
+export type RawRelation = {
   noPartenaireDemandeur: string
   noPartenaireTitulaire: string
   nom1Titulaire: string
@@ -44,17 +44,17 @@ export interface RawRelation {
 }
 
 // calculerSommaireContractuel — the account→contract map for the acting relationship.
-interface RawCompteContratRef {
+type RawCompteContratRef = {
   noCompteContrat: string
   listeNoContrat: string[]
   titulaire: string
 }
-interface RawSommaireContractuel {
+type RawSommaireContractuel = {
   comptesContrats?: RawCompteContratRef[]
 }
 
 // infoCompte — per-account balances, amounts, dates, billing address, payment method.
-export interface RawCompte {
+export type RawCompte = {
   noCompteContrat: string
   nomTitulaire?: string
   prenomTitulaire?: string
@@ -71,12 +71,12 @@ export interface RawCompte {
   libelle?: string
   segmentation?: string
 }
-interface RawInfoCompte {
+type RawInfoCompte = {
   infoCockpitPourPartenaireModel?: { listeComptesContrats?: RawCompte[] }
 }
 
 // partenaires/contrats — the consumption contract behind each account (address, meter, tariff, start date).
-export interface RawContrat {
+export type RawContrat = {
   noContrat: string
   adresseConsommation?: string
   noCompteContrat?: string
@@ -86,13 +86,13 @@ export interface RawContrat {
   dateDebutContrat?: string
   indicateurMVE?: boolean
 }
-interface RawContratsResponse {
+type RawContratsResponse = {
   listeContrats?: RawContrat[]
 }
 
 // conso/eeweb/profilEnergetique/{noContrat} — the full billed-period history for one contract (~2 years of
 // bi-monthly bills): amount, consumption, and the money breakdown per period.
-export interface RawPeriodeFacturation {
+export type RawPeriodeFacturation = {
   dateDebut?: string
   dateFin?: string
   totalConso?: number
@@ -102,7 +102,7 @@ export interface RawPeriodeFacturation {
   montantTaxes?: number
   montantConsommation?: number
 }
-export interface RawProfilEnergetique {
+export type RawProfilEnergetique = {
   noContrat: string
   periodesAnalyseFacturation?: RawPeriodeFacturation[]
 }
@@ -110,7 +110,7 @@ export interface RawProfilEnergetique {
 // One downloadable invoice, read straight off the history page: its number + the `idFacturePDF` hash the PDF
 // endpoint needs, its amount + date, plus the relationship it belongs to so the download re-issues the
 // partner-scoped portal navigation.
-export interface InvoiceDoc {
+export type InvoiceDoc = {
   noFacture: string
   idFacturePDF: string
   date: string | null
@@ -120,7 +120,7 @@ export interface InvoiceDoc {
 }
 
 // conso/portraitComplet — consumption for one contract: billing periods (kWh + $) and monthly kWh.
-export interface RawPeriode {
+export type RawPeriode = {
   dateDebutPeriode?: string
   dateFinPeriode?: string
   consoTotalPeriode?: number
@@ -129,11 +129,11 @@ export interface RawPeriode {
   moyenneKwhJourPeriode?: number
   nbJourLecturePeriode?: number
 }
-export interface RawMois {
+export type RawMois = {
   dateDebutMois?: string
   consoTotalMoisDecimal?: number
 }
-export interface RawPortrait {
+export type RawPortrait = {
   noContrat: string
   adresseLieuConsoPartie1?: string
   adresseLieuConsoPartie2?: string
@@ -145,7 +145,7 @@ export interface RawPortrait {
 
 // The full portfolio the shared fetch assembles across every relationship. Each entry carries its owning
 // relationship (`titulaire`) so the pure builders can flatten and tag rows without re-resolving anything.
-export interface RawPortfolio {
+export type RawPortfolio = {
   demandeur: string
   relations: RawRelation[]
   accounts: { titulaire: string; relationName: string; compte: RawCompte }[]
@@ -472,7 +472,7 @@ export const buildHydroSummary = (p: RawPortfolio): CapabilityResult => {
 }
 
 // ── billing: downloadable invoice ledger + the per-property energy breakdown ─────────────
-interface InvoiceRow {
+type InvoiceRow = {
   noFacture: string
   address: string
   account: string
@@ -485,7 +485,7 @@ interface InvoiceRow {
   name: string
 }
 
-interface PeriodRow {
+type PeriodRow = {
   contract: string
   address: string
   account: string
@@ -595,7 +595,7 @@ export const buildHydroBilling = (p: RawPortfolio): CapabilityResult => {
 }
 
 // ── accounts: per-account billing detail ────────────────────────────────────────────────
-interface AccountRow {
+type AccountRow = {
   account: string
   holder: string
   address: string
@@ -643,7 +643,7 @@ export const buildHydroAccounts = (p: RawPortfolio): CapabilityResult => {
 }
 
 // ── properties: per-contract metered address ────────────────────────────────────────────
-interface PropertyRow {
+type PropertyRow = {
   contract: string
   address: string
   account: string
@@ -690,7 +690,7 @@ export const buildHydroProperties = (p: RawPortfolio): CapabilityResult => {
 }
 
 // ── consumption: latest period per property + monthly kWh trend ─────────────────────────
-interface ConsumptionRow {
+type ConsumptionRow = {
   contract: string
   address: string
   periodEnd: string | null
@@ -700,7 +700,7 @@ interface ConsumptionRow {
   avgPerDay: number
   days: number
 }
-interface MonthlyKwhRow {
+type MonthlyKwhRow = {
   month: string
   property: string
   kwh: number

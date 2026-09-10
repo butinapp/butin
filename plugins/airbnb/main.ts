@@ -32,13 +32,13 @@ const TRANSACTIONS_MAX = 200
 // ── types ─────────────────────────────────────────────────────────────────────────
 // Money arrives as a string of MICROS (millionths of a unit): "1310000000" = 1310.00. The matching currency
 // is on the same object; everything in the .ca surface is CAD, the plugin's reportingCurrency.
-export interface RawCurrencyAmount {
+export type RawCurrencyAmount = {
   amountMicros?: string | null
   currency?: string | null
 }
 
 // Summary — host transaction stats (a YTD breakdown) + the monthly earnings series.
-export interface RawHostTransactionStats {
+export type RawHostTransactionStats = {
   reconciledGrossEarningsTotal?: RawCurrencyAmount[] | null
   reconciledServiceFeesTotal?: RawCurrencyAmount[] | null
   reconciledOccupancyTaxesTotal?: RawCurrencyAmount[] | null
@@ -46,31 +46,31 @@ export interface RawHostTransactionStats {
   futureTransactionsTotal?: RawCurrencyAmount[] | null
 }
 
-export interface RawEarningsMonth {
+export type RawEarningsMonth = {
   startDate?: string | null
   completedTotal?: number | null // already in major units
   upcomingTotal?: number | null
 }
 
-export interface RawAirbnbSummary {
+export type RawAirbnbSummary = {
   stats: RawHostTransactionStats | null
   months: RawEarningsMonth[]
 }
 
-interface HostStatsResponse {
+type HostStatsResponse = {
   payout_transaction_history?: {
     fetchHostTransactionStats?: { hostTransactionStats?: RawHostTransactionStats[] | null } | null
   } | null
 }
-interface EarningsGraphResponse {
+type EarningsGraphResponse = {
   payout_transaction_history?: { fetchEarningsGraph?: { multiChartData?: RawEarningsMonth[][] | null } | null } | null
 }
 
-interface AirbnbMonthPoint {
+type AirbnbMonthPoint = {
   month: string
   earned: number
 }
-interface AirbnbSummaryStats {
+type AirbnbSummaryStats = {
   gross: number
   payouts: number
   upcoming: number
@@ -79,7 +79,7 @@ interface AirbnbSummaryStats {
 }
 
 // Transactions — per-reservation payout rows.
-export interface RawProductTransaction {
+export type RawProductTransaction = {
   token?: string | null
   allocationToken?: string | null
   startDate?: string | null
@@ -91,7 +91,7 @@ export interface RawProductTransaction {
   transactionStatus?: { localizedStatus?: string | null; status?: string | null } | null
 }
 
-interface ProductTransactionsResponse {
+type ProductTransactionsResponse = {
   payout_transaction_history?: {
     fetchProductTransactions?: {
       productTransactions?: RawProductTransaction[] | null
@@ -100,7 +100,7 @@ interface ProductTransactionsResponse {
   } | null
 }
 
-interface AirbnbTransactionRow {
+type AirbnbTransactionRow = {
   date: string | null
   guest: string
   listing: string | null
@@ -113,15 +113,15 @@ interface AirbnbTransactionRow {
 
 // Tax documents — the host's own annual income summaries (metadata only; the web surface exposes no direct
 // download URL, so this is an informational list, not a downloadable table).
-export interface RawTaxDocument {
+export type RawTaxDocument = {
   metadata?: { title?: string | null; taxYear?: number | null; regulatoryAuthority?: string | null } | null
 }
-interface TaxDocsResponse {
+type TaxDocsResponse = {
   viewer?: {
     user?: { taxDocuments?: { taxDocumentListV3?: { items?: RawTaxDocument[] | null } | null } | null } | null
   } | null
 }
-interface AirbnbTaxDocRow {
+type AirbnbTaxDocRow = {
   year: string | null
   title: string
   authority: string | null

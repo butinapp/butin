@@ -5,7 +5,7 @@ import type { RecordedRequest } from '../main/recording/types.js'
 import { classifyDownload, detectDownloads, mergeDownloads } from './downloads.js'
 import type { DetectedDownload } from './types.js'
 
-interface Over {
+type Over = {
   type?: string
   method?: string
   url?: string

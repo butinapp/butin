@@ -2,7 +2,7 @@ import { capabilityResult, table } from '../data/builders.js'
 import type { CapabilityResult } from '../data/result.js'
 
 // One API key — secrets masked at the source (`sk-…last4`).
-export interface ApiKeyInput {
+export type ApiKeyInput = {
   id: string
   name?: string
   masked?: string
@@ -11,13 +11,13 @@ export interface ApiKeyInput {
   revoked?: boolean
 }
 
-export interface ApiKeysInput {
+export type ApiKeysInput = {
   keys: ApiKeyInput[]
 }
 
 const day = (ts?: string): string | null => (ts ? ts.slice(0, 10) : null)
 
-interface KeyRow {
+type KeyRow = {
   name: string | null
   masked: string | null
   createdAt: string | null

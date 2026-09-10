@@ -58,14 +58,14 @@ export type ClickhouseConfig = ConfigOf<typeof clickhouseConfigSchema>
 // ── types ───────────────────────────────────────────────────────────────────────────────
 
 // account / org roster (POST /api/account {rpcAction:'initializeUserSession'})
-interface RawOrgUser {
+type RawOrgUser = {
   userId?: string
   name?: string
   email?: string
   role?: string
 }
 
-export interface RawOrg {
+export type RawOrg = {
   id?: string
   name?: string
   tier?: string
@@ -74,12 +74,12 @@ export interface RawOrg {
   users?: Record<string, RawOrgUser>
 }
 
-export interface RawAccount {
+export type RawAccount = {
   organizations?: RawOrg[]
 }
 
 // billing details (POST /api/billing {rpcAction:'getOrganizationBillingDetails', organizationId})
-interface RawInvoice {
+type RawInvoice = {
   invoiceNumber?: string
   currency?: string
   amount?: number
@@ -93,7 +93,7 @@ interface RawInvoice {
   periodEndDate?: number
 }
 
-interface RawPaymentMethod {
+type RawPaymentMethod = {
   brand?: string
   last4?: string
   expMonth?: number
@@ -101,7 +101,7 @@ interface RawPaymentMethod {
 }
 
 // One bill cycle's running/finalized total; the single `locked:false` statement is the open (current) period.
-interface RawBillStatement {
+type RawBillStatement = {
   billNetTotal?: number
   billGrossTotal?: number
   // Epoch ms.
@@ -110,14 +110,14 @@ interface RawBillStatement {
   locked?: boolean
 }
 
-interface RawCreditBalance {
+type RawCreditBalance = {
   amountSpent?: number
   amountRemaining?: number
   amountTotal?: number
   creditType?: string
 }
 
-export interface RawBillingDetails {
+export type RawBillingDetails = {
   invoices?: RawInvoice[]
   paymentMethod?: RawPaymentMethod
   billUsageStatements?: RawBillStatement[]
@@ -129,12 +129,12 @@ export interface RawBillingDetails {
 }
 
 // usage report (POST /api/billing {rpcAction:'getUsageReport', organizationId, usagePeriod:{type:'BILL_DATE'}})
-interface RawMetric {
+type RawMetric = {
   metricValue?: number
   cost?: number
 }
 
-export interface RawUsageReport {
+export type RawUsageReport = {
   report?: {
     startDate?: string
     endDateInclusive?: string
@@ -143,7 +143,7 @@ export interface RawUsageReport {
 }
 
 // normalized billing report (USD dollars)
-export interface ClickhouseInvoice {
+export type ClickhouseInvoice = {
   number: string
   // 'YYYY-MM-DD'.
   date?: string
@@ -153,13 +153,13 @@ export interface ClickhouseInvoice {
   hostedUrl?: string | null
 }
 
-export interface ClickhouseMonthRow {
+export type ClickhouseMonthRow = {
   // 'YYYY-MM'.
   month: string
   amount: number
 }
 
-export interface ClickhouseBillingReport {
+export type ClickhouseBillingReport = {
   invoices: ClickhouseInvoice[]
   byMonth: ClickhouseMonthRow[]
   // The open (unlocked) bill period's accrued total — the live MTD. null when no open period.
@@ -295,14 +295,14 @@ export const buildClickhouseSummaryResult = (r: ClickhouseBillingReport): Capabi
 
 // Billing tab — the account record (card, next invoice, contact, company), trial-credit balances, and the
 // downloadable invoice history. No chart, no spend headline (Summary owns those).
-interface AccountRow {
+type AccountRow = {
   card: string | null
   nextInvoice: string | null
   contact: string | null
   company: string | null
 }
 
-interface InvoiceRow {
+type InvoiceRow = {
   date: string | null
   number: string
   amount: number

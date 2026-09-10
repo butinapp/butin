@@ -5,7 +5,7 @@ import { cn } from '../lib/utils.js'
 
 // A themed dropdown (radix Select). Fully theme-portable: the trigger reads like an Input, the popup uses
 // the popover tokens. High-level surface (value + options + onValueChange) — all the settings form needs.
-export interface SelectOption {
+export type SelectOption = {
   value: string
   label: string
 }

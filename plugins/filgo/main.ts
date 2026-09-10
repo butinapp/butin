@@ -35,7 +35,7 @@ const FLOW_DELIVERIES = '4a2c2f49-aad9-ef11-a730-6045bd5f1c2e'
 
 // One Laserfiche statement document. The date/total/number live in the French-keyed metadata; the accents
 // make the keys fragile to match, so we read metadataV2 by a case-insensitive ASCII substring of the key.
-export interface RawStatementDoc {
+export type RawStatementDoc = {
   name?: string
   templateName?: string
   creationTime?: string
@@ -45,7 +45,7 @@ export interface RawStatementDoc {
 
 // One fuel-delivery ticket. Volumes are litres, prices/totals are CAD dollars; most fields of the wide
 // backend record are irrelevant here.
-export interface RawDelivery {
+export type RawDelivery = {
   tickref?: string
   createdt?: string
   net_vol?: number | null
@@ -56,13 +56,13 @@ export interface RawDelivery {
   prodcd?: string
 }
 
-export interface FilgoAccount {
+export type FilgoAccount = {
   guid: string
   number: string
   name: string
 }
 
-export interface FilgoTank {
+export type FilgoTank = {
   // The Dataverse asset guid — the reservoir card's div id, and the delivery-flow lookup key.
   assetId: string
   name: string | null
@@ -73,17 +73,17 @@ export interface FilgoTank {
 }
 
 // The fetch bundles each capability's `build` consumes.
-export interface FilgoActifs {
+export type FilgoActifs = {
   accounts: FilgoAccount[]
   tanks: FilgoTank[]
 }
 
-export interface FilgoStatementsRaw {
+export type FilgoStatementsRaw = {
   account: string | null
   statements: RawStatementDoc[]
 }
 
-export interface FilgoDeliveriesRaw {
+export type FilgoDeliveriesRaw = {
   deliveries: RawDelivery[]
 }
 
@@ -113,7 +113,7 @@ const assertAuthed = (html: string): void => {
   throw new Error(`Filgo session expired — open the connection and sign in again. (${clue})`)
 }
 
-interface CloudflowResponse {
+type CloudflowResponse = {
   json?: string
   ErrorCode?: string
 }
@@ -212,7 +212,7 @@ export const parseFilgoActifs = (html: string): FilgoActifs => {
   return { accounts, tanks }
 }
 
-interface TankRow {
+type TankRow = {
   name: string | null
   product: string | null
   capacity: string | null
@@ -259,7 +259,7 @@ const fetchActifs = async (ctx: CollectContext): Promise<FilgoActifs> => {
 
 // ── statements: Laserfiche account statements (Cloudflow) — the billing headline ─────
 
-export interface FilgoStatement {
+export type FilgoStatement = {
   date: string
   number: string
   total: number
@@ -288,7 +288,7 @@ export const normalizeStatement = (doc: RawStatementDoc): FilgoStatement => {
   }
 }
 
-interface StatementRow {
+type StatementRow = {
   date: string | null
   number: string
   total: number
@@ -373,7 +373,7 @@ const fetchStatements = async (ctx: CollectContext): Promise<FilgoStatementsRaw>
 
 // ── deliveries: fuel-delivery history per tank (Cloudflow) — usage ───────────────────
 
-interface DeliveryRow {
+type DeliveryRow = {
   date: string | null
   volume: number | null
   unitPrice: number | null

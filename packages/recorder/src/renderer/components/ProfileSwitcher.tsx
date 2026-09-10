@@ -2,7 +2,7 @@ import { Label, Select, ServiceIcon } from '@butinapp/ui/primitives'
 
 import type { ProfileOption } from '../../main/ipc.js'
 
-interface Props {
+type Props = {
   profiles: ProfileOption[]
   /** The recorder's currently selected profile id (independent of which one the app has open). */
   selectedId: string

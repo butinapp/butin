@@ -8,7 +8,7 @@ import type { RecordedRequest } from './types.js'
 // recordings open in Postman / Insomnia / Chrome DevTools and feed generic
 // replay tooling. Pure transform — no capture, no network.
 
-interface HarNameValue {
+type HarNameValue = {
   name: string
   value: string
 }

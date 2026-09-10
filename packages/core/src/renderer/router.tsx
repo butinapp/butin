@@ -24,6 +24,8 @@ export const createAppRouter = (queryClient: QueryClient) =>
 export type AppRouter = ReturnType<typeof createAppRouter>
 
 declare module '@tanstack/react-router' {
+  // Module augmentation: TanStack reads the router type off its own `Register`, which only interface merging
+  // can extend — a type alias here collides with the library's declaration instead of adding to it.
   interface Register {
     router: AppRouter
   }

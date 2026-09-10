@@ -30,7 +30,7 @@ const MAX_PAGES = 24
 
 // --- payment history ---
 
-export interface GitHubPayment {
+export type GitHubPayment = {
   /** 'YYYY-MM-DD'. */
   date?: string
   /** Full timestamp from the row's <time title>, e.g. "2026-05-17 13:39:11". */
@@ -52,7 +52,7 @@ export interface GitHubPayment {
 }
 
 /** The pre-purchased user-license subscription (Enterprise / Advanced Security). */
-export interface GitHubLicenseSummary {
+export type GitHubLicenseSummary = {
   monthlyAmount: number
   monthlyFormatted: string
   isMonthly: boolean
@@ -71,34 +71,34 @@ export interface GitHubLicenseSummary {
   }
 }
 
-export interface GitHubPaymentMethod {
+export type GitHubPaymentMethod = {
   cardType?: string
   last4?: string
   expiry?: string
 }
 
-export interface GitHubBillingContact {
+export type GitHubBillingContact = {
   email: string
   primary: boolean
 }
 
 // --- raw shapes (only the fields we use) ---
 
-export interface RawUsageTotal {
+export type RawUsageTotal = {
   usage?: { totalGrossAmount?: number }
 }
 
-export interface RawDiscount {
+export type RawDiscount = {
   currentAmount?: number
   name?: string | null
 }
 
-export interface RawDiscounts {
+export type RawDiscounts = {
   discounts?: RawDiscount[]
 }
 
 /** The `props.ghe` blob embedded in the licensing page's react-partial. */
-export interface RawGheLicensing {
+export type RawGheLicensing = {
   billingTermEndDate?: string
   currentPayment?: string
   enterpriseLicensesBillable?: number
@@ -124,20 +124,20 @@ export interface RawGheLicensing {
 
 // --- data-view row shapes ---
 
-interface MeteredRecord {
+type MeteredRecord = {
   gross: number
   included: number
   net: number
 }
 
-interface TotalsRecord {
+type TotalsRecord = {
   totalPaid: number
   succeeded: number
   declined: number
   transactions: number
 }
 
-interface PaymentRow {
+type PaymentRow = {
   date: string | null
   id: string
   amount: number
@@ -149,7 +149,7 @@ interface PaymentRow {
   name: string
 }
 
-interface LicenseRecord {
+type LicenseRecord = {
   monthly: number
   term: string
   seats: string | null
@@ -158,12 +158,12 @@ interface LicenseRecord {
   pending: string | null
 }
 
-interface PaymentMethodRecord {
+type PaymentMethodRecord = {
   card: string
   expiry: string | null
 }
 
-interface ContactRow {
+type ContactRow = {
   email: string
   primary: string | null
 }
@@ -340,7 +340,7 @@ export const buildPaymentMethod = (ghe: RawGheLicensing | null, expiry?: string)
   return method.cardType || method.last4 || method.expiry ? method : null
 }
 
-export interface BuildBillingArgs {
+export type BuildBillingArgs = {
   payments: GitHubPayment[]
   totalPages: number
   pagesFetched: number
@@ -372,7 +372,7 @@ const formatPending = (l: GitHubLicenseSummary): string | null => {
 
 // Shared computation behind both the Summary and the Billing detail tabs: status counts, the monthly-paid
 // series (successful payments only), net metered usage, the license/payment-method surfaces, and the MTD.
-interface GithubComputed {
+type GithubComputed = {
   paymentsSorted: GitHubPayment[]
   successfulInvoices: { date?: string; amount: number; status: string }[]
   gross: number

@@ -14,7 +14,7 @@ import { sampleClaudeAnalytics, sampleClaudeBilling, sampleClaudeMembers } from 
 
 export type InvoiceCategory = 'seats' | 'usage'
 
-export interface InvoiceRecord extends BillingInvoiceInput {
+export type InvoiceRecord = BillingInvoiceInput & {
   date: string
   createdTs: number
   amount: number
@@ -26,13 +26,13 @@ export interface InvoiceRecord extends BillingInvoiceInput {
   hostedUrl: string | null
 }
 
-export interface MonthlyBilling {
+export type MonthlyBilling = {
   month: string
   seats: number
   usage: number
 }
 
-export interface SeatLine {
+export type SeatLine = {
   tier: string
   description: string
   count: number
@@ -40,7 +40,7 @@ export interface SeatLine {
   total: number
 }
 
-export interface ClaudeBillingReport {
+export type ClaudeBillingReport = {
   // Live spend accrued so far in the open period (USD MTD), NOT a forecast. `null` when no running figure is exposed.
   currentMtd: number | null
   // Fixed recurring portion already in `currentMtd` (flat sub/seat base fee), so a base fee at the period
@@ -62,7 +62,7 @@ export interface ClaudeBillingReport {
   invoices: InvoiceRecord[]
 }
 
-interface RawInvoice {
+type RawInvoice = {
   total: number
   currency?: string
   status?: string
@@ -71,20 +71,20 @@ interface RawInvoice {
   invoice_pdf_url?: string | null
   hosted_invoice_url?: string | null
 }
-interface RawUpcomingInvoice {
+type RawUpcomingInvoice = {
   invoice?: {
     total?: number
     currency?: string
     lines?: Array<{ total?: number; num_seats?: number | null; description?: string }>
   }
 }
-interface RawOverageSpendLimit {
+type RawOverageSpendLimit = {
   is_enabled?: boolean
   monthly_credit_limit?: number | null
   used_credits?: number | null
   currency?: string
 }
-interface RawPrepaidCredits {
+type RawPrepaidCredits = {
   amount?: number
   currency?: string
   auto_reload_settings?: {
@@ -93,21 +93,21 @@ interface RawPrepaidCredits {
     reload_to_in_minor_units?: number
   } | null
 }
-interface RawStripeBalance {
+type RawStripeBalance = {
   balance?: number
   currency?: string
 }
-interface RawSubscriptionDetails {
+type RawSubscriptionDetails = {
   next_charge_date?: string | null
   currency?: string
 }
-interface RawInvoicesPage {
+type RawInvoicesPage = {
   invoices?: RawInvoice[]
   has_more?: boolean
   next_page?: string | null
 }
 
-export interface RawBillingBundle {
+export type RawBillingBundle = {
   invoices: RawInvoice[]
   upcoming: RawUpcomingInvoice
   overage: RawOverageSpendLimit
@@ -117,44 +117,44 @@ export interface RawBillingBundle {
 }
 
 // org resolution
-interface OrgSummary {
+type OrgSummary = {
   uuid?: string
   name?: string
   capabilities?: string[]
 }
 
 // usage / team-analytics wire shapes
-interface RawMembersCounts {
+type RawMembersCounts = {
   total?: number
   by_seat_tier?: Record<string, number>
   pending_invites_total?: number
 }
-interface RawMembersLimit {
+type RawMembersLimit = {
   seat_tier_quantities?: Record<string, number>
 }
-interface RawAnalyticsSubscription {
+type RawAnalyticsSubscription = {
   status?: string
   currency?: string
   next_charge_date?: string | null
 }
-interface RawRankings {
+type RawRankings = {
   users?: Array<{ account_uuid: string; email_address: string; seat_tier: string; value: number }>
 }
-interface RawSpendTimeseries {
+type RawSpendTimeseries = {
   data_points?: Array<{ date: string; value: number }>
   currency?: string
 }
-interface RawModelSpend {
+type RawModelSpend = {
   model_family: string
   data_points?: Array<{ date: string; value: number }>
 }
-interface RawSpendByModel {
+type RawSpendByModel = {
   models?: RawModelSpend[]
 }
-interface RawMetric {
+type RawMetric = {
   value: number
 }
-interface RawActivityOverview {
+type RawActivityOverview = {
   dau?: RawMetric
   wau?: RawMetric
   mau?: RawMetric
@@ -162,7 +162,7 @@ interface RawActivityOverview {
   stickiness?: number | null
 }
 
-export interface RawAnalyticsBundle {
+export type RawAnalyticsBundle = {
   counts: RawMembersCounts
   limit: RawMembersLimit
   subscription: RawAnalyticsSubscription
@@ -173,14 +173,14 @@ export interface RawAnalyticsBundle {
 }
 
 // members wire shapes
-interface RawMemberAccount {
+type RawMemberAccount = {
   uuid?: string
   email_address?: string
   full_name?: string | null
   name?: string | null
 }
 
-interface RawMember {
+type RawMember = {
   account?: RawMemberAccount
   account_uuid?: string
   email_address?: string
@@ -432,7 +432,7 @@ export const buildClaudeSummaryResult = (report: ClaudeBillingReport): Capabilit
   })
 }
 
-interface InvoiceRow {
+type InvoiceRow = {
   // Hidden — the Stripe invoice id (the invoice-PDF URL's stable path, minus its query) rides as the ledger
   // key. A month carries both a seats invoice and a usage invoice, so date/amount can't tell them apart; the
   // invoice URL's path is each one's unique identity.
@@ -445,7 +445,7 @@ interface InvoiceRow {
   name: string
 }
 
-interface MonthCategoryRow {
+type MonthCategoryRow = {
   month: string
   category: string
   amount: number
@@ -604,7 +604,7 @@ export const aggregateSpendByModelFamily = (models: RawModelSpend[]): Array<{ mo
     .sort((a, b) => b.spend - a.spend)
 }
 
-interface ModelDayRow {
+type ModelDayRow = {
   date: string
   model: string
   value: number
@@ -652,7 +652,7 @@ export const seatRecommendation = (seatTier: string, spend: number): string => {
   return 'OK'
 }
 
-interface AnalyticsOverviewRow {
+type AnalyticsOverviewRow = {
   mtdSpend: number
   seatsUsed: number
   seatsPurchased: number
@@ -661,24 +661,24 @@ interface AnalyticsOverviewRow {
   nextCharge: string | null
 }
 
-interface SpendPointRow {
+type SpendPointRow = {
   date: string
   value: number
 }
 
-interface ByModelRow {
+type ByModelRow = {
   model: string
   spend: number
 }
 
-interface MemberRankRow {
+type MemberRankRow = {
   email: string
   tier: string
   spend: number
   suggestion: string
 }
 
-interface ActivityRow {
+type ActivityRow = {
   dau: number
   wau: number
   mau: number

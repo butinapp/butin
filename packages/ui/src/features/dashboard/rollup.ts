@@ -2,7 +2,7 @@ import { type Section, type Summary } from '@butinapp/sdk/data'
 import type { MtdBasis } from '@butinapp/sdk/presets'
 import { convert, round2, type FxRates } from '@butinapp/sdk/util'
 
-export interface RollupTile {
+export type RollupTile = {
   pluginId: string
   pluginName: string
   color?: string
@@ -13,13 +13,13 @@ export interface RollupTile {
   summaries?: Summary[]
 }
 
-export interface CurrencySubtotal {
+export type CurrencySubtotal = {
   currency: string
   value: number
   contributors: number
 }
 
-export interface RollupBand {
+export type RollupBand = {
   section: Section
   label: string
   role: 'money' | 'count'
@@ -33,7 +33,7 @@ export interface RollupBand {
   bases?: Set<MtdBasis>
 }
 
-export interface CurrencyRollup {
+export type CurrencyRollup = {
   bands: RollupBand[]
 }
 

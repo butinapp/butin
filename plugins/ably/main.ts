@@ -46,7 +46,7 @@ const MONTHS: Record<string, string> = {
 
 // ── types (the data dictionary) ──────────────────────────────────────────────────────
 
-export interface AblyInvoice {
+export type AblyInvoice = {
   /** Ably's internal invoice id (from the row's `invoice-<id>` element id). */
   id: string
   /** Stripe invoice number shown in the table, e.g. `in_1Td…`. */
@@ -60,7 +60,7 @@ export interface AblyInvoice {
   hostedUrl?: string
 }
 
-export interface AblyBilling {
+export type AblyBilling = {
   planName: string
   invoices: AblyInvoice[]
   /** Most recent invoice total, dollars. */
@@ -69,7 +69,7 @@ export interface AblyBilling {
   trailing12moTotal: number
 }
 
-export interface AblyUsageMetric {
+export type AblyUsageMetric = {
   /** Stable stat key from `data-js-stat`, e.g. `messages_published`. */
   key: string
   label: string
@@ -210,7 +210,7 @@ export const buildAblySummaryResult = (billingData: AblyBilling): CapabilityResu
 // Billing tab — the invoice history; each row links to its Stripe-hosted invoice. `id` rides hidden as the
 // ledger key so invoices accumulate their status/amount history past the fetch window (the status of an open
 // invoice flips to paid over time), without adding a column to the table.
-interface AblyInvoiceRow {
+type AblyInvoiceRow = {
   id: string
   date: string | null
   number: string | null
@@ -287,7 +287,7 @@ export const buildAblyUsageMetrics = (html: string): AblyUsageMetric[] => {
 
 // Compose the usage result: the metrics as count stat-rows (this-month value + unit/limit), plus a richer
 // detail table with the dashboard's display strings (last month / this month / projected) preserved.
-interface AblyUsageDetailRow {
+type AblyUsageDetailRow = {
   label: string
   limit: string | null
   lastMonth: string | null
@@ -354,13 +354,13 @@ const accountSlug = (ctx: CollectContext<AblyConfig>): string => {
 }
 
 // The raw scrapes Summary + Billing share: invoice-page + package-page HTML.
-export interface AblyBillingRaw {
+export type AblyBillingRaw = {
   invoicesHtml: string
   packageHtml: string
 }
 
 // The raw scrape Usage parses: the bare stats-table <tbody> fragment.
-export interface AblyUsageRaw {
+export type AblyUsageRaw = {
   html: string
 }
 

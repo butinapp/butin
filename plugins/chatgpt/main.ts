@@ -67,19 +67,19 @@ export const CODEX_CREDIT_USD = 0.04
 
 // ── types: Raw* wire shapes + normalized domain types (the data dictionary) ────────────
 
-interface RawSession {
+type RawSession = {
   accessToken?: string
 }
 
-interface RawAccountEntry {
+type RawAccountEntry = {
   account?: { account_id?: string | null; name?: string | null; structure?: string; plan_type?: string }
 }
-interface RawAccountsCheck {
+type RawAccountsCheck = {
   accounts?: Record<string, RawAccountEntry>
 }
 
 // billing
-export interface RawSubscription {
+export type RawSubscription = {
   plan_type?: string
   seats_in_use?: number
   seats_entitled?: number
@@ -89,10 +89,10 @@ export interface RawSubscription {
   billing_currency?: string
   is_delinquent?: boolean
 }
-export interface RawSeatTypeCounts {
+export type RawSeatTypeCounts = {
   seat_type_counts?: Record<string, number>
 }
-export interface RawRemainingBalance {
+export type RawRemainingBalance = {
   balance?: string
   expiring_balance_details?: Array<{
     amount_granted?: string
@@ -101,7 +101,7 @@ export interface RawRemainingBalance {
     grant_type?: string
   }>
 }
-export interface RawInvoice {
+export type RawInvoice = {
   id?: string
   number?: string | null
   created?: number // epoch seconds
@@ -113,27 +113,27 @@ export interface RawInvoice {
   hosted_invoice_url?: string | null
   invoice_pdf?: string | null
 }
-export interface RawInvoices {
+export type RawInvoices = {
   data?: RawInvoice[]
   has_more?: boolean // Stripe-style cursor flag
 }
 // A Stripe invoice hoisted to the top level with the workspace it belongs to (`accountId`) and its ISO-day
 // (`createdIso`) stamped on — the flat, id-keyed history core unions incrementally, then the build regroups by
 // `accountId`. Stripe's `id` is globally unique across accounts, so it's a safe union key.
-export interface FlatChatgptInvoice extends RawInvoice {
+export type FlatChatgptInvoice = RawInvoice & {
   accountId: string
   createdIso: string // YYYY-MM-DD (= epochSecDay(created))
 }
-export interface RawPaymentMethod {
+export type RawPaymentMethod = {
   id?: string
   type?: string
   card?: { brand?: string; last4?: string; exp_month?: number; exp_year?: number } | null
 }
-export interface RawPaymentMethods {
+export type RawPaymentMethods = {
   payment_methods?: RawPaymentMethod[]
   default_payment_method_id?: string | null // the card actually charged
 }
-export interface RawBillingInfo {
+export type RawBillingInfo = {
   name?: string | null
   address?: {
     line1?: string | null
@@ -149,7 +149,7 @@ export interface RawBillingInfo {
 // capture timestamp (so the pure build is deterministic — MTD and the monthly trend key off it). The invoices
 // live at the top level (not per bundle) so `billing` can union them incrementally by Stripe id. Summary +
 // Billing share this raw.
-export interface RawChatgptBilling {
+export type RawChatgptBilling = {
   bundles: RawWorkspaceBundle[]
   invoices: FlatChatgptInvoice[]
   capturedAt: string
@@ -157,7 +157,7 @@ export interface RawChatgptBilling {
 
 // One workspace's billing bundle (assembled in collect()) — subscription/seat/balance detail. Its invoices are
 // hoisted to RawChatgptBilling.invoices, keyed back by accountId.
-export interface RawWorkspaceBundle {
+export type RawWorkspaceBundle = {
   accountId: string
   name: string
   planType: string
@@ -168,7 +168,7 @@ export interface RawWorkspaceBundle {
   billingInfo?: RawBillingInfo
 }
 
-export interface InvoiceRow {
+export type InvoiceRow = {
   id: string
   number: string | null
   date: string // YYYY-MM-DD
@@ -179,7 +179,7 @@ export interface InvoiceRow {
   hostedUrl: string | null
   pdfUrl: string | null
 }
-export interface SubscriptionInfo {
+export type SubscriptionInfo = {
   planType: string
   seatsInUse: number
   seatsEntitled: number
@@ -190,23 +190,23 @@ export interface SubscriptionInfo {
   delinquent: boolean
   seatTypes: Record<string, number>
 }
-export interface CreditInfo {
+export type CreditInfo = {
   balance: number // remaining prepaid credit (USD)
   granted: number // original grant (USD)
   grantType: string
   expiryDate: string | null // YYYY-MM-DD
 }
-export interface PaymentMethodInfo {
+export type PaymentMethodInfo = {
   brand: string
   last4: string
   expMonth: number | null
   expYear: number | null
 }
-export interface BillingContactInfo {
+export type BillingContactInfo = {
   name: string | null
   address: string | null
 }
-export interface WorkspaceBilling {
+export type WorkspaceBilling = {
   accountId: string
   name: string
   subscription: SubscriptionInfo
@@ -215,14 +215,14 @@ export interface WorkspaceBilling {
   billingContact: BillingContactInfo | null
   invoices: InvoiceRow[]
 }
-export interface WorkspaceBillingReport {
+export type WorkspaceBillingReport = {
   capturedAt: string
   workspaces: WorkspaceBilling[]
   currentMtd: number | null
 }
 
 // usage
-export interface RawLeaderboardRow {
+export type RawLeaderboardRow = {
   user_id: string
   display_name?: string | null
   email?: string | null
@@ -231,23 +231,23 @@ export interface RawLeaderboardRow {
   lines_of_code?: number
   rank?: number
 }
-export interface RawLeaderboard {
+export type RawLeaderboard = {
   metric?: string
   window?: string
   rows?: RawLeaderboardRow[]
 }
-export interface RawFreshness {
+export type RawFreshness = {
   min_timestamp_across_data_source?: string
   generated_at?: string
 }
-export interface RawCodexBundle {
+export type RawCodexBundle = {
   leaderboard: RawLeaderboard
   freshness: RawFreshness
 }
 
 // The usage fetch's raw shape: the Codex leaderboard bundle (admin.openai.com) + the workspace seat roster
 // (chatgpt.com) it joins on + the capture timestamp/window (so the pure build is deterministic).
-export interface RawChatgptUsage {
+export type RawChatgptUsage = {
   leaderboard: RawLeaderboard
   freshness: RawFreshness
   roster: WorkspaceMember[]
@@ -256,27 +256,27 @@ export interface RawChatgptUsage {
 }
 
 // workspace roster (chatgpt.com /backend-api/accounts/<id>/users) — the seat directory
-export interface RawWorkspaceUser {
+export type RawWorkspaceUser = {
   id?: string
   seat_type?: string | null
   email?: string | null
   name?: string | null
 }
-export interface RawWorkspaceUsers {
+export type RawWorkspaceUsers = {
   items?: RawWorkspaceUser[]
 }
 
 // One workspace member. The user id is the same id space as the Codex leaderboard's, so the Usage tab joins
 // on it to badge each active member with their seat type. 'default' = a flat ChatGPT seat, 'usage_based' = a
 // metered Codex seat.
-export interface WorkspaceMember {
+export type WorkspaceMember = {
   userId: string
   seatType: string
   email: string | null
   name: string | null
 }
 
-export interface CodexMember {
+export type CodexMember = {
   userId: string
   email: string | null
   name: string | null
@@ -286,7 +286,7 @@ export interface CodexMember {
   codexUsd: number // credits × CODEX_CREDIT_USD
   linesOfCode: number
 }
-export interface CodexReport {
+export type CodexReport = {
   capturedAt: string
   dataAsOf: string // data day (YYYY-MM-DD) — snapshot dedup key
   window: string
@@ -439,7 +439,7 @@ export const buildChatgptSummaryResult = (report: WorkspaceBillingReport): Capab
   })
 }
 
-interface AccountInfoRow {
+type AccountInfoRow = {
   card: string | null
   cardExpiry: string | null
   billedTo: string | null
@@ -448,7 +448,7 @@ interface AccountInfoRow {
   grantExpiry: string | null
 }
 
-interface InvoiceTableRow {
+type InvoiceTableRow = {
   date: string | null
   number: string | null
   amount: number
@@ -584,7 +584,7 @@ export const buildCodexReport = (
 // Compose the usage result: an org-total metric carrying the Codex $ (so the cross-service Overview reads a
 // usage.primary spend), plus a per-member leaderboard table (Codex $, credits, tokens, lines of code),
 // costliest first.
-interface LeaderboardRow {
+type LeaderboardRow = {
   userId: string
   name: string
   email: string | null

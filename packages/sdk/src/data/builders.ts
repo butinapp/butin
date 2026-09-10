@@ -75,7 +75,7 @@ type SummarySpec<Row> = {
 // on both sides (`on` is a key of the parent row; the child carries the identical field).
 export type RowDetailSpec<Row> = { rows: TableHandle<unknown>; on: Key<Row> }
 
-export interface TableHandle<Row> {
+export type TableHandle<Row> = {
   dataset: TableDataset
   table(opts?: { title?: string; columns?: Key<Row>[]; groupBy?: Key<Row>; detail?: RowDetailSpec<Row> }): ViewSpec
   fileTable(opts: FileTableSpec<Row>): ViewSpec
@@ -100,7 +100,7 @@ export type StatFieldSpec<Row> = {
   tone?: 'positive' | 'negative' | 'muted'
 }
 
-export interface RecordHandle<Row> {
+export type RecordHandle<Row> = {
   dataset: RecordDataset
   stat(opts?: { fields?: (Key<Row> | StatFieldSpec<Row>)[]; title?: string }): ViewSpec
   keyvalue(opts?: { title?: string }): ViewSpec

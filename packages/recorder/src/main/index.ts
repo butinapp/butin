@@ -101,7 +101,7 @@ void app.whenReady().then(() => {
     console.error(`[recorder] a previous run crashed — dumps in ${app.getPath('crashDumps')}`)
   }
 
-  // No application menu — like the main app. The recorder is a focused tool; the default Electron menu
+  // No application menu: the recorder is a focused tool, and the default Electron menu
   // (File/Edit/View/Window/Help with reload + DevTools) is noise here.
   Menu.setApplicationMenu(null)
   registerRecorderHandlers()

@@ -13,7 +13,7 @@ import {
 } from '@butinapp/ui/primitives'
 import { useState } from 'react'
 
-interface Props {
+type Props = {
   /** The selected profile's partition — the recording captures into this profile's session. */
   partition: string
   /** The Butin app holds this profile open; recording it would capture a locked, empty session. */

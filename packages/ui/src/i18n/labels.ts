@@ -6,7 +6,7 @@ import type { PluginCategory, TroubleshootingCause } from '@butinapp/sdk'
 // English. Interpolated/plural strings are functions, so there's no ICU runtime.
 export type Locale = 'en' | 'fr'
 
-export interface ButinLabels {
+export type ButinLabels = {
   // BCP-47 tag driving Intl number/date formatting (money, counts, timestamps).
   intlLocale: string
 

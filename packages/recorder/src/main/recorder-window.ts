@@ -29,7 +29,7 @@ import { recordingsRoot } from './store.js'
 export const DEFAULT_PARTITION = 'persist:butin'
 
 /** Remembered debugging aids for the recorder window (toggled from the toolbar Debug panel). */
-export interface DebugSettings {
+export type DebugSettings = {
   /** Open DevTools on the site view as soon as a recording starts. */
   autoOpenDevTools: boolean
   /** Block server 3xx redirects so a page can be inspected before it bounces away. */
@@ -46,7 +46,7 @@ export interface DebugSettings {
   browserHeaders: boolean
 }
 
-export interface RecordingHandle {
+export type RecordingHandle = {
   runId: string
   runDir: string
   partition: string
@@ -56,7 +56,7 @@ export interface RecordingHandle {
   startUrl: string
 }
 
-export interface CreateRecorderOptions {
+export type CreateRecorderOptions = {
   label: string
   startUrl: string
   /**

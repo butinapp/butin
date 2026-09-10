@@ -16,7 +16,7 @@ const lockPath = (): string => join(homeRoot(), 'app.lock')
 // browser partition's cookie LevelDB can't be opened by two processes at once, so recording the active
 // profile's partition while the app runs would capture an empty session. The recorder reads pid + activeProfileId
 // and verifies the pid is alive (a crash leaves a stale file).
-export interface AppLock {
+export type AppLock = {
   pid: number
   activeProfileId: string
   startedAt: string

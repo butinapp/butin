@@ -17,7 +17,7 @@ const API = 'https://api.serper.dev'
 // Money is a USD dollar STRING ("57.49"), NOT cents → parseDecimalAmount, no /100. Payments carry no
 // per-row status, so they normalize to 'paid'. currentMtd = money charged in the current calendar month.
 
-export interface RawSerperPayment {
+export type RawSerperPayment = {
   amount?: string // USD dollar string, e.g. "57.49"
   currency?: string
   date?: string // ISO timestamp
@@ -43,14 +43,14 @@ export const buildSerperBilling = (rawPayments: RawSerperPayment[] | undefined |
   }
 }
 
-export interface RawSerperPaymentDetails {
+export type RawSerperPaymentDetails = {
   paymentMethod?: string | null
   cardType?: string | null
   lastFourDigits?: string | null
   expiryDate?: string | null
 }
 
-export interface SerperPaymentMethod {
+export type SerperPaymentMethod = {
   method: string | null
   cardType: string | null
   lastFour: string | null
@@ -91,7 +91,7 @@ export const buildSerperSummaryResult = (rawPayments: RawSerperPayment[] | undef
 // The payment/receipt history as a downloadable table (each row's Paddle receipt is the file URL; the host
 // adds selection + Download all/selected + per-row Open + on-disk size), plus an optional payment-method
 // record/keyvalue. The headline (MTD / monthly chart) lives on Summary.
-interface SerperInvoiceRow {
+type SerperInvoiceRow = {
   date: string | null
   amount: number
   status: string
@@ -100,7 +100,7 @@ interface SerperInvoiceRow {
   name: string
 }
 
-interface SerperPaymentMethodRow {
+type SerperPaymentMethodRow = {
   cardType: string | null
   lastFour: string | null
   expiry: string | null
@@ -161,7 +161,7 @@ export const buildSerperBillingResult = (
 // Summary + Billing both need the payments list (Billing also the payment-method card). Both collects
 // call loadSerperBilling; the core query cache dedupes the underlying reads.
 // payment-details is best-effort: a missing/erroring card must not blank the whole billing tab.
-interface SerperBillingData {
+type SerperBillingData = {
   payments: RawSerperPayment[]
   details: RawSerperPaymentDetails | null
 }
@@ -179,7 +179,7 @@ const loadSerperBilling = async (ctx: CollectContext): Promise<SerperBillingData
 // Units are CREDITS, not money (Serper sells prepaid packs, no exposed credit→USD rate), so these
 // render as plain counts and emit no money summary.
 
-export interface RawSerperDashboard {
+export type RawSerperDashboard = {
   usageToday?: number
   usageLastMonth?: number
   creditBalance?: number
@@ -192,11 +192,11 @@ export const buildSerperUsageMetrics = (dashboard: RawSerperDashboard | undefine
   { label: 'Used last month', value: dashboard?.usageLastMonth ?? 0, unit: 'credits' }
 ]
 
-export interface RawSerperDailyUsage {
+export type RawSerperDailyUsage = {
   data?: Array<{ start?: string; count?: number }>
 }
 
-export interface SerperDailyPoint {
+export type SerperDailyPoint = {
   date: string
   credits: number
 }
@@ -246,7 +246,7 @@ const fetchSerperUsage = async (ctx: CollectContext): Promise<SerperUsageData> =
   return { dashboard, daily }
 }
 
-interface SerperUsageData {
+type SerperUsageData = {
   dashboard: RawSerperDashboard | null
   daily: RawSerperDailyUsage | null
 }
@@ -254,7 +254,7 @@ interface SerperUsageData {
 // --- apiKeys: the account's keys, `/users/api-keys` ---
 // The endpoint returns the FULL secret, so maskKey reduces it to a `…last4` hint before it leaves here.
 
-export interface RawSerperApiKey {
+export type RawSerperApiKey = {
   id?: string
   key?: string // full secret — masked here
   name?: string

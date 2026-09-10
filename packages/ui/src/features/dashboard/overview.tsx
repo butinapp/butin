@@ -302,7 +302,7 @@ const HeaderTip = ({ label, hint }: { label: string; hint: string }) => (
 
 const MONTH_OPTIONS = [6, 12, 24]
 
-// How many trailing months the detailed table shows as columns. Mirrors the chart's small dropdown.
+// How many trailing months the detailed table shows as columns.
 const MonthsPicker = ({ value, onChange }: { value: number; onChange: (n: number) => void }) => (
   <DropdownMenu>
     <DropdownMenuTrigger className="bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] transition-colors">

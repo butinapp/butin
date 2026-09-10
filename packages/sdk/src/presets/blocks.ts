@@ -14,7 +14,7 @@ export const overageOf = (total: number | null | undefined, base: number | null 
 
 // A timestamped cost/usage trend → a table dataset + a timeseries view. `y` is 'cost' when any row carries a
 // cost (money), else 'value' (count) — so a daily-spend series and a daily-request series both work.
-export interface TrendPoint {
+export type TrendPoint = {
   date: string
   cost?: number
   value?: number
@@ -57,7 +57,7 @@ export const dailySeries = (
 }
 
 // Credits / balance keyvalue panel. Omitted fields are skipped — no em-dash rows for figures a service lacks.
-export interface CreditsInput {
+export type CreditsInput = {
   granted?: number
   balance?: number
   used?: number
@@ -92,7 +92,7 @@ export const creditsRecord = (input: CreditsInput, opts: { id?: string; title?: 
 // Subscription-detail keyvalue panel — the breakdown behind the Summary headline, shown first on the Billing
 // tab. Period start+end collapse into one 'period' cell. Absent fields are skipped so a service that lacks one
 // shows no row for it (no em-dash clutter).
-export interface SubscriptionInput {
+export type SubscriptionInput = {
   plan?: string
   status?: string
   seats?: number
@@ -140,7 +140,7 @@ export const subscriptionRecord = (input: SubscriptionInput): ViewSpec => {
 }
 
 // Payment-method keyvalue panel.
-export interface PaymentMethodInput {
+export type PaymentMethodInput = {
   brand: string
   last4: string
   title?: string

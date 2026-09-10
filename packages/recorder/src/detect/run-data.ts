@@ -41,7 +41,7 @@ const CHECKPOINT_GRACE_MS = 60_000
 const stillRecording = (manifest: RecordingManifest): boolean =>
   manifest.complete === false && Date.now() - Date.parse(manifest.endedAt) < CHECKPOINT_GRACE_MS
 
-interface RunSummary {
+type RunSummary = {
   version: number
   profile: RunProfile
 }

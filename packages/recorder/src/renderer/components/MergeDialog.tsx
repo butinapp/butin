@@ -12,7 +12,7 @@ import {
 } from '@butinapp/ui/primitives'
 import { useState } from 'react'
 
-interface Props {
+type Props = {
   surface: string
   onMerged?: () => void
 }

@@ -10,7 +10,7 @@ import { ConnDot, type ConnState } from './conn-state.js'
 // every status surface looks identical. undefined = no dot.
 export type SidebarDot = ConnState
 
-export interface SidebarService {
+export type SidebarService = {
   id: string
   name: string
   color?: string

@@ -45,7 +45,7 @@ export const requireCapability = (plugin: ButinPlugin, capabilityId: string): Ca
 export const buildContext = (plugin: ButinPlugin, scope: string): CollectContext => {
   const creds = createCredentialStore(plugin.meta.id)
   // An id auto-captured at sign-in (a Groq org id off a request header, a DNSimple account id off the
-  // dashboard URL) fills its config field when the user hasn't pinned one, so an auto-detected id Just Works
+  // dashboard URL) fills its config field when the user hasn't pinned one, so an auto-detected id is used
   // without a manual Save — the same fallback the Settings form prefill uses.
   const config = fillCapturedIds(plugin, getPluginConfig(plugin.meta.id, plugin.config ?? { fields: [] }))
   // A probe (test-all) only needs connected/not, so it caps a spa-bearer's offscreen-boot wait far below a

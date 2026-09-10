@@ -1,12 +1,12 @@
 // The `dev` (developer-panel) DTOs: the partitions of the active profile and the cookies inside one. Cookie
 // values are real session secrets — they cross IPC only for the local Cookie Jar, never logged or sent out.
-export interface DevPartitionDto {
+export type DevPartitionDto = {
   partition: string
   label: string
   count: number
 }
 
-export interface DevCookieDto {
+export type DevCookieDto = {
   name: string
   value: string
   domain: string
@@ -22,7 +22,7 @@ export interface DevCookieDto {
 }
 
 // Identifies one cookie for removal (the fields `cookies.remove` needs to reconstruct its URL + name).
-export interface DevCookieSelector {
+export type DevCookieSelector = {
   domain: string
   path: string
   name: string

@@ -7,7 +7,7 @@ import { DateTime } from 'luxon'
 export type CurrencyStyle = 'match' | 'us' | 'fr' | 'eu'
 export type DateFormatPreset = 'locale' | 'iso' | 'us' | 'eu'
 
-export interface FormatPrefs {
+export type FormatPrefs = {
   currencyStyle: CurrencyStyle
   dateFormat: DateFormatPreset
   // The Overview's base currency. With the default 'match' style, money formats in this currency's home region

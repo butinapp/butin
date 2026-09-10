@@ -10,7 +10,7 @@ import type { Observation } from '../../main/store/ledger.js'
 
 import { seeded } from './prng.js'
 
-export interface EvolveOptions {
+export type EvolveOptions = {
   now: string // ISO instant of the newest capture
   days: number // simulated capture days (inclusive of `now`)
   window: number // data-intrinsic history span (days) — rows carry their own dates; reserved for callers

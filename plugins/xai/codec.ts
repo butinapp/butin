@@ -245,7 +245,7 @@ export const frameMessage = (body: Buffer): Buffer => {
   return Buffer.concat([header, body])
 }
 
-export interface DeframedResponse {
+export type DeframedResponse = {
   // The first non-trailer (data) frame body, if any.
   message?: Buffer
   // Parsed `grpc-status` from the trailer frame (0 = ok).

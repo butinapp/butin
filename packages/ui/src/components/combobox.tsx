@@ -11,7 +11,7 @@ import { cn } from '../lib/utils.js'
 // `onOpen` fires when the popup opens so the host can fetch options on demand; `loading`/`emptyHint` cover
 // the not-yet/never states. Editability never depends on connection — only whether a fresh list can load
 // does (host-gated).
-export interface ComboboxProps {
+export type ComboboxProps = {
   id?: string
   value: string
   onValueChange: (value: string) => void

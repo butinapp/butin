@@ -38,47 +38,47 @@ const CLERK_QS = '__clerk_api_version=2025-11-10&_clerk_js_version=5.125.12'
 
 // ── types (the data dictionary): Raw* wire shapes + normalized domain types ──────────────────────────
 
-interface RawClerkClient {
+type RawClerkClient = {
   response?: { last_active_session_id?: string | null; sessions?: { id?: string }[] }
 }
 
-interface RawClerkToken {
+type RawClerkToken = {
   jwt?: string
 }
 
-export interface RawUser {
+export type RawUser = {
   customer_id?: string
   state?: string
   wallet?: number
   register_date?: string
 }
 
-export interface RawInvoice {
+export type RawInvoice = {
   date?: string // 'YYYYMM'
   cost?: number // USD dollars
   status?: string
 }
 
-interface RawInvoicesResponse {
+type RawInvoicesResponse = {
   invoices?: RawInvoice[]
 }
 
 // Per-product usage block. Fields vary by product; `billing` is the cost (USD dollars).
-export interface RawProductUsage {
+export type RawProductUsage = {
   billing?: number
   request?: number
   storage?: number
   bandwidth?: number
 }
 
-export interface RawBillingDetails {
+export type RawBillingDetails = {
   redis?: RawProductUsage
   qStash?: RawProductUsage
   vector?: RawProductUsage
   search?: RawProductUsage
 }
 
-export interface UpstashBillingData {
+export type UpstashBillingData = {
   user: RawUser
   invoices: RawInvoice[]
   details: RawBillingDetails
@@ -87,7 +87,7 @@ export interface UpstashBillingData {
 
 // The Developer API key shape: every field is optional and read defensively. `/listkeys` returns no full
 // secret to mask — only an already-truncated fragment (if any) — so there is nothing sensitive to strip here.
-export interface RawApiKey {
+export type RawApiKey = {
   key_id?: string
   name?: string
   api_key?: string // already masked/truncated fragment, if present
@@ -97,7 +97,7 @@ export interface RawApiKey {
 // A team-membership row from the console `/v2/teams` endpoint (reached with the Clerk JWT, not the Developer
 // key). One row per (team, member): the team id/name repeat across a team's members, and
 // `member_email`/`member_role` identify the person. Read defensively.
-export interface RawTeamMember {
+export type RawTeamMember = {
   team_id?: string
   team_name?: string
   member_email?: string
@@ -163,7 +163,7 @@ const PRODUCTS: { key: keyof RawBillingDetails; label: string }[] = [
   { key: 'search', label: 'Search' }
 ]
 
-export interface ProductUsage {
+export type ProductUsage = {
   product: string
   billing: number
   request: number
@@ -235,13 +235,13 @@ export const buildUpstashSummaryResult = (data: UpstashBillingData): CapabilityR
 // The current month's per-product breakdown table + the invoice history table + an account keyvalue. The
 // headline (MTD / monthly chart) lives on Summary.
 
-interface UpstashInvoiceRow {
+type UpstashInvoiceRow = {
   date: string | null
   amount: number
   status: string
 }
 
-interface UpstashAccountRow {
+type UpstashAccountRow = {
   customerId: string | null
   state: string | null
   wallet: number | null
@@ -381,7 +381,7 @@ export const buildUpstashMembers = (raw: RawTeamMember[] | undefined | null, tea
 
 // The roster's pure build needs the pinned teamId (which `build` can't read off ctx), so the fetch folds the
 // scoped team rows + the teamId into one bundle. The "pick a team" guard lives in fetch (the live network path).
-export interface UpstashMembersData {
+export type UpstashMembersData = {
   rows: RawTeamMember[]
   teamId: string
 }

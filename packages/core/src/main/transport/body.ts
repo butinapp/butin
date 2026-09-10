@@ -1,4 +1,4 @@
-// How a `RequestOptions.body` becomes wire bytes. Both transports share this so a body encodes identically
+// How a `RequestOptions.body` becomes wire bytes. Shared by every transport so a body encodes identically
 // whichever engine a plugin declares.
 //
 // A binary body is ALREADY the exact payload the service expects (a gRPC-Web frame, a protobuf message, raw
@@ -7,7 +7,7 @@
 // error — the failure surfaces as empty data, not a thrown request. Anything else object-shaped is a JSON
 // document; a string is already its own body.
 
-export interface EncodedBody {
+export type EncodedBody = {
   // The exact text/bytes to write; undefined when the request carries no body.
   data?: string | Buffer
   // True only for a JSON document, so the caller defaults Content-Type to application/json. Binary declares

@@ -52,7 +52,7 @@ const assertAuthed = (html: string, marker: string): void => {
 
 // --- billing: the online bill history + the account summary ---
 
-export interface HydroBill {
+export type HydroBill = {
   /** 'YYYY-MM-DD' (bill date). */
   date: string
   /** CAD dollars. */
@@ -63,7 +63,7 @@ export interface HydroBill {
   pdfUrl: string
 }
 
-export interface HydroAccountSummary {
+export type HydroAccountSummary = {
   previousBalance?: number
   payments?: number
   currentCharges?: number
@@ -176,7 +176,7 @@ export const buildHydroSummaryResult = (
 // Download all/selected + per-row Open + on-disk size — no separate documents tab), plus the account-
 // statement keyvalue. The headline (amount due / monthly chart) lives on Summary.
 
-interface HydroInvoiceRow {
+type HydroInvoiceRow = {
   date: string | null
   number: string
   amount: number
@@ -185,7 +185,7 @@ interface HydroInvoiceRow {
   name: string
 }
 
-interface HydroStatementRow {
+type HydroStatementRow = {
   previousBalance: number | null
   payments: number | null
   currentCharges: number | null
@@ -254,7 +254,7 @@ export const buildHydroBilling = (bills: HydroBill[], summary?: HydroAccountSumm
 // Summary + Factures both need the bill history (factures page) + the account statement (landing page); both
 // capabilities fetch this raw HTML bundle. The core query cache dedupes the underlying reads across the two
 // runs. The factures page is load-bearing (gates the session); the landing summary is best-effort.
-export interface HydroBillingRaw {
+export type HydroBillingRaw = {
   /** /espace-client/factures-en-ligne/ — the bill-history grid + account number. */
   facturesHtml: string
   /** /espace-client/ landing — the account-statement box; '' when it didn't load. */
@@ -284,12 +284,12 @@ export const buildHydroBillingFromRaw = (raw: HydroBillingRaw): CapabilityResult
 
 // --- equipment: the rented equipment + installation detail ---
 
-export interface HydroWarranty {
+export type HydroWarranty = {
   part: string
   remaining: string
 }
 
-export interface HydroEquipmentDetail {
+export type HydroEquipmentDetail = {
   installation: { address?: string; housingType?: string }
   equipment: { name?: string; serial?: string; installDate?: string; rental?: string; warranties: HydroWarranty[] }
 }
@@ -352,19 +352,19 @@ export const parseHydroDetail = (html: string): HydroEquipmentDetail => {
 // Renders via the generic dashboard (any result with `datasets` does), so no bespoke UI: installation
 // keyvalue + equipment keyvalue + an optional warranties table.
 
-interface HydroInstallationRow {
+type HydroInstallationRow = {
   address: string | null
   housingType: string | null
 }
 
-interface HydroEquipmentRow {
+type HydroEquipmentRow = {
   name: string | null
   serial: string | null
   installDate: string | null
   rental: string | null
 }
 
-interface HydroWarrantyRow {
+type HydroWarrantyRow = {
   part: string
   remaining: string
 }
@@ -419,7 +419,7 @@ export const buildHydroEquipment = (detail: HydroEquipmentDetail): CapabilityRes
 }
 
 // The landing page links to the location's detail page; follow that link, then scrape the detail HTML.
-export interface HydroEquipmentRaw {
+export type HydroEquipmentRaw = {
   /** /espace-client/detail-espace-client/?account=… — the installation + equipment/warranties detail. */
   detailHtml: string
 }
