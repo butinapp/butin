@@ -45,7 +45,7 @@ const stripServices = [
   'Hydro-Solution',
   'Vercel',
   'Airbnb',
-  'Google Workspace'
+  'ChatGPT'
 ]
 
 const Kicker = ({ children }: { children: React.ReactNode }) => (

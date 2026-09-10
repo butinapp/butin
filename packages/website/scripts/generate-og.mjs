@@ -50,8 +50,8 @@ function createCard({ locale = 'en' }) {
     ? 'L’application de bureau locale qui réunit la facturation, l’utilisation et les documents de tous vos services au même endroit sur votre ordinateur.'
     : 'The local-first desktop app that pulls billing, usage, and records from every service you use into one place. Kept 100% on your machine.'
   const services = isFr
-    ? ['AWS', 'Vidéotron', 'GitHub', 'Claude', 'Carnet Santé', 'Vercel', 'Airbnb']
-    : ['AWS', 'Videotron', 'GitHub', 'Claude', 'Vercel', 'Carnet Santé', 'Airbnb']
+    ? ['AWS', 'Vidéotron', 'GitHub', 'ChatGPT', 'Claude', 'Carnet Santé', 'Airbnb']
+    : ['AWS', 'Videotron', 'GitHub', 'ChatGPT', 'Claude', 'Carnet Santé', 'Airbnb']
   const moreText = isFr ? '+35 autres' : '+35 more'
   const platformsText = 'macOS · Windows · Linux'
 

@@ -16,7 +16,7 @@ const stripServices = [
   'Carnet Santé',
   'Airbnb',
   'Hydro-Solution',
-  'Google Workspace'
+  'ChatGPT'
 ]
 
 const Kicker = ({ children }: { children: React.ReactNode }) => (
