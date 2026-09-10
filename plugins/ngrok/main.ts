@@ -156,14 +156,12 @@ export const buildNgrokBilling = (
 ): NgrokBilling => {
   const sub = rawSub ?? {}
   const invoices = (rawInvoices?.invoices ?? [])
-    .map(
-      (inv): BillingInvoiceInput => ({
-        date: secDay(inv.issuedAt) ?? secDay(inv.createdAt) ?? secDay(inv.dueAt),
-        amount: centsStringToMajor(inv.total),
-        status: inv.status ?? 'Unknown',
-        hostedUrl: inv.invoiceUrl ?? null
-      })
-    )
+    .map((inv): BillingInvoiceInput => ({
+      date: secDay(inv.issuedAt) ?? secDay(inv.createdAt) ?? secDay(inv.dueAt),
+      amount: centsStringToMajor(inv.total),
+      status: inv.status ?? 'Unknown',
+      hostedUrl: inv.invoiceUrl ?? null
+    }))
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
 
   return {

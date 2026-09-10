@@ -302,23 +302,21 @@ export const buildBillingReport = (
   raw: RawStripeInvoiceList,
   subs?: RawStripeSubscriptionsList | null
 ): DepotBillingReport => {
-  const invoices = (raw.data ?? []).map(
-    (inv, i): DepotInvoice => ({
-      id: inv.id ?? `inv-${i}`,
-      number: inv.number,
-      date: epochSecDay(inv.effective_at) ?? epochSecDay(inv.finalized_at) ?? epochSecDay(inv.created),
-      status: inv.status ?? 'unknown',
-      amount: centsToMajor(inv.total ?? inv.amount_due),
-      amountPaid: centsToMajor(inv.amount_paid),
-      currency: (inv.currency ?? 'usd').toUpperCase(),
-      hostedUrl: inv.hosted_invoice_url,
-      pdfUrl: inv.invoice_pdf || undefined,
-      lines: (inv.lines?.data ?? []).map((l) => ({
-        description: l.description ?? l.short_description ?? '',
-        amount: centsToMajor(l.amount)
-      }))
-    })
-  )
+  const invoices = (raw.data ?? []).map((inv, i): DepotInvoice => ({
+    id: inv.id ?? `inv-${i}`,
+    number: inv.number,
+    date: epochSecDay(inv.effective_at) ?? epochSecDay(inv.finalized_at) ?? epochSecDay(inv.created),
+    status: inv.status ?? 'unknown',
+    amount: centsToMajor(inv.total ?? inv.amount_due),
+    amountPaid: centsToMajor(inv.amount_paid),
+    currency: (inv.currency ?? 'usd').toUpperCase(),
+    hostedUrl: inv.hosted_invoice_url,
+    pdfUrl: inv.invoice_pdf || undefined,
+    lines: (inv.lines?.data ?? []).map((l) => ({
+      description: l.description ?? l.short_description ?? '',
+      amount: centsToMajor(l.amount)
+    }))
+  }))
 
   const { plan, upcoming, currentMtd } = buildSubscriptionSummary(subs)
 

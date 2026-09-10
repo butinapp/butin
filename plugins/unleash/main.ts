@@ -167,17 +167,15 @@ export const buildUnleashBilling = (
   stats: RawUnleashAdminStats | null = null
 ): UnleashBilling => {
   const invoices = (raw?.invoices ?? [])
-    .map(
-      (inv): UnleashInvoice => ({
-        date: isoDay(inv.created),
-        amount: parseDollarAmount(inv.amountFormatted),
-        amountFormatted: inv.amountFormatted ?? '—',
-        status: inv.status ?? 'unknown',
-        paid: !!inv.paid,
-        hostedUrl: inv.invoiceURL || undefined,
-        pdfUrl: inv.invoicePDF || undefined
-      })
-    )
+    .map((inv): UnleashInvoice => ({
+      date: isoDay(inv.created),
+      amount: parseDollarAmount(inv.amountFormatted),
+      amountFormatted: inv.amountFormatted ?? '—',
+      status: inv.status ?? 'unknown',
+      paid: !!inv.paid,
+      hostedUrl: inv.invoiceURL || undefined,
+      pdfUrl: inv.invoicePDF || undefined
+    }))
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
 
   const recurringFee = computeRecurringFee(prices, status)
@@ -447,14 +445,12 @@ const resolveRootRole = (user: RawUnleashRosterUser): string | undefined => {
 // Pure transform — fixture-tested. Map the roster to the members port: id (stringified), display name
 // (falling back to username), email, and the resolved root-role label.
 export const buildUnleashMembers = (raw: RawUnleashRosterResponse | null | undefined): MembersInput => ({
-  members: (raw?.users ?? []).map(
-    (u, i): MemberInput => ({
-      id: u.id != null ? String(u.id) : String(i),
-      name: u.name ?? u.username ?? undefined,
-      email: u.email ?? undefined,
-      role: resolveRootRole(u)
-    })
-  )
+  members: (raw?.users ?? []).map((u, i): MemberInput => ({
+    id: u.id != null ? String(u.id) : String(i),
+    name: u.name ?? u.username ?? undefined,
+    email: u.email ?? undefined,
+    role: resolveRootRole(u)
+  }))
 })
 
 const fetchUnleashMembers = (ctx: CollectContext<UnleashConfig>): Promise<RawUnleashRosterResponse> =>
