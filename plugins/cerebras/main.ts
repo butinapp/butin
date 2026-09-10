@@ -32,10 +32,6 @@ const BILLING_PATHS = ['/billing', '/billing/payment', '/billing/credits']
 
 // ── types (the data dictionary) ──────────────────────────────────────────────────────
 
-interface GqlEnvelope<T> {
-  data?: T
-}
-
 // billing
 export interface RawCerebrasInvoice {
   created?: number // epoch seconds
@@ -762,13 +758,13 @@ const LIST_API_KEYS = `query ListOrganizationApiKeys($organizationId: ID!) {
 }`
 
 const fetchCerebrasKeys = async (ctx: CollectContext<CerebrasConfig>): Promise<RawCerebrasApiKey[]> => {
-  const resp = await ctx.client.graphql<GqlEnvelope<{ ListOrganizationApiKeys?: RawCerebrasApiKey[] }>>(
-    GQL,
-    LIST_API_KEYS,
-    { organizationId: orgId(ctx) }
-  )
+  const resp = await ctx.client.graphql<{ ListOrganizationApiKeys?: RawCerebrasApiKey[] }>(GQL, {
+    operationName: 'ListOrganizationApiKeys',
+    query: LIST_API_KEYS,
+    variables: { organizationId: orgId(ctx) }
+  })
 
-  return resp.data?.ListOrganizationApiKeys ?? []
+  return resp.ListOrganizationApiKeys ?? []
 }
 
 // ── members (live GraphQL `ListOrganizationMembers`) ─────────────────────────────────────
@@ -790,13 +786,13 @@ const LIST_MEMBERS = `query ListOrganizationMembers($organizationId: ID!) {
 }`
 
 const fetchCerebrasMembers = async (ctx: CollectContext<CerebrasConfig>): Promise<RawCerebrasMember[]> => {
-  const resp = await ctx.client.graphql<GqlEnvelope<{ ListOrganizationMembers?: RawCerebrasMember[] }>>(
-    GQL,
-    LIST_MEMBERS,
-    { organizationId: orgId(ctx) }
-  )
+  const resp = await ctx.client.graphql<{ ListOrganizationMembers?: RawCerebrasMember[] }>(GQL, {
+    operationName: 'ListOrganizationMembers',
+    query: LIST_MEMBERS,
+    variables: { organizationId: orgId(ctx) }
+  })
 
-  return resp.data?.ListOrganizationMembers ?? []
+  return resp.ListOrganizationMembers ?? []
 }
 
 // ── usage (live GraphQL — request volume + per-model rate-limit quotas) ──────────────────
@@ -957,7 +953,7 @@ const usageFromRaw = (raw: CerebrasUsageRaw): CerebrasUsage =>
 const fetchCerebrasUsage = async (ctx: CollectContext<CerebrasConfig>): Promise<CerebrasUsageRaw> => {
   const org = orgId(ctx)
   const region = ctx.config.regionId?.trim()
-  const gql = <T>(q: string, vars: Record<string, unknown>) => ctx.client.graphql<GqlEnvelope<T>>(GQL, q, vars)
+  const gql = <T>(query: string, variables: Record<string, unknown>) => ctx.client.graphql<T>(GQL, { query, variables })
 
   const [projects, keys, models, quotas] = await Promise.all([
     gql<{ ListProjects?: Array<{ id?: string }> }>(LIST_PROJECTS, { organizationId: org }),
@@ -966,14 +962,14 @@ const fetchCerebrasUsage = async (ctx: CollectContext<CerebrasConfig>): Promise<
     gql<{ ListOrganizationEffectiveQuotas?: RawQuota[] }>(LIST_QUOTAS, { organizationId: org, regionId: region })
   ])
 
-  const modelList = models.data?.ListModels ?? []
+  const modelList = models.ListModels ?? []
   const end = new Date()
   const start = new Date(end.getTime() - WINDOW_DAYS * MS_PER_DAY)
   const filterVars = {
     organizationId: org,
-    projectIds: ids(projects.data?.ListProjects),
+    projectIds: ids(projects.ListProjects),
     modelIds: ids(modelList),
-    apiKeyIds: ids(keys.data?.ListOrganizationApiKeys),
+    apiKeyIds: ids(keys.ListOrganizationApiKeys),
     startTime: start.toISOString(),
     endTime: end.toISOString(),
     httpCodes: HTTP_CODES,
@@ -990,9 +986,9 @@ const fetchCerebrasUsage = async (ctx: CollectContext<CerebrasConfig>): Promise<
   ])
 
   return {
-    totalRequests: count?.data?.GetOrganizationRequestCount ?? 0,
-    graph: graph?.data?.ListOrganizationRequestGraphData ?? [],
-    quotas: quotas.data?.ListOrganizationEffectiveQuotas ?? null,
+    totalRequests: count?.GetOrganizationRequestCount ?? 0,
+    graph: graph?.ListOrganizationRequestGraphData ?? [],
+    quotas: quotas.ListOrganizationEffectiveQuotas ?? null,
     models: modelList,
     periodStart: isoDay(filterVars.startTime),
     periodEnd: isoDay(filterVars.endTime)
@@ -1100,6 +1096,6 @@ export const cerebrasPlugin = definePlugin({
   ],
   probe: async (ctx) => {
     // Listing API keys is the cheapest authed GraphQL call — a 200 proves the session is live.
-    await ctx.client.graphql(GQL, LIST_KEY_IDS, { organizationId: orgId(ctx) })
+    await ctx.client.graphql(GQL, { query: LIST_KEY_IDS, variables: { organizationId: orgId(ctx) } })
   }
 })

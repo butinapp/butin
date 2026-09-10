@@ -389,38 +389,21 @@ export const basetenGraphqlError = (opName: string, messages: string[]): Error &
   return err
 }
 
-// The dashboard calls `POST /graphql/?opName=<name>` with an `{ operationName, variables, query }` body — the
-// built-in client.graphql sends only `{ query, variables }` and doesn't unwrap the envelope, so post directly.
-// `timeout` raises the per-call ceiling for the wide usage aggregation, which the dashboard itself paginates.
-const basetenGraphql = async <T>(
+// The dashboard names the operation in the URL as well as the body. `timeout` raises the per-call ceiling for
+// the wide usage aggregation, which the dashboard itself paginates. Failures are re-thrown classified, since
+// Baseten reports a dead session as a GraphQL error rather than a 401 (see basetenGraphqlError).
+const basetenGraphql = <T>(
   ctx: CollectContext,
   opName: string,
   query: string,
   variables: Record<string, unknown> = {},
   timeout?: number
-): Promise<T> => {
-  const res = await ctx.client
-    .request<{ data?: T; errors?: Array<{ message?: string }> }>({
-      url: `${ORIGIN}/graphql/?opName=${opName}`,
-      method: 'POST',
-      body: { operationName: opName, variables, query },
-      timeout
+): Promise<T> =>
+  ctx.client
+    .graphql<T>(`${ORIGIN}/graphql/?opName=${opName}`, { operationName: opName, query, variables, timeout })
+    .catch((err: unknown) => {
+      throw basetenGraphqlError(opName, [err instanceof Error ? err.message : String(err)])
     })
-    .then((r) => r.data)
-
-  if (res.errors?.length) {
-    throw basetenGraphqlError(
-      opName,
-      res.errors.map((e) => e.message ?? '')
-    )
-  }
-
-  if (!res.data) {
-    throw new Error(`[baseten] ${opName} returned no data`)
-  }
-
-  return res.data
-}
 
 // ── billing: invoice history + current-period net spend + payment method + credits ──────
 

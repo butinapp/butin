@@ -139,9 +139,12 @@ export const myPlugin = definePlugin({
   a generic `index.md` and a self-contained, browsable **`index.html`** (the browser entry point) rendered from the same `CapabilityResult`s — so every plugin gets
   a curated record with zero per-plugin export code. **Plugins ship no UI** — one generic renderer draws every capability (the SDK has no renderer half).
 - **`collect(ctx)`** receives `{ client, clientFor, creds, config, browser?, log }`. `client` (a `ButinClient`) has auth + transport pre-applied:
-  `get`/`post`/`graphql`/`getText`/`request`. `clientFor(key)` returns a client bound to a declared secondary **`backend`** (a different host + token under the same
-  session — for accounts split across platforms; Videotron). `creds` reads/writes credentials (write-back for rotating tokens). `config` is the plugin's own typed
-  settings (hardcoded ids: org slug, account id, region). `browser?` is a live authenticated offscreen `BrowserSession` for legacy backends that can't be replayed
+  `get`/`post`/`graphql`/`getText`/`request` — `graphql(url, { query, operationName?, variables?, headers?, … })` POSTs one operation and returns its `data`
+  UNWRAPPED, raising when the response carries `errors` (a GraphQL endpoint answers 200 on a failed query, so reading `data` blindly renders an empty tab
+  instead of reporting the failure); send `operationName` whenever the service's own client does, since an endpoint that routes or SAFELISTS on it rejects a
+  document posted without the name it was registered under. `clientFor(key)` returns a client bound to a declared secondary **`backend`** (a different host +
+  token under the same session — for accounts split across platforms; Videotron). `creds` reads/writes credentials (write-back for rotating tokens). `config`
+  is the plugin's own typed settings (hardcoded ids: org slug, account id, region). `browser?` is a live authenticated offscreen `BrowserSession` for legacy backends that can't be replayed
   headless (absent off-Electron — guard `if (!ctx.browser)`). `since?` (incremental capabilities only) is the cutoff ISO day below which history is already stored,
   so a `fetch` can paginate newest-first and stop once it crosses it — `undefined` means fetch everything (first run / forced full refetch / non-incremental). The
   optional sibling **`fetchFile(ctx, row)`** is the per-row byte source for a `files` table without
@@ -457,7 +460,8 @@ fabricates the time-series so Overview trends, "what changed" movers, and per-da
 - **TypeScript, ESM.** Relative imports use **`.js` specifiers** even for `.ts` files (`import { x } from './y.js'`) — bundler resolution; vitest resolves
   `.js`→`.ts`. The cross-package `@butinapp/sdk` (+ `/data` · `/presets` · `/integrations` · `/util` · `/testing` · `/libs`), `@butinapp/ui` (+ `/primitives` ·
   `/dashboard` · `/i18n`), and `@butinapp/shapes` (+ `/bundle`) subpath imports resolve via each package's `exports` map (+ core's tsconfig `paths`).
-- **Arrow functions** over `function` declarations. **Named exports only** (no default exports).
+- **Arrow functions** over `function` declarations. **Named exports only** (no default exports). **`type` over `interface`** for object shapes — one
+  declaration form, and it composes (unions, intersections, mapped types) where `interface` doesn't.
 - **Comments only when the WHY is non-obvious.** Wrap code/comments at **150 cols**, never hard-wrap at 70/80.
 - **Integrate, don't accrete.** Before adding code, read the enclosing function and its neighbors — an addition reads as if the file had always been this way (match
   naming, idiom, comment density). Reach for an existing helper (check the SDK subpaths: `@butinapp/sdk` for `table`/`record`/`define*`, `@butinapp/sdk/util` for

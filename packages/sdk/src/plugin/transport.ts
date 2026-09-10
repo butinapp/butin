@@ -69,6 +69,19 @@ export type RequestOptions = {
   timeout?: number
 }
 
+// One GraphQL operation. `operationName` is optional only for an endpoint that neither routes nor safelists on
+// it; send it whenever the service's own client does, since a safelisting endpoint rejects a document posted
+// without the name it was registered under. `headers` carries the per-operation extras some panels require (a
+// client-identity header); `timeout`/`cache` are the per-call escape hatches `RequestOptions` documents.
+export type GraphqlRequest = {
+  query: string
+  operationName?: string
+  variables?: Record<string, unknown>
+  headers?: Record<string, string>
+  timeout?: number
+  cache?: boolean
+}
+
 export type ButinResponse<T = unknown> = {
   status: number
   headers: Record<string, string>
@@ -79,10 +92,14 @@ export type ButinResponse<T = unknown> = {
 // (per TransportConfig) are already applied — collectors just describe the request and parse the
 // result. `getText`/`graphql` are conveniences for the non-JSON render shapes (cheerio scrape, RSC
 // flight data, GraphQL POST). Drop to `request` for full control.
+//
+// `graphql` POSTs the operation and returns the `data` payload UNWRAPPED, raising when the response carries
+// `errors` or no data — a GraphQL endpoint answers 200 on a failed query, so reading `data` blindly renders an
+// empty tab instead of reporting the failure.
 export type ButinClient = {
   request: <T = unknown>(opts: RequestOptions) => Promise<ButinResponse<T>>
   get: <T = unknown>(url: string, headers?: Record<string, string>) => Promise<T>
   post: <T = unknown>(url: string, body?: unknown, headers?: Record<string, string>) => Promise<T>
-  graphql: <T = unknown>(url: string, query: string, variables?: Record<string, unknown>) => Promise<T>
+  graphql: <T = unknown>(url: string, request: GraphqlRequest) => Promise<T>
   getText: (url: string, headers?: Record<string, string>) => Promise<string>
 }

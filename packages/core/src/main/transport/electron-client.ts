@@ -6,6 +6,7 @@ import type { AuthResolver } from '../plugin/auth-resolve.js'
 
 import { encodeBody } from './body.js'
 import { REQUEST_TIMEOUT_MS } from './constants.js'
+import { graphqlOver } from './graphql.js'
 import { logPacedRequest, logRequest, logRequestError } from './log.js'
 import type { RequestCache } from './request-cache.js'
 import { isStaticAsset, paceRequest } from './request-pacer.js'
@@ -217,8 +218,7 @@ export const createElectronClient = (
       (await request<T>({ url, headers })).data,
     post: async <T = unknown>(url: string, body?: unknown, headers?: Record<string, string>): Promise<T> =>
       (await request<T>({ url, method: 'POST', body, headers })).data,
-    graphql: async <T = unknown>(url: string, query: string, variables?: Record<string, unknown>): Promise<T> =>
-      (await request<T>({ url, method: 'POST', body: { query, variables } })).data,
+    graphql: graphqlOver(request),
     getText: async (url: string, headers?: Record<string, string>): Promise<string> =>
       (await request<string>({ url, headers, responseType: 'text' })).data
   }
