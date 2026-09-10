@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import type { ProfileSummaryDto } from '../../shared/ipc.js'
+import { failed } from '../result-toast.js'
 
 import {
   type ArchiveProgressRow,
@@ -52,9 +53,7 @@ export const ProfileMenu = () => {
   const duplicate = useMutation({
     mutationFn: (id: string) => window.butin.profiles.duplicate(id),
     onSuccess: (res, id) => {
-      if (!res.ok) {
-        toast.error(res.error)
-
+      if (failed(res)) {
         return
       }
 
@@ -76,9 +75,7 @@ export const ProfileMenu = () => {
       onEnable: async (password) => {
         const res = await window.butin.vault.setup(id, password)
 
-        if (!res.ok) {
-          toast.error(res.error)
-
+        if (failed(res)) {
           return null
         }
 
@@ -120,9 +117,7 @@ export const ProfileMenu = () => {
       onDisable: async (secret: string) => {
         const res = await window.butin.vault.disable(id, secret)
 
-        if (!res.ok) {
-          toast.error(res.error)
-
+        if (failed(res)) {
           return false
         }
 
@@ -140,9 +135,7 @@ export const ProfileMenu = () => {
     onExport: async (id, secret) => {
       const res = await window.butin.profiles.exportArchive(id, secret)
 
-      if (!res.ok) {
-        toast.error(res.error)
-
+      if (failed(res)) {
         return null
       }
 
@@ -157,9 +150,7 @@ export const ProfileMenu = () => {
     onImport: async (path, secret, name) => {
       const res = await window.butin.profiles.importArchive(path, secret, name)
 
-      if (!res.ok) {
-        toast.error(res.error)
-
+      if (failed(res)) {
         return null
       }
 

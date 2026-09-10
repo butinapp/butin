@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 import type { StorageLocationDto, StorageLocationKind, StorageSurface } from '../../../shared/ipc.js'
+import { failed } from '../../result-toast.js'
 
 import { PaneSkeleton, SettingsCell, SettingsGroup } from './parts.js'
 
@@ -99,9 +100,7 @@ const ClearRow = ({
 
     const res = await window.butin.app.clearStorage(surface)
 
-    if (!res.ok) {
-      toast.error(res.error)
-
+    if (failed(res)) {
       return
     }
 
@@ -151,9 +150,7 @@ export const StoragePane = () => {
     // The app wipes ~/butin and restarts, so this call may never resolve; surface only an outright failure.
     const res = await window.butin.app.clearStorage('everything')
 
-    if (!res.ok) {
-      toast.error(res.error)
-    }
+    failed(res)
   }
 
   if (!locations) {
@@ -212,13 +209,13 @@ export const StoragePane = () => {
               size="sm"
               onClick={() =>
                 void window.butin.app.clearStorage('logs').then((res) => {
-                  if (res.ok) {
-                    void qc.invalidateQueries({ queryKey: ['storageSize'] })
-                    void qc.invalidateQueries({ queryKey: ['logs'] })
-                    toast.success('Logs cleared.')
-                  } else {
-                    toast.error(res.error)
+                  if (failed(res)) {
+                    return
                   }
+
+                  void qc.invalidateQueries({ queryKey: ['storageSize'] })
+                  void qc.invalidateQueries({ queryKey: ['logs'] })
+                  toast.success('Logs cleared.')
                 })
               }
             >
