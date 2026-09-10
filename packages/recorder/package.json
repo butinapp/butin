@@ -29,7 +29,7 @@
     "electron-vite": "^5.0.0",
     "jsdom": "catalog:",
     "tailwindcss": "catalog:",
-    "vite": "^7.3.5",
+    "vite": "^8.2.2",
     "vitest": "catalog:"
   }
 }
