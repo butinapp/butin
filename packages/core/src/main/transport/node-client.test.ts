@@ -131,8 +131,8 @@ test('without a cache, every read hits the network', async () => {
 // A binary body reaches the wire byte-for-byte and keeps the plugin's own content type: JSON-encoding it
 // would send `{"type":"Buffer","data":[…]}`, which a binary endpoint answers with an undecodable body.
 test('a binary body is sent verbatim, without a JSON content type', async () => {
-  let sent: { data?: unknown; headers: Record<string, string> } | undefined
-  const raw = vi.fn(async (req: { data?: unknown; headers: Record<string, string> }) => {
+  let sent: { body?: unknown; headers: Record<string, string> } | undefined
+  const raw = vi.fn(async (req: { body?: unknown; headers: Record<string, string> }) => {
     sent = req
 
     return ok({ v: 1 })
@@ -147,7 +147,31 @@ test('a binary body is sent verbatim, without a JSON content type', async () => 
     headers: { 'content-type': 'application/grpc-web+proto' }
   })
 
-  expect(sent?.data).toEqual(frame)
+  expect(sent?.body).toEqual(frame)
   expect(sent?.headers['Content-Type']).toBeUndefined()
   expect(sent?.headers['content-type']).toBe('application/grpc-web+proto')
+})
+
+test('a JSON body does not add a second content-type when the caller already declared one, any casing', () => {
+  // Header names are case-insensitive on the wire, so a plugin that writes `content-type` must not also get the
+  // canonical `Content-Type` default — that put the header on the request twice.
+  const seen: Record<string, string>[] = []
+  const raw = vi.fn(async (req: { headers: Record<string, string> }) => {
+    seen.push(req.headers)
+
+    return ok({ v: 1 })
+  })
+  const client = createNodeClient({}, resolver, raw)
+
+  return Promise.all([
+    client.post('https://x/rpc', { a: 1 }, { 'content-type': 'application/json' }),
+    client.post('https://x/other', { a: 1 })
+  ]).then(() => {
+    const declared = seen[0] as Record<string, string>
+    const defaulted = seen[1] as Record<string, string>
+
+    expect(Object.keys(declared).filter((k) => k.toLowerCase() === 'content-type')).toEqual(['content-type'])
+    // With none declared, the canonical default still applies.
+    expect(defaulted['Content-Type']).toBe('application/json')
+  })
 })

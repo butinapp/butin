@@ -1,24 +1,11 @@
-import { BROWSER_UA, SEC_CH_UA_HEADERS } from '@butinapp/engine'
 import type { ButinClient, ButinResponse, RequestOptions, TransportConfig } from '@butinapp/sdk'
 import { net, type Session } from 'electron'
 
 import type { AuthResolver } from '../plugin/auth-resolve.js'
 
-import { encodeBody } from './body.js'
 import { REQUEST_TIMEOUT_MS } from './constants.js'
-import { graphqlOver } from './graphql.js'
-import { logPacedRequest, logRequest, logRequestError } from './log.js'
+import { createHttpClient } from './http-client.js'
 import type { RequestCache } from './request-cache.js'
-import { isStaticAsset, paceRequest } from './request-pacer.js'
-
-// The provider key a request paces against — its host, so a plugin's secondary backends pace independently.
-const pacingKey = (url: string): string => {
-  try {
-    return new URL(url).host
-  } catch {
-    return url
-  }
-}
 
 // Collapse net.request's `string | string[]` response-header value to a single string (first entry of a
 // repeated header).
@@ -129,97 +116,32 @@ const collect = (opts: {
     request.end()
   })
 
+// net.request hands back raw bytes whatever was asked for, so the body is decoded here. Runs only after the
+// shared client's status check, so an error page is never parsed.
+const decodeBody = (raw: unknown, responseType: RequestOptions['responseType']): unknown => {
+  const buffer = raw as Buffer
+
+  if (responseType === 'arraybuffer') {
+    // A standalone ArrayBuffer copy of just this body's bytes (not the pooled Buffer's backing store).
+    return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+  }
+
+  const text = buffer.toString('utf8')
+
+  return responseType === 'text' || !text ? text : JSON.parse(text)
+}
+
 export const createElectronClient = (
   transport: TransportConfig,
   resolveAuth: AuthResolver,
   session?: Session,
   cache?: RequestCache,
   logTag?: string
-): ButinClient => {
-  const request = async <T>(opts: RequestOptions): Promise<ButinResponse<T>> => {
-    const url = transport.baseUrl && !opts.url.startsWith('http') ? `${transport.baseUrl}${opts.url}` : opts.url
-    const method = opts.method ?? 'GET'
-    const { data: body, isJson, cacheKey } = encodeBody(opts.body)
-
-    const doFetch = async (): Promise<ButinResponse> => {
-      const auth = await resolveAuth()
-      const headers: Record<string, string> = {
-        ...(transport.defaultHeaders ?? {}),
-        ...SEC_CH_UA_HEADERS,
-        // The UA must match the capture window's UA — cf_clearance is bound to (IP, UA, TLS identity). Default to
-        // the canonical Butin browser identity so capture and replay always agree.
-        'user-agent': transport.userAgent ?? BROWSER_UA,
-        ...(opts.sendAuth === false ? {} : (auth.headers ?? {})),
-        ...(auth.cookie && transport.sendCookie !== false && opts.sendCookie !== false ? { cookie: auth.cookie } : {}),
-        ...(opts.referer ? { referer: opts.referer } : {}),
-        ...(opts.headers ?? {})
-      }
-
-      if (isJson) {
-        headers['content-type'] = headers['content-type'] ?? 'application/json'
-      }
-
-      const t0 = Date.now()
-      let res: ButinResponse
-
-      try {
-        res = await collect({
-          method,
-          url,
-          headers,
-          body,
-          session,
-          maxRedirects: opts.maxRedirects,
-          timeout: opts.timeout
-        })
-      } catch (err) {
-        logRequestError(method, url, Date.now() - t0, logTag, err)
-        throw err
-      }
-
-      logRequest(method, url, res.status, Date.now() - t0, logTag, res.data, headers)
-
-      if (res.status >= 400) {
-        throw Object.assign(new Error(`HTTP ${res.status} ${opts.method ?? 'GET'} ${url}`), { status: res.status })
-      }
-
-      const raw = res.data as Buffer
-      let data: unknown
-
-      if (opts.responseType === 'arraybuffer') {
-        // A standalone ArrayBuffer copy of just this body's bytes (not the pooled Buffer's backing store).
-        data = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength)
-      } else {
-        const text = raw.toString('utf8')
-
-        data = opts.responseType === 'text' || !text ? text : JSON.parse(text)
-      }
-
-      return { status: res.status, headers: res.headers, data: data as unknown }
-    }
-
-    // Pace the real fetch, not cache hits: cache.run() invokes its fn only on a miss, so wrapping doFetch
-    // means a dedup hit returns instantly while a genuine network call is gap-spaced per host.
-    const pacedFetch = (): Promise<ButinResponse> =>
-      paceRequest(pacingKey(url), doFetch, (ms) => logPacedRequest(method, url, ms, logTag))
-    // pace:false runs un-spaced (the collector owns its own concurrency); static assets are never paced (see
-    // isStaticAsset); everything else is gap-spaced per host.
-    const runFetch = opts.pace === false || isStaticAsset(url) ? doFetch : pacedFetch
-    const cacheable =
-      cache && opts.cache !== false && opts.responseType !== 'arraybuffer' && (method === 'GET' || method === 'POST')
-    const res = cacheable ? await cache.run(method, url, cacheKey, opts.headers, runFetch) : await runFetch()
-
-    return res as ButinResponse<T>
-  }
-
-  return {
-    request,
-    get: async <T = unknown>(url: string, headers?: Record<string, string>): Promise<T> =>
-      (await request<T>({ url, headers })).data,
-    post: async <T = unknown>(url: string, body?: unknown, headers?: Record<string, string>): Promise<T> =>
-      (await request<T>({ url, method: 'POST', body, headers })).data,
-    graphql: graphqlOver(request),
-    getText: async (url: string, headers?: Record<string, string>): Promise<string> =>
-      (await request<string>({ url, headers, responseType: 'text' })).data
-  }
-}
+): ButinClient =>
+  createHttpClient(transport, resolveAuth, (req) => collect({ ...req, session }), {
+    cache,
+    logTag,
+    decode: decodeBody,
+    // net.request lowercases on the wire; these are the names this transport has always written.
+    headerNames: { userAgent: 'user-agent', cookie: 'cookie', referer: 'referer', contentType: 'content-type' }
+  })
