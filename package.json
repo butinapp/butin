@@ -26,6 +26,7 @@
     "bump-libs": "node scripts/bump-libs.mjs",
     "drive": "node scripts/drive.mjs",
     "smoke": "node scripts/smoke.mjs",
+    "e2e": "node scripts/e2e.mjs",
     "seed-demo": "tsx scripts/seed-demo.ts",
     "record": "pnpm --filter @butinapp/recorder dev"
   },

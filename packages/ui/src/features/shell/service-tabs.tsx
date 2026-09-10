@@ -41,7 +41,7 @@ export const ServiceTabs = ({
 
   return (
     <Tabs value={current.capability.id} onValueChange={onSelect}>
-      <TabsList variant="line">
+      <TabsList data-testid="capability-tabs" variant="line">
         {tabs.map((tab) => (
           <TabsTrigger
             key={tab.capability.id}
