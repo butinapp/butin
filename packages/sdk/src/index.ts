@@ -34,6 +34,7 @@ export type {
   TransportConfig,
   HttpMethod,
   RequestOptions,
+  GraphqlRequest,
   ButinResponse,
   ButinClient
 } from './plugin/transport.js'

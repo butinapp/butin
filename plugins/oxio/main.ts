@@ -185,33 +185,15 @@ const resolveOxioAuth = async (ctx: AuthContext): Promise<AuthAttachment> => {
 
 // ── the GraphQL endpoint ────────────────────────────────────────────────────────────
 
-// One POST per operation, shaped exactly like the portal's (`operationName` included — the gateway keys its
-// routing and logging off it). GraphQL reports failures as a 200 with an `errors` array, so a collector that
-// only read `data` would silently render an empty tab; raise instead.
-const gql = async <T>(
+// Every operation goes to the one endpoint, named the way the portal names it — the gateway keys its routing and
+// logging off `operationName`.
+const gql = <T>(
   client: ButinClient,
   operationName: string,
   query: string,
   variables: Record<string, unknown> = {},
   opts: { cache?: boolean } = {}
-): Promise<T> => {
-  const { data: body } = await client.request<{ data?: T; errors?: { message?: string }[] }>({
-    url: API_PATH,
-    method: 'POST',
-    body: { operationName, query, variables },
-    ...opts
-  })
-
-  if (body.errors?.length) {
-    throw new Error(`oxio ${operationName}: ${body.errors.map((e) => e.message ?? 'error').join('; ')}`)
-  }
-
-  if (!body.data) {
-    throw new Error(`oxio ${operationName}: response carried no data`)
-  }
-
-  return body.data
-}
+): Promise<T> => client.graphql<T>(API_PATH, { operationName, query, variables, ...opts })
 
 const ACCOUNT_QUERY = `query OwnAuthenticatedEntity {
   ownAuthenticatedEntity {

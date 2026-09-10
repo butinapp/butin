@@ -90,12 +90,6 @@ export const resolveLinearAuth = async (ctx: AuthContext): Promise<AuthAttachmen
 
 // ── types (the data dictionary) ──────────────────────────────────────────────────────
 
-// The graphql() client returns the FULL GraphQL envelope ({ data, errors }), so each response is read as
-// resp.data.<operationRoot>.
-interface GqlEnvelope<T> {
-  data?: T
-}
-
 export interface RawLinearInvoice {
   created?: string // ISO timestamp, e.g. "2026-05-19T16:55:43.000Z"
   dueDate?: string | null
@@ -387,17 +381,15 @@ export const buildLinearMembers = (raw: RawUsersResponse | null | undefined): Me
 // buildLinearBilling falls back to the invoice page embedded in CachedBillingDetails.
 const fetchLinearBilling = async (ctx: CollectContext): Promise<RawLinearBilling> => {
   const [details, invoiceList] = await Promise.all([
-    ctx.client.graphql<GqlEnvelope<RawBillingDetailsResponse>>(GQL, BILLING_DETAILS_QUERY),
-    ctx.client.graphql<GqlEnvelope<RawBillingInvoicesResponse>>(GQL, BILLING_INVOICES_QUERY).catch(() => null)
+    ctx.client.graphql<RawBillingDetailsResponse>(GQL, { query: BILLING_DETAILS_QUERY }),
+    ctx.client.graphql<RawBillingInvoicesResponse>(GQL, { query: BILLING_INVOICES_QUERY }).catch(() => null)
   ])
 
-  return { details: details?.data ?? null, invoiceList: invoiceList?.data ?? null }
+  return { details: details ?? null, invoiceList: invoiceList ?? null }
 }
 
 const fetchLinearMembers = async (ctx: CollectContext): Promise<RawUsersResponse> => {
-  const resp = await ctx.client.graphql<GqlEnvelope<RawUsersResponse>>(GQL, MEMBERS_QUERY)
-
-  return resp?.data ?? {}
+  return (await ctx.client.graphql<RawUsersResponse>(GQL, { query: MEMBERS_QUERY })) ?? {}
 }
 
 // ── descriptor ──────────────────────────────────────────────────────────────────────
@@ -483,6 +475,6 @@ export const linearPlugin = definePlugin({
   ],
   probe: async (ctx) => {
     // CachedBillingDetails is the cheapest authed call — a 200 (no GraphQL errors) proves the session is live.
-    await ctx.client.graphql(GQL, BILLING_DETAILS_QUERY)
+    await ctx.client.graphql(GQL, { query: BILLING_DETAILS_QUERY })
   }
 })

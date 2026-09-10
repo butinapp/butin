@@ -4,6 +4,7 @@ import type {
   ButinPlugin,
   ButinResponse,
   CredentialStore,
+  GraphqlRequest,
   RequestOptions,
   TransportConfig
 } from '@butinapp/sdk'
@@ -71,8 +72,7 @@ const tagBackendErrors = (client: ButinClient, backendKey: string): ButinClient 
     get: <T = unknown>(url: string, headers?: Record<string, string>) => tag<T>(client.get<T>(url, headers)),
     post: <T = unknown>(url: string, body?: unknown, headers?: Record<string, string>) =>
       tag<T>(client.post<T>(url, body, headers)),
-    graphql: <T = unknown>(url: string, query: string, variables?: Record<string, unknown>) =>
-      tag<T>(client.graphql<T>(url, query, variables)),
+    graphql: <T = unknown>(url: string, request: GraphqlRequest) => tag<T>(client.graphql<T>(url, request)),
     getText: (url: string, headers?: Record<string, string>) => tag<string>(client.getText(url, headers))
   }
 }
