@@ -46,13 +46,17 @@ jobs:
           restore-keys: ${{ runner.os }}-turbo-build-
       - run: pnpm build
 
-      # A green build proves the bundle was emitted, not that it runs. Launching it and waiting for a window is
-      # what catches a toolchain change that compiles clean and yields an app that never opens. Electron needs a
-      # display server, hence xvfb; the runner image usually ships it, so only install when it is absent.
-      - name: Smoke — launch the built app
+      # A green build proves the bundle was emitted, not that it runs. These two launch it. `smoke` boots an empty
+      # store — first run, does the app come up at all. `e2e` seeds a store first and asserts the data arrives on
+      # screen, which is the preload/IPC round trip every component test stubs out. Electron needs a display
+      # server, hence xvfb; the runner image usually ships it, so only install when it is absent.
+      - name: Smoke — the app boots clean
         run: |
           command -v xvfb-run > /dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq xvfb; }
-          xvfb-run -a pnpm drive
+          xvfb-run -a pnpm smoke
+
+      - name: E2E — seeded data reaches the screen
+        run: xvfb-run -a pnpm e2e
 
   test:
     name: test (${{ matrix.shard.name }})

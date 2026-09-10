@@ -757,7 +757,10 @@ export const DashboardRenderer = ({
   // width can't blow the track past the capped container — without it the grid item's default
   // `min-width: auto` lets a freshly-mounted table flash full-width for a frame before snapping to the cap.
   return (
-    <div className={cn('mx-auto grid w-full grid-cols-1 gap-3 md:grid-cols-2', wide ? 'max-w-[110rem]' : 'max-w-6xl')}>
+    <div
+      data-testid="dashboard"
+      className={cn('mx-auto grid w-full grid-cols-1 gap-3 md:grid-cols-2', wide ? 'max-w-[110rem]' : 'max-w-6xl')}
+    >
       {plans.map((p, i) => (
         <div key={i} className={cn('min-w-0', p.view.type === 'keyvalue' ? 'md:col-span-1' : 'md:col-span-2')}>
           {renderView(

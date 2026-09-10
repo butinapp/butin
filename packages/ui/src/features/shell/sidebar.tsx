@@ -131,6 +131,7 @@ export const Sidebar = ({
             return (
               <button
                 key={s.id}
+                data-testid="sidebar-service"
                 className={rowClass(isActive)}
                 onClick={() => go({ kind: 'service', serviceId: s.id })}
               >
