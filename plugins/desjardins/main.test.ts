@@ -1,9 +1,6 @@
 import type { CollectContext } from '@butinapp/sdk'
-import {
-  resolveCurrencies,
-  validateCapabilityResult,
-  validateCapabilityResult as rawValidateCR
-} from '@butinapp/sdk/data'
+import { validateCapabilityResult } from '@butinapp/sdk/data'
+import { validateSamples } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import {
@@ -19,18 +16,10 @@ import {
   relevesBodyForYear
 } from './main.js'
 
-// Bare-tolerant sample check: a capability without a sample (the browser-backed legacy debit flow) is skipped.
-const validateSample = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'CAD'))
-
-test('every defined sample is contract-valid', () => {
-  for (const cap of desjardinsPlugin.capabilities) {
-    if (!cap.sample) {
-      continue
-    }
-
-    expect(validateSample(cap.sample()), cap.id).toEqual([])
-  }
+// `releves-compte` is the browser-backed legacy debit flow — an imperative collector that can't be split into
+// fetch/build, so it declares no sample and draws the seed's generic fallback.
+test('every capability declares a sample that is contract-valid', () => {
+  expect(validateSamples(desjardinsPlugin, { optional: ['releves-compte'] })).toEqual([])
 })
 
 test('ships an English map for its French banking vocabulary', () => {

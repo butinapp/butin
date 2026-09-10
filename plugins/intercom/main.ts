@@ -8,7 +8,7 @@ import {
 } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, usage, type MembersInput, type UsageMetricInput } from '@butinapp/sdk/presets'
-import { centsToMajor, epochSecDay, isoDay } from '@butinapp/sdk/util'
+import { byDayAsc, byDayDesc, centsToMajor, epochSecDay, isoDay } from '@butinapp/sdk/util'
 
 import { sampleIntercomAdmins, sampleIntercomBilling, sampleIntercomUsage } from './sample.js'
 
@@ -285,7 +285,7 @@ export const buildIntercomBilling = (
   const subscription = buildSubscription(rawSub ?? {}, rawApp ?? {})
   const currentPeriod = buildCurrentPeriod(rawCurrent ?? {})
 
-  invoices.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  invoices.sort(byDayDesc)
 
   const totalBilled = invoices.reduce((sum, i) => sum + i.amount, 0)
   // The in-progress period's running total is the live MTD. 0 stays (the Overview reads the current-month bar)
@@ -560,7 +560,7 @@ export const buildIntercomUsage = (
       emailsSent: num(s.emails_sent)
     }))
     .filter((d) => !!d.date)
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .sort(byDayAsc)
 
   return {
     periodStart: daily[0]?.date ?? undefined,

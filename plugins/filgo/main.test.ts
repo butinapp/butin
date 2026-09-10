@@ -1,5 +1,4 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
-import { createSampleGen, resolveSampleConfig } from '@butinapp/sdk/testing'
+import { createSampleGen, resolveSampleConfig, resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import {
@@ -16,8 +15,7 @@ import {
 } from './main.js'
 import { sampleFilgoDeliveries, sampleFilgoStatements } from './sample.js'
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'CAD'))
+const validateCapabilityResult = resultValidator('CAD')
 
 // A redacted, synthetic slice of the /actifs/ page — the account <select> option + one reservoir card, in the
 // real nesting (the Capacité/Produit/État subtitles are siblings of their value <p>). No real PII.
@@ -61,10 +59,7 @@ const STATEMENT_DOC: RawStatementDoc = {
 }
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of filgoPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(filgoPlugin)).toEqual([])
 })
 
 test('filgo is a cookie-csrf session on the Power Pages portal', () => {

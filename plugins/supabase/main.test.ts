@@ -1,4 +1,4 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import {
@@ -18,15 +18,10 @@ import {
   supabasePlugin
 } from './main.js'
 
-// Resolve reporting currency (USD) onto every money value before validating — matches what core does before
-// persisting, so the contract check sees the same shape the renderer draws.
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateCapabilityResult = resultValidator('USD')
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of supabasePlugin.capabilities.filter((c) => c.sample)) {
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(supabasePlugin)).toEqual([])
 })
 
 // Synthetic fixtures matching the platform-API wire shapes (trimmed, fake org/refs/tokens). The

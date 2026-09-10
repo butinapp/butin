@@ -1,7 +1,7 @@
 import { defineCapability, definePlugin, type CollectContext } from '@butinapp/sdk'
-import { table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, keys, type ApiKeysInput, type BillingInvoiceInput, type BillingStat } from '@butinapp/sdk/presets'
-import { asArray, centsToMajor, currentMonthKey, epochSecDay, round2 } from '@butinapp/sdk/util'
+import { asArray, byDayDesc, centsToMajor, currentMonthKey, epochSecDay, round2 } from '@butinapp/sdk/util'
 
 import { sampleFirecrawlInvoices, sampleFirecrawlTeam } from './sample.js'
 
@@ -128,7 +128,7 @@ const paymentMethodOf = (inv?: RawFirecrawlInvoice): string | undefined => {
 // and derives plan / payment method / currency from the newest invoice + the current-month spend headline.
 export const buildFirecrawlBilling = (raw: RawFirecrawlInvoice[] | undefined | null): FirecrawlBilling => {
   const list = asArray<RawFirecrawlInvoice>(raw)
-  const invoices = list.map(normalizeInvoice).sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  const invoices = list.map(normalizeInvoice).sort(byDayDesc)
   const newest = list.slice().sort((a, b) => (b.created ?? 0) - (a.created ?? 0))[0]
 
   const ym = currentMonthKey()
@@ -209,10 +209,7 @@ export const buildFirecrawlBillingResult = (raw: RawFirecrawlInvoice[] | undefin
     category: 'Invoices'
   })
 
-  result.datasets.push(section.dataset)
-  result.views = [...(result.views ?? []), section.view]
-
-  return result
+  return addSections(result, section)
 }
 
 // --- apiKeys: the team's keys, from `/api/user/team` ---

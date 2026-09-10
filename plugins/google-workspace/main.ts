@@ -1,5 +1,5 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
-import { capabilityResult, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, usage } from '@butinapp/sdk/presets'
 import { epochSecDay, round2 } from '@butinapp/sdk/util'
 
@@ -462,33 +462,29 @@ export const buildGoogleWorkspaceUsageResult = (usageData: GoogleUsage): Capabil
     ]
   })
 
-  if (usageData.seats.length) {
-    const seats = table<SeatRow>({
-      id: 'seats',
-      columns: [
-        { key: 'skuName', label: 'Subscription', role: 'label' },
-        { key: 'planName', label: 'Plan', role: 'label' },
-        { key: 'seatsAssigned', label: 'Assigned', role: 'count' },
-        { key: 'seatsCommitted', label: 'Committed', role: 'count' },
-        { key: 'utilization', label: 'Utilization', role: 'percent' }
-      ],
-      rows: usageData.seats.map((s) => ({
-        skuName: s.skuName,
-        planName: s.planName,
-        seatsAssigned: s.seatsAssigned,
-        seatsCommitted: s.seatsCommitted ?? null,
-        utilization: s.utilization
-      })),
-      // One row per subscription (SKU), so the SKU name is its stable identity in the ledger.
-      key: 'skuName'
-    })
-    const seatsView = seats.table({ title: 'Seat utilization' })
+  const seatsView = usageData.seats.length
+    ? table<SeatRow>({
+        id: 'seats',
+        columns: [
+          { key: 'skuName', label: 'Subscription', role: 'label' },
+          { key: 'planName', label: 'Plan', role: 'label' },
+          { key: 'seatsAssigned', label: 'Assigned', role: 'count' },
+          { key: 'seatsCommitted', label: 'Committed', role: 'count' },
+          { key: 'utilization', label: 'Utilization', role: 'percent' }
+        ],
+        rows: usageData.seats.map((s) => ({
+          skuName: s.skuName,
+          planName: s.planName,
+          seatsAssigned: s.seatsAssigned,
+          seatsCommitted: s.seatsCommitted ?? null,
+          utilization: s.utilization
+        })),
+        // One row per subscription (SKU), so the SKU name is its stable identity in the ledger.
+        key: 'skuName'
+      }).table({ title: 'Seat utilization' })
+    : null
 
-    result.datasets.push(seatsView.dataset)
-    result.views = [...(result.views ?? []), seatsView.view]
-  }
-
-  return result
+  return addSections(result, seatsView)
 }
 
 // ── collectors (best-effort live replay — see header) ──────────────────────────────────

@@ -9,7 +9,7 @@ import {
 } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, type BillingInvoiceInput, type MembersInput } from '@butinapp/sdk/presets'
-import { centsToMajor, currentMonthKey, isoDay, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, currentMonthKey, isoDay, round2 } from '@butinapp/sdk/util'
 
 import { sampleLinearBilling, sampleLinearMembers } from './sample.js'
 
@@ -210,7 +210,7 @@ export const buildLinearBilling = (
     ? invoiceList.billingInvoices.invoices
     : (d.invoices ?? [])
 
-  const invoices = rawInvoices.map(normalizeInvoice).sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  const invoices = rawInvoices.map(normalizeInvoice).sort(byDayDesc)
 
   const pm = d.paymentMethod
   const paymentMethod: LinearPaymentMethod | null = pm?.type

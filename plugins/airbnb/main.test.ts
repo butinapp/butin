@@ -1,5 +1,5 @@
 import { type CollectContext } from '@butinapp/sdk'
-import { resolveCurrencies, validateCapabilityResult } from '@butinapp/sdk/data'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { round2 } from '@butinapp/sdk/util'
 import { expect, test } from 'vitest'
 
@@ -15,8 +15,7 @@ import {
   type RawTaxDocument
 } from './main.js'
 
-const valid = (result: ReturnType<typeof buildAirbnbSummary>) =>
-  validateCapabilityResult(resolveCurrencies(result, 'CAD'))
+const valid = resultValidator('CAD')
 
 test('extractUserId reads the id out of the _user_attributes cookie', () => {
   const cookie =
@@ -173,8 +172,5 @@ test('buildAirbnbTaxDocuments lists documents newest-year first', () => {
 })
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of airbnbPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(resolveCurrencies(cap.sample!(), 'CAD')), cap.id).toEqual([])
-  }
+  expect(validateSamples(airbnbPlugin)).toEqual([])
 })

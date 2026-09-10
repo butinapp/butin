@@ -1,4 +1,4 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import {
@@ -13,8 +13,7 @@ import {
   type RawTransaction
 } from './main.js'
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'CAD'))
+const validateCapabilityResult = resultValidator('CAD')
 
 // Invented stand-ins shaped like the service responses — sequential numbers and round amounts, so nothing here
 // can be mistaken for, or traced back to, a real account.
@@ -68,10 +67,7 @@ const transaction = (over: Partial<RawTransaction>): RawTransaction => ({
 })
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of cibcPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(cibcPlugin)).toEqual([])
 })
 
 test('cibc replays the cookie jar alongside the captured X-Auth-Token', async () => {

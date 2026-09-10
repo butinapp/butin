@@ -170,16 +170,23 @@ test('${id} plugin is well-formed', () => {
 // PRIMARY coverage pattern (add this once you replace the stub): export a PURE build*() that maps a redacted
 // wire fixture → CapabilityResult, then assert its normalized shape here. This — not calling collect() with a
 // fake context — is where the real coverage lives (see plugins/serper/main.test.ts).
-// validateCapabilityResult(result) returns [] when the result satisfies the contract; it's a cheap guard
-// against typo'd dataset refs / mismatched column roles, which are otherwise only caught at runtime in the app.
+// A validator returns [] when the result satisfies the contract; it's a cheap guard against typo'd dataset refs
+// / mismatched column roles, which are otherwise only caught at runtime in the app. Bind it to the plugin's
+// reportingCurrency once, and assert every capability's demo sample with validateSamples.
 //
-//   import { validateCapabilityResult } from '@butinapp/sdk/data'
+//   import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 //   import { build${pascal}Billing } from './main.js'
+//
+//   const validate = resultValidator('USD')
 //
 //   test('billing normalizes', () => {
 //     const result = build${pascal}Billing(FIXTURE)
-//     expect(validateCapabilityResult(result)).toEqual([])
-//     expect(result.summary?.value).toBe(123.45)
+//     expect(validate(result)).toEqual([])
+//     expect(result.summaries?.[0]?.value).toBe(123.45)
+//   })
+//
+//   test('every capability declares a sample that is contract-valid', () => {
+//     expect(validateSamples(${camel}Plugin)).toEqual([])
 //   })
 `
 

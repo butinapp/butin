@@ -1,8 +1,5 @@
-import {
-  resolveCurrencies,
-  validateCapabilityResult,
-  validateCapabilityResult as rawValidateCR
-} from '@butinapp/sdk/data'
+import { validateCapabilityResult } from '@butinapp/sdk/data'
+import { validateSamples } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import {
@@ -19,10 +16,7 @@ import {
 } from './main.js'
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of hydrosolutionPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(rawValidateCR(resolveCurrencies(cap.sample!(), 'CAD')), cap.id).toEqual([])
-  }
+  expect(validateSamples(hydrosolutionPlugin)).toEqual([])
 })
 
 test('ships an English map for its French rental vocabulary (incl. Location = rental)', () => {

@@ -15,7 +15,16 @@ import {
   type MemberInput,
   type MembersInput
 } from '@butinapp/sdk/presets'
-import { centsToMajor, currentMonthKey, epochMsDay, epochSecDay, monthMinus, round2 } from '@butinapp/sdk/util'
+import {
+  byDayAsc,
+  byDayDesc,
+  centsToMajor,
+  currentMonthKey,
+  epochMsDay,
+  epochSecDay,
+  monthMinus,
+  round2
+} from '@butinapp/sdk/util'
 
 import { sampleOpenaiBilling, sampleOpenaiKeys, sampleOpenaiMembers } from './sample.js'
 
@@ -267,7 +276,7 @@ export const buildOpenaiBilling = (
     orgSummaries.push({ orgId: bundle.orgId, name: bundle.orgName, total: orgTotal, count })
   }
 
-  invoices.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  invoices.sort(byDayDesc)
   orgSummaries.sort((a, b) => b.total - a.total)
 
   return {
@@ -314,9 +323,7 @@ export const buildOpenaiSpend = (
     }
   }
 
-  const daily = [...dailyMap.entries()]
-    .map(([date, value]) => ({ date, value: round2(value) }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+  const daily = [...dailyMap.entries()].map(([date, value]) => ({ date, value: round2(value) })).sort(byDayAsc)
 
   return {
     period,

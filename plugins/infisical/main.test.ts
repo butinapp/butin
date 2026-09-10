@@ -1,5 +1,5 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
 import { members } from '@butinapp/sdk/presets'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { currentMonthKey } from '@butinapp/sdk/util'
 import { expect, test } from 'vitest'
 
@@ -17,14 +17,10 @@ import {
   type InfisicalUsageInput
 } from './main.js'
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateCapabilityResult = resultValidator('USD')
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of infisicalPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(infisicalPlugin)).toEqual([])
 })
 
 // All fixtures below are SYNTHETIC — invented org ids, amounts, and Stripe-shaped ids (no real account

@@ -8,7 +8,7 @@ import {
   type MemberInput,
   type UsageMetricInput
 } from '@butinapp/sdk/presets'
-import { centsToMajor, isoDay } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, isoDay } from '@butinapp/sdk/util'
 
 import { sampleSentryBilling, sampleSentryMembers, sampleSentryUsage } from './sample.js'
 
@@ -121,7 +121,7 @@ export const buildSentryBillingReport = (invoicesRaw: RawInvoice[], customer: Ra
     hostedUrl: null
   }))
 
-  invoices.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  invoices.sort(byDayDesc)
 
   return {
     currentMtd: customer.onDemandSpendUsed != null ? centsToMajor(customer.onDemandSpendUsed) : null,

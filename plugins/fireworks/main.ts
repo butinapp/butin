@@ -1,7 +1,7 @@
 import { defineCapability, definePlugin, type CollectContext } from '@butinapp/sdk'
 import { capabilityResult, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, type BillingInvoiceInput } from '@butinapp/sdk/presets'
-import { asArray, epochMsDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
+import { asArray, byDayDesc, epochMsDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
 
 import { sampleFireworksFlight } from './sample.js'
 
@@ -122,7 +122,7 @@ export const buildFireworksReport = (rows: RawInvoiceRow[] | undefined | null): 
       status: row.status ?? 'unknown',
       hostedUrl: row.invoiceUrl || null
     }))
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   const upcoming = invoices.find((i) => i.status.toLowerCase() === 'upcoming')
   const totalBilled = invoices

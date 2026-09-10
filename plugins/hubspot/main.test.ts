@@ -1,5 +1,5 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
 import { members } from '@butinapp/sdk/presets'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { currentMonthKey, round2 } from '@butinapp/sdk/util'
 import { describe, expect, test } from 'vitest'
 
@@ -24,14 +24,10 @@ import {
   resolveHubspotAuth
 } from './main.js'
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateCapabilityResult = resultValidator('USD')
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of hubspotPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(hubspotPlugin)).toEqual([])
 })
 
 // SYNTHETIC fixtures — shapes mirror the dashboard API, values invented. HubSpot money is in DOLLARS

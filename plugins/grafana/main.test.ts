@@ -1,5 +1,4 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
-import { createSampleGen, resolveSampleConfig } from '@butinapp/sdk/testing'
+import { createSampleGen, resolveSampleConfig, resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { describe, expect, it, test } from 'vitest'
 
 import {
@@ -19,14 +18,10 @@ import {
 } from './main.js'
 import { sampleGrafanaMembers } from './sample.js'
 
-const validateSampleResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateSampleResult = resultValidator('USD')
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of grafanaPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateSampleResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(grafanaPlugin)).toEqual([])
 })
 
 test('grafana member generator pulls the synthetic cast and scales with the users knob', () => {

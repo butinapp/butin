@@ -1,4 +1,4 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { describe, expect, it, test } from 'vitest'
 
 import {
@@ -16,8 +16,7 @@ import {
   subscriptionsCurrency
 } from './main.js'
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateCapabilityResult = resultValidator('USD')
 
 // SYNTHETIC fixtures — faithful to the admin `batchexecute` payload SHAPES (the indices the parsers read)
 // but with fabricated names/seats/prices/ids. No real account data. A committed annual Standard sub
@@ -452,10 +451,7 @@ describe('buildGoogleWorkspaceUsageResult', () => {
 })
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of googleWorkspacePlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(googleWorkspacePlugin)).toEqual([])
 })
 
 describe('googleWorkspacePlugin descriptor', () => {

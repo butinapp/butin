@@ -1,5 +1,5 @@
 import { defineCapability, definePlugin, type CollectContext, type DocumentBytes } from '@butinapp/sdk'
-import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { fetchStripeHostedInvoicePdf } from '@butinapp/sdk/integrations'
 import { billing, usage, type UsageMetricInput } from '@butinapp/sdk/presets'
 import { centsToMajor, epochSecDay, isoDay, round2 } from '@butinapp/sdk/util'
@@ -411,23 +411,19 @@ export const buildScreenshotapiUsageResult = (report: ScreenshotApiUsageReport):
     metrics: buildScreenshotapiUsageMetrics(report)
   })
 
-  if (report.days.length) {
-    const dailyTable = table<DailyRow>({
-      id: 'daily',
-      columns: [
-        { key: 'day', label: 'Day', role: 'label' },
-        { key: 'successful', label: 'Successful', role: 'count' },
-        { key: 'failed', label: 'Failed', role: 'count' }
-      ],
-      rows: report.days.map((d) => ({ day: d.day, successful: d.successful, failed: d.failed }))
-    })
-    const { dataset, view } = dailyTable.table({ title: 'Daily screenshots' })
+  const daily = report.days.length
+    ? table<DailyRow>({
+        id: 'daily',
+        columns: [
+          { key: 'day', label: 'Day', role: 'label' },
+          { key: 'successful', label: 'Successful', role: 'count' },
+          { key: 'failed', label: 'Failed', role: 'count' }
+        ],
+        rows: report.days.map((d) => ({ day: d.day, successful: d.successful, failed: d.failed }))
+      }).table({ title: 'Daily screenshots' })
+    : null
 
-    result.datasets.push(dataset)
-    result.views = [...(result.views ?? []), view]
-  }
-
-  return result
+  return addSections(result, daily)
 }
 
 // fetch returns the RAW wire bundle; buildScreenshotapiUsage normalizes it.

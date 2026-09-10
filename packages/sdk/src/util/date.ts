@@ -47,6 +47,15 @@ export const epochSecDay = (seconds?: number | null): string | undefined =>
 export const dayOf = (value?: string | null): string | undefined => epochMsDay(value ? Date.parse(value) : undefined)
 
 // 'YYYY-MM' month key from a 1-based month.
+// Order rows carrying an ISO day/timestamp. `byDayDesc` is newest-first — the ordering an invoice/document list
+// is expected to arrive in, so the contract lives here instead of being restated at every call site. Undated rows
+// sort last under `byDayDesc` (they compare as '').
+export const byDayDesc = <T extends { date?: string | null }>(a: T, b: T): number =>
+  (b.date ?? '').localeCompare(a.date ?? '')
+
+export const byDayAsc = <T extends { date?: string | null }>(a: T, b: T): number =>
+  (a.date ?? '').localeCompare(b.date ?? '')
+
 export const monthKey = (year: number, month: number): string => `${year}-${String(month).padStart(2, '0')}`
 
 // 'YYYY-MM' month key of `now` in the reporting zone — the current calendar month.

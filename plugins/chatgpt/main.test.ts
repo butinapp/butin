@@ -1,5 +1,5 @@
 import type { CollectContext } from '@butinapp/sdk'
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { epochSecDay } from '@butinapp/sdk/util'
 import { describe, expect, it, test } from 'vitest'
 
@@ -21,14 +21,10 @@ import {
   type WorkspaceMember
 } from './main.js'
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateCapabilityResult = resultValidator('USD')
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of chatgptPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(chatgptPlugin)).toEqual([])
 })
 
 // All fixtures are SYNTHETIC — fabricated workspace/account/member values, no real vendor data.

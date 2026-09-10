@@ -1,4 +1,5 @@
-import { resolveCurrencies, validateCapabilityResult, type CapabilityResult } from '@butinapp/sdk/data'
+import type { CapabilityResult } from '@butinapp/sdk/data'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import {
@@ -19,7 +20,7 @@ import {
 
 // Core stamps the plugin's reportingCurrency onto every unlabeled money value before validating, so the
 // fixtures below assert against the same resolved result the app renders.
-const check = (result: CapabilityResult): string[] => validateCapabilityResult(resolveCurrencies(result, 'CAD'))
+const check = resultValidator('CAD')
 
 const cell = (result: CapabilityResult, dataset: string, key: string): unknown => {
   const ds = result.datasets.find((d) => d.id === dataset)
@@ -198,10 +199,7 @@ const ACCOUNT_RAW: OxioAccountRaw = {
 }
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of oxioPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(check(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(oxioPlugin)).toEqual([])
 })
 
 test('the API token is the access_token cookie value, not the whole jar', () => {

@@ -17,7 +17,7 @@ export type {
 } from './dataset.js'
 export type { MonthPoint } from './series.js'
 export type { RolesFor } from './roles.js'
-export { table, record, capabilityResult } from './builders.js'
+export { table, record, capabilityResult, addSections } from './builders.js'
 export type { ViewSpec, RowColumn, FileTableSpec, TableHandle, StatFieldSpec, RecordHandle } from './builders.js'
 export { resolveTableFiles } from './view.js'
 export type { FileSource, TableFiles, StatTone, StatField, View } from './view.js'

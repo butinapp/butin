@@ -1,7 +1,16 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
-import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, keys, members, usage, type ApiKeysInput, type MembersInput } from '@butinapp/sdk/presets'
-import { MS_PER_DAY, centsToMajor, epochSecDay, isoDay, monthMinus, round2 } from '@butinapp/sdk/util'
+import {
+  MS_PER_DAY,
+  byDayAsc,
+  byDayDesc,
+  centsToMajor,
+  epochSecDay,
+  isoDay,
+  monthMinus,
+  round2
+} from '@butinapp/sdk/util'
 
 import { sampleCerebrasBilling, sampleCerebrasKeys, sampleCerebrasMembers, sampleCerebrasUsage } from './sample.js'
 
@@ -477,7 +486,7 @@ export const buildCerebrasBilling = (
       hostedUrl: inv.hosted_invoice_url || undefined,
       pdfUrl: inv.invoice_pdf || undefined
     }))
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   const byLabel = new Map<string, number>()
 
@@ -830,9 +839,7 @@ export const buildCerebrasUsage = (
     }
   }
 
-  const daily = [...byDay.entries()]
-    .map(([date, requests]) => ({ date, requests }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+  const daily = [...byDay.entries()].map(([date, requests]) => ({ date, requests })).sort(byDayAsc)
 
   const models = (rawQuotas ?? []).map((q) => ({
     modelId: q.modelId ?? '',
@@ -867,14 +874,9 @@ interface CerebrasQuotaRow {
 }
 
 export const buildCerebrasUsageResult = (usageData: CerebrasUsage): CapabilityResult => {
-  const result = usage.result({
-    periodStart: usageData.periodStart,
-    periodEnd: usageData.periodEnd,
-    metrics: [{ label: 'Requests (30d)', value: usageData.totalRequests, unit: 'requests' }]
-  })
-
-  if (usageData.daily.length) {
-    const series = table<CerebrasDailyRow>({
+  const series =
+    usageData.daily.length > 0 &&
+    table<CerebrasDailyRow>({
       id: 'daily',
       columns: [
         { key: 'date', label: 'Date', role: 'timestamp' },
@@ -884,12 +886,9 @@ export const buildCerebrasUsageResult = (usageData: CerebrasUsage): CapabilityRe
       key: 'date'
     }).timeseries({ x: 'date', y: 'requests', granularity: 'daily', title: 'Daily requests' })
 
-    result.datasets.push(series.dataset)
-    result.views = [...(result.views ?? []), series.view]
-  }
-
-  if (usageData.models.length) {
-    const quotas = table<CerebrasQuotaRow>({
+  const quotas =
+    usageData.models.length > 0 &&
+    table<CerebrasQuotaRow>({
       id: 'quotas',
       columns: [
         { key: 'name', label: 'Model', role: 'label' },
@@ -909,11 +908,15 @@ export const buildCerebrasUsageResult = (usageData: CerebrasUsage): CapabilityRe
       key: 'name'
     }).table({ title: 'Rate-limit quotas' })
 
-    result.datasets.push(quotas.dataset)
-    result.views = [...(result.views ?? []), quotas.view]
-  }
-
-  return result
+  return addSections(
+    usage.result({
+      periodStart: usageData.periodStart,
+      periodEnd: usageData.periodEnd,
+      metrics: [{ label: 'Requests (30d)', value: usageData.totalRequests, unit: 'requests' }]
+    }),
+    series,
+    quotas
+  )
 }
 
 const LIST_MODELS = `query ListModels($organizationId: ID, $deprecated: Boolean) {

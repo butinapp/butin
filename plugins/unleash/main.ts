@@ -10,7 +10,7 @@ import {
   type MemberInput,
   type MembersInput
 } from '@butinapp/sdk/presets'
-import { isoDay, parseDollarAmount, round2, utcDaysAgo } from '@butinapp/sdk/util'
+import { byDayDesc, isoDay, parseDollarAmount, round2, utcDaysAgo } from '@butinapp/sdk/util'
 
 import { sampleUnleashBilling, sampleUnleashRoster, sampleUnleashTokens } from './sample.js'
 
@@ -176,7 +176,7 @@ export const buildUnleashBilling = (
       hostedUrl: inv.invoiceURL || undefined,
       pdfUrl: inv.invoicePDF || undefined
     }))
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   const recurringFee = computeRecurringFee(prices, status)
 

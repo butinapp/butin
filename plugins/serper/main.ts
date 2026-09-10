@@ -1,7 +1,15 @@
 import { defineCapability, definePlugin, type CollectContext } from '@butinapp/sdk'
-import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, keys, usage, type ApiKeysInput, type BillingInput } from '@butinapp/sdk/presets'
-import { currentMonthKey, isoDay, parseDecimalAmount, round2, utcDaysAgo } from '@butinapp/sdk/util'
+import {
+  byDayAsc,
+  byDayDesc,
+  currentMonthKey,
+  isoDay,
+  parseDecimalAmount,
+  round2,
+  utcDaysAgo
+} from '@butinapp/sdk/util'
 
 import { sampleSerperBilling, sampleSerperKeys, sampleSerperUsage } from './sample.js'
 
@@ -34,7 +42,7 @@ export const buildSerperBilling = (rawPayments: RawSerperPayment[] | undefined |
       status: 'paid',
       hostedUrl: p.receiptUrl ?? null
     }))
-    .sort((a, b) => b.date.localeCompare(a.date))
+    .sort(byDayDesc)
 
   const ym = currentMonthKey()
   const currentMtd = invoices.filter((i) => i.date.startsWith(ym)).reduce((sum, i) => sum + i.amount, 0)
@@ -209,7 +217,7 @@ export const buildSerperDaily = (daily: RawSerperDailyUsage | undefined | null):
   (Array.isArray(daily?.data) ? daily.data : [])
     .map((b) => ({ date: isoDay(b.start) ?? '', credits: b.count ?? 0 }))
     .filter((p) => p.date !== '')
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .sort(byDayAsc)
 
 // Compose the usage result: the 3 credit stat metrics + an optional daily-credits timeseries.
 export const buildSerperUsageResult = (
@@ -219,23 +227,20 @@ export const buildSerperUsageResult = (
   const result = usage.result({ metrics: buildSerperUsageMetrics(dashboard) })
   const points = buildSerperDaily(daily)
 
-  if (points.length) {
-    const series = table<SerperDailyPoint>({
-      id: 'daily',
-      columns: [
-        { key: 'date', label: 'Date', role: 'timestamp' },
-        { key: 'credits', label: 'Credits', role: 'count' }
-      ],
-      rows: points,
-      // Keyed by day so each day's credit total accumulates in the ledger past the trailing fetch window.
-      key: 'date'
-    }).timeseries({ x: 'date', y: 'credits', granularity: 'daily', title: 'Daily credits' })
+  const series = points.length
+    ? table<SerperDailyPoint>({
+        id: 'daily',
+        columns: [
+          { key: 'date', label: 'Date', role: 'timestamp' },
+          { key: 'credits', label: 'Credits', role: 'count' }
+        ],
+        rows: points,
+        // Keyed by day so each day's credit total accumulates in the ledger past the trailing fetch window.
+        key: 'date'
+      }).timeseries({ x: 'date', y: 'credits', granularity: 'daily', title: 'Daily credits' })
+    : null
 
-    result.datasets.push(series.dataset)
-    result.views = [...(result.views ?? []), series.view]
-  }
-
-  return result
+  return addSections(result, series)
 }
 
 // Fetch the dashboard balance + the trailing-30-day daily-credits window. The trend is secondary to the

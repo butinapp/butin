@@ -1,7 +1,7 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
-import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, usage, type MembersInput, type UsageMetricInput } from '@butinapp/sdk/presets'
-import { isoDay, monthMinus, round2, startCase } from '@butinapp/sdk/util'
+import { byDayDesc, isoDay, monthMinus, round2, startCase } from '@butinapp/sdk/util'
 
 import { sampleGrafanaBilling, sampleGrafanaMembers, sampleGrafanaUsage } from './sample.js'
 
@@ -252,7 +252,7 @@ export const buildGrafanaBilling = (
         hostedUrl: hostedUrlFor(inv, orgSlug)
       }
     })
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   const unpaidTotal = round2(invoices.reduce((sum, inv) => sum + inv.amountUnpaid, 0))
   const openInvoiceCount = invoices.filter((inv) => inv.amountUnpaid > 0).length
@@ -477,45 +477,39 @@ interface StackRow {
 
 export const buildGrafanaUsageResult = (usageData: GrafanaUsage): CapabilityResult => {
   const metrics: UsageMetricInput[] = usageData.products.map((p) => ({ label: p.label, value: p.billed, unit: p.unit }))
-  const result = usage.result({ metrics })
+  const stacksView = usageData.stacks.length
+    ? table<StackRow>({
+        id: 'stacks',
+        columns: [
+          { key: 'name', label: 'Stack', role: 'label' },
+          { key: 'region', label: 'Region', role: 'label' },
+          { key: 'version', label: 'Version', role: 'label' },
+          { key: 'activeUsers', label: 'Active users', role: 'count' },
+          { key: 'billedUsers', label: 'Billed users', role: 'count' },
+          { key: 'dashboards', label: 'Dashboards', role: 'count' },
+          { key: 'alerts', label: 'Alerts', role: 'count' },
+          { key: 'metricsSeries', label: 'Series', role: 'count' },
+          { key: 'logsGb', label: 'Logs (GB)', role: 'count' },
+          { key: 'tracesGb', label: 'Traces (GB)', role: 'count' }
+        ],
+        rows: usageData.stacks.map((s) => ({
+          name: s.name,
+          region: s.region ?? null,
+          version: s.version ?? null,
+          activeUsers: s.activeUsers,
+          billedUsers: s.billedUsers,
+          dashboards: s.dashboards,
+          alerts: s.alerts,
+          metricsSeries: s.metricsSeries,
+          logsGb: s.logsGb,
+          tracesGb: s.tracesGb
+        })),
+        // The stack name is its stable identity per org, so each stack accumulates its usage in the ledger.
+        key: 'name'
+      }).table({ title: 'Stacks' })
+    : null
 
-  if (usageData.stacks.length) {
-    const stacks = table<StackRow>({
-      id: 'stacks',
-      columns: [
-        { key: 'name', label: 'Stack', role: 'label' },
-        { key: 'region', label: 'Region', role: 'label' },
-        { key: 'version', label: 'Version', role: 'label' },
-        { key: 'activeUsers', label: 'Active users', role: 'count' },
-        { key: 'billedUsers', label: 'Billed users', role: 'count' },
-        { key: 'dashboards', label: 'Dashboards', role: 'count' },
-        { key: 'alerts', label: 'Alerts', role: 'count' },
-        { key: 'metricsSeries', label: 'Series', role: 'count' },
-        { key: 'logsGb', label: 'Logs (GB)', role: 'count' },
-        { key: 'tracesGb', label: 'Traces (GB)', role: 'count' }
-      ],
-      rows: usageData.stacks.map((s) => ({
-        name: s.name,
-        region: s.region ?? null,
-        version: s.version ?? null,
-        activeUsers: s.activeUsers,
-        billedUsers: s.billedUsers,
-        dashboards: s.dashboards,
-        alerts: s.alerts,
-        metricsSeries: s.metricsSeries,
-        logsGb: s.logsGb,
-        tracesGb: s.tracesGb
-      })),
-      // The stack name is its stable identity per org, so each stack accumulates its usage in the ledger.
-      key: 'name'
-    })
-    const stacksView = stacks.table({ title: 'Stacks' })
-
-    result.datasets.push(stacksView.dataset)
-    result.views = [...(result.views ?? []), stacksView.view]
-  }
-
-  return result
+  return addSections(usage.result({ metrics }), stacksView)
 }
 
 // ── members (portal org roster) ─────────────────────────────────────────────────────────

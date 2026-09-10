@@ -1,6 +1,6 @@
 import { defineCapability, definePlugin, type CollectContext } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult, type Summary } from '@butinapp/sdk/data'
-import { asArray, parseFrAmount, round2 } from '@butinapp/sdk/util'
+import { asArray, byDayDesc, parseFrAmount, round2 } from '@butinapp/sdk/util'
 
 import { collectDebitStatements, fetchDebitStatementFile } from './debit-statements.js'
 import { sampleDesjardinsComptes, sampleDesjardinsStatements } from './sample.js'
@@ -380,7 +380,7 @@ export const buildStatementsTable = (cards: DesjCard[], statements: DesjStatemen
     })
   }
 
-  rows.sort((a, b) => b.date.localeCompare(a.date))
+  rows.sort(byDayDesc)
 
   return capabilityResult({
     sections: [

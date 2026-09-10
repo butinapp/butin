@@ -1,6 +1,8 @@
 import { afterEach, expect, test } from 'vitest'
 
 import {
+  byDayAsc,
+  byDayDesc,
   currentMonthKey,
   dayOf,
   epochMsDay,
@@ -91,4 +93,16 @@ test('day + month buckets follow the reporting zone across the month boundary', 
   expect(dayOf('2026-07-01T02:00:00Z')).toBe('2026-06-30')
   expect(currentMonthKey(new Date(instant))).toBe('2026-06')
   expect(monthStart(new Date(instant))).toBe('2026-06-01')
+})
+
+test('byDayDesc orders newest first and sinks undated rows to the end', () => {
+  const rows = [{ date: '2026-01-02' }, { date: null }, { date: '2026-03-04' }, {}]
+
+  expect([...rows].sort(byDayDesc).map((r) => r.date ?? null)).toEqual(['2026-03-04', '2026-01-02', null, null])
+})
+
+test('byDayAsc is the same ordering reversed', () => {
+  const rows = [{ date: '2026-03-04' }, { date: '2026-01-02' }]
+
+  expect([...rows].sort(byDayAsc).map((r) => r.date)).toEqual(['2026-01-02', '2026-03-04'])
 })

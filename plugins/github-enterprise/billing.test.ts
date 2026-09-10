@@ -1,4 +1,5 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR, type CapabilityResult } from '@butinapp/sdk/data'
+import type { CapabilityResult } from '@butinapp/sdk/data'
+import { resultValidator } from '@butinapp/sdk/testing'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -17,7 +18,7 @@ import {
 import type { Dashboard } from './dashboard.js'
 import { githubEnterprisePlugin } from './main.js'
 
-const validateCapabilityResult = (r: CapabilityResult): string[] => rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateCapabilityResult = resultValidator('USD')
 
 // Minimal payment-history HTML: two payment rows — a successful charge with receipt + invoice, and a
 // declined one with neither. Synthetic ids + vendor.

@@ -1,7 +1,7 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, type MemberInput, type MembersInput } from '@butinapp/sdk/presets'
-import { currentMonthKey, dayMinus, isoDay, parseDollarAmount, round2, utcDaysAgo } from '@butinapp/sdk/util'
+import { byDayDesc, currentMonthKey, dayMinus, isoDay, parseDollarAmount, round2, utcDaysAgo } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import {
@@ -250,7 +250,7 @@ export const buildBillingReport = (billingHtml: string, invoicePagesHtml: string
 
   const invoices = invoicePagesHtml.flatMap((html) => parseInvoices(html || ''))
 
-  invoices.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  invoices.sort(byDayDesc)
 
   const latest = invoices[0]
   let trailing12moTotal = 0

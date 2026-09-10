@@ -1,4 +1,5 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
+import { resolveCurrencies } from '@butinapp/sdk/data'
+import { validateSamples } from '@butinapp/sdk/testing'
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -9,14 +10,8 @@ import {
   fireworksPlugin
 } from './main.js'
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
-
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of fireworksPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(fireworksPlugin)).toEqual([])
 })
 
 // A trimmed, SYNTHETIC RSC flight payload in the billing-page shape: the `invoiceRows` array

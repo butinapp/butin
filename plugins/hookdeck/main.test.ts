@@ -1,4 +1,5 @@
-import { resolveCurrencies, validateCapabilityResult } from '@butinapp/sdk/data'
+import { validateCapabilityResult } from '@butinapp/sdk/data'
+import { validateSamples } from '@butinapp/sdk/testing'
 import { currentMonthKey } from '@butinapp/sdk/util'
 import { describe, expect, it, test } from 'vitest'
 
@@ -377,16 +378,8 @@ describe('hookdeck buildHookdeckMembers', () => {
 
 // ── samples (demo seed) ─────────────────────────────────────────────────────────────────
 
-// Each capability's `sample` runs through the SAME `build` the live collector uses; resolve the plugin's
-// reporting currency first (core stamps it before persisting) so the contract validator sees money values.
-const validateSample = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  validateCapabilityResult(resolveCurrencies(r, 'USD'))
-
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of hookdeckPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateSample(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(hookdeckPlugin)).toEqual([])
 })
 
 describe('hookdeck plugin descriptor', () => {

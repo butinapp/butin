@@ -20,7 +20,7 @@ import {
   type RawStripeInvoiceList
 } from '@butinapp/sdk/integrations'
 import { billing, members, type BillingInvoiceInput, type MembersInput } from '@butinapp/sdk/presets'
-import { centsToMajor, dayOf, epochSecDay, isoDaysAgo, round2, startCase } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, dayOf, epochSecDay, isoDaysAgo, round2, startCase } from '@butinapp/sdk/util'
 
 import { sampleNovuBilling, sampleNovuMemberships, sampleNovuUsage } from './sample.js'
 
@@ -196,7 +196,7 @@ export const buildNovuInvoices = (raw: RawStripeInvoiceList): BillingInvoiceInpu
       pdfUrl: inv.invoice_pdf || null,
       hostedUrl: inv.hosted_invoice_url || null
     }))
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
 // Pure transform — fixture-tested. The current plan/period summary from api.novu.co/v1/billing/subscription.
 export const buildNovuPlan = (raw: RawNovuSubscription): NovuPlanSummary => {

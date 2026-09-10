@@ -6,9 +6,9 @@ import {
   type ConfigOf,
   type ConfigOption
 } from '@butinapp/sdk'
-import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, keys, usage, type ApiKeysInput, type BillingInvoiceInput } from '@butinapp/sdk/presets'
-import { centsToMajor, isoDay, isoDaysAgo, round2, startCase } from '@butinapp/sdk/util'
+import { byDayAsc, byDayDesc, centsToMajor, isoDay, isoDaysAgo, round2, startCase } from '@butinapp/sdk/util'
 
 import { sampleGreptileBilling, sampleGreptileKeys, sampleGreptilePeople, sampleGreptileUsage } from './sample.js'
 
@@ -267,7 +267,7 @@ export const buildGreptileBilling = (
         hostedUrl: invoice?.hostedInvoiceUrl ?? null
       }
     })
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   const totalBilled = invoices.filter((i) => !i.projected).reduce((sum, i) => sum + i.amount, 0)
 
@@ -626,7 +626,7 @@ export const buildGreptileUsage = (
   const daily: GreptileDailyPoint[] = (rawDaily?.daily ?? [])
     .map((d) => ({ date: isoDay(d.date) ?? '', codeReview: d.codeReview ?? 0, cliReview: d.cliReview ?? 0 }))
     .filter((d) => d.date !== '')
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .sort(byDayAsc)
 
   const authors: GreptileAuthor[] = (rawDaily?.authors ?? []).map((a) => {
     const web = a.webReviewCount ?? 0
@@ -703,17 +703,7 @@ export const buildGreptileUsageResult = (usageData: GreptileUsage): CapabilityRe
       }).table({ title: 'By author' })
     : null
 
-  if (dailySeries) {
-    result.datasets.push(dailySeries.dataset)
-    result.views = [...(result.views ?? []), dailySeries.view]
-  }
-
-  if (authorTable) {
-    result.datasets.push(authorTable.dataset)
-    result.views = [...(result.views ?? []), authorTable.view]
-  }
-
-  return result
+  return addSections(result, dailySeries, authorTable)
 }
 
 // `getDailyReviewUsage` carries `z.date()` start/end (and per-period start/end) + an `undefined`

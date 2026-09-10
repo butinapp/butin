@@ -7,7 +7,16 @@ import {
   type BillingStat,
   type UsageMetricInput
 } from '@butinapp/sdk/presets'
-import { dayMinus, isoDay, monthStart, parseDecimalAmount, round2, utcDaysAgo } from '@butinapp/sdk/util'
+import {
+  byDayAsc,
+  byDayDesc,
+  dayMinus,
+  isoDay,
+  monthStart,
+  parseDecimalAmount,
+  round2,
+  utcDaysAgo
+} from '@butinapp/sdk/util'
 
 import {
   Q_BILLING_ADDRESS,
@@ -341,7 +350,7 @@ export const buildDigitalOceanHistory = (
         pdfUrl: historyPdfUrl(r, teamUrn)
       }
     })
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
 // The monthly-spend series both the Summary chart and the Overview read. DigitalOcean issues a month's invoice
 // on the FIRST of the following month, so the issue date is stepped back a day onto the period the spend was
@@ -651,7 +660,7 @@ export const buildDigitalOceanUsage = (raw: RawDigitalOceanUsage): CapabilityRes
   const daily = (raw.daily ?? [])
     .filter((d) => !!d.date)
     .map((d) => ({ date: d.date as string, cost: usd(d.amount) }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .sort(byDayAsc)
 
   return usage.result({
     periodStart: daily[0]?.date,

@@ -10,7 +10,7 @@ import {
 } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, keys, members, type ApiKeysInput, type BillingInput, type MembersInput } from '@butinapp/sdk/presets'
-import { currentMonthKey, isoDay, monthKey } from '@butinapp/sdk/util'
+import { byDayDesc, currentMonthKey, isoDay, monthKey } from '@butinapp/sdk/util'
 
 import { sampleUpstashBilling, sampleUpstashKeys, sampleUpstashMembers } from './sample.js'
 
@@ -189,7 +189,7 @@ export const buildUpstashBilling = (data: UpstashBillingData): BillingInput => {
         status: inv.status ?? 'unknown'
       }
     })
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   const currentMtd = PRODUCTS.reduce((sum, { key }) => sum + (data.details[key]?.billing ?? 0), 0)
 

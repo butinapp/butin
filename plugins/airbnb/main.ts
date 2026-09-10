@@ -1,6 +1,6 @@
 import { type CollectContext, defineCapability, definePlugin } from '@butinapp/sdk'
 import { capabilityResult, type CapabilityResult, record, table } from '@butinapp/sdk/data'
-import { isoDay, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, isoDay, round2 } from '@butinapp/sdk/util'
 
 import { sampleAirbnbSummary, sampleAirbnbTaxDocuments, sampleAirbnbTransactions } from './sample.js'
 
@@ -345,7 +345,7 @@ export const buildAirbnbTransactions = (raw: (RawProductTransaction & { id?: str
       confirmation: t.productConfirmationCode ?? null,
       token: t.token ?? t.allocationToken ?? ''
     }))
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   const transactions = table<AirbnbTransactionRow>({
     id: 'transactions',

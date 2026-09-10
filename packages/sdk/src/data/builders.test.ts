@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { capabilityResult, record, table } from './builders.js'
+import { addSections, capabilityResult, record, table } from './builders.js'
 import type { Column } from './dataset.js'
 import { CapabilityResultSchema, validateCapabilityResult } from './result.js'
 
@@ -245,5 +245,57 @@ describe('capabilityResult', () => {
     expect(result.datasets[0]?.id).toBe('account')
     expect(result.views?.[0]).toEqual({ type: 'stat', dataset: 'account' })
     expect(validateCapabilityResult(result)).toEqual([])
+  })
+})
+
+describe('addSections', () => {
+  const daily = () =>
+    table<{ date: string; cost: number }>({
+      id: 'daily',
+      columns: [
+        { key: 'date', role: 'timestamp', label: 'Date' },
+        { key: 'cost', role: 'money', currency: 'USD', label: 'Cost' }
+      ],
+      rows: [{ date: '2026-06-01', cost: 3 }],
+      key: 'date'
+    })
+
+  const base = () => capabilityResult({ sections: [daily().table({ title: 'Daily' })] })
+
+  it('appends the section view and dataset without mutating the input', () => {
+    const before = base()
+    const after = addSections(before, daily().timeseries({ x: 'date', y: 'cost' }))
+
+    expect(after.views).toHaveLength(2)
+    expect(before.views).toHaveLength(1)
+    expect(validateCapabilityResult(after)).toEqual([])
+  })
+
+  it('de-dupes a dataset the base result already carries', () => {
+    // The hand-rolled push/spread this replaces appended a second copy of the shared dataset.
+    expect(addSections(base(), daily().timeseries({ x: 'date', y: 'cost' })).datasets.map((d) => d.id)).toEqual([
+      'daily'
+    ])
+  })
+
+  it('carries a row-detail child dataset through, like capabilityResult does', () => {
+    const child = table<{ date: string; note: string }>({
+      id: 'notes',
+      columns: [
+        { key: 'date', role: 'timestamp', label: 'Date' },
+        { key: 'note', role: 'text', label: 'Note' }
+      ],
+      rows: [{ date: '2026-06-01', note: 'n' }]
+    })
+    const result = addSections(base(), daily().table({ detail: { rows: child, on: 'date' } }))
+
+    expect(result.datasets.map((d) => d.id).sort()).toEqual(['daily', 'notes'])
+    expect(validateCapabilityResult(result)).toEqual([])
+  })
+
+  it('drops falsy sections and returns the result untouched when none survive', () => {
+    const before = base()
+
+    expect(addSections(before, null, undefined, false)).toBe(before)
   })
 })

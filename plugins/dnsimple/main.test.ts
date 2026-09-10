@@ -1,9 +1,5 @@
-import {
-  resolveCurrencies,
-  validateCapabilityResult as rawValidateCR,
-  type RecordDataset,
-  type TableDataset
-} from '@butinapp/sdk/data'
+import type { RecordDataset, TableDataset } from '@butinapp/sdk/data'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { currentMonthKey } from '@butinapp/sdk/util'
 import { describe, expect, it, test } from 'vitest'
 
@@ -27,14 +23,10 @@ import {
   parsePlan
 } from './main.js'
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateCapabilityResult = resultValidator('USD')
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of dnsimplePlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(dnsimplePlugin)).toEqual([])
 })
 
 // --- fixtures (dashboard HTML structure; account id + values fully synthetic) ---
