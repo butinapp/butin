@@ -7,7 +7,7 @@ Security reports are taken seriously.
 
 **Please do not open a public issue for security vulnerabilities.**
 
-Report privately through GitHub's **[private vulnerability reporting](https://github.com/allardy/butin/security/advisories/new)**
+Report privately through GitHub's **[private vulnerability reporting](https://github.com/butinapp/butin/security/advisories/new)**
 (the repository's **Security** tab → **Report a vulnerability**). This keeps the report confidential
 until a fix is available.
 

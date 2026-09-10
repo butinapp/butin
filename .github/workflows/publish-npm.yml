@@ -42,17 +42,18 @@ jobs:
     # A manual run always proceeds as a dry run; a push publishes only when the version is new.
     if: github.event_name == 'workflow_dispatch' || needs.check.outputs.skip == 'false'
     runs-on: ubuntu-latest
-    # Publish behind a protected Environment: in repo settings add a required-reviewer rule and scope NPM_TOKEN
-    # to this environment, so every publish needs human approval and no other workflow can read the token.
-    # NPM_TOKEN should be a GRANULAR, @butinapp-scoped, publish-only, short-expiry token — not a classic
-    # automation token. Target state once the repo is public: OIDC trusted publishing (no stored token,
-    # short-lived credentials, provenance) — drop this token + secret then.
+    # OIDC trusted publishing: no stored token. pnpm mints a short-lived credential per run from the GitHub
+    # id-token, so there's nothing to leak or phish. Requires (one-time, per package on npmjs.com → package
+    # Settings → Trusted Publisher): GitHub Actions publisher = butinapp/butin, workflow = publish-npm.yml,
+    # environment = npm-publish. Provenance is generated automatically (needs this public repo). The
+    # environment still gates each publish behind its required-reviewer rule.
     environment: npm-publish
     permissions:
       contents: read
+      id-token: write # OIDC → npm trusted publishing + provenance
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.1.0
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -61,8 +62,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @butinapp/sdk --filter @butinapp/shapes --filter @butinapp/ui build
       - name: Publish (dry run on manual dispatch)
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           DRY=""
           if [ "${{ github.event_name }}" != "push" ]; then DRY="--dry-run"; fi
