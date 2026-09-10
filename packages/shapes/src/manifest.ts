@@ -49,8 +49,8 @@ const storedDataset = (ds: Dataset): StoredDataset => {
       out.key = ds.key
     }
 
-    if (ds.rollup) {
-      out.rollup = true
+    if (ds.retention) {
+      out.retention = ds.retention
     }
 
     return out

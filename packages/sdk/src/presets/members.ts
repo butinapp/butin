@@ -31,7 +31,10 @@ export const membersResult = (input: MembersInput): CapabilityResult => {
       { key: 'role', role: 'category', label: 'Role' }
     ],
     rows: input.members.map((m) => ({ id: m.id, name: m.name ?? null, email: m.email ?? null, role: m.role ?? null })),
-    key: 'id'
+    key: 'id',
+    // A roster is the COMPLETE set of who has access: someone the service stops returning has lost it, and must
+    // stop counting as active rather than lingering as the last role they held.
+    retention: 'snapshot'
   })
 
   return capabilityResult({ sections: [members.table({ title: 'Members' })] })

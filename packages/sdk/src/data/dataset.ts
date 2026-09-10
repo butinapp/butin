@@ -55,6 +55,10 @@ export const ColumnSchema = z.object({
 })
 export type Column = z.infer<typeof ColumnSchema>
 
+// How a keyed table's rows survive a fetch that no longer carries them. See TableDatasetSchema.retention.
+export const RetentionSchema = z.enum(['rollup', 'snapshot'])
+export type Retention = z.infer<typeof RetentionSchema>
+
 export const TableDatasetSchema = z.object({
   id: z.string(),
   shape: z.literal('table'),
@@ -63,12 +67,18 @@ export const TableDatasetSchema = z.object({
   // Column(s) forming a row's stable identity across fetches. Its presence opts the table into accumulation
   // (rows merge into a kept union instead of overwriting); an array is a composite key. Absent → latest-only.
   key: z.union([z.string(), z.array(z.string())]).optional(),
-  // Marks a keyed table as a re-derived ROLLUP (e.g. monthly spend), not an append log. On accumulation the
-  // fetch is authoritative for the key-range it covers: a retained row at or above the fetch's LOWEST key that
-  // the fetch no longer emits is dropped (the bucket moved or was re-dated), while keys BELOW that range
-  // persist (deep history beyond the rolling fetch window). Requires a sortable `key` (a 'YYYY-MM' month, an
-  // ISO day). Absent → an append log, where every key ever seen is retained.
-  rollup: z.boolean().optional()
+  // How a keyed table's rows are retained across fetches. Absent → an APPEND LOG: every key ever seen is kept,
+  // so history outlives a provider's rolling window (invoices, transactions).
+  //
+  // 'rollup' — a re-derived bucket series (e.g. monthly spend). The fetch is authoritative for the key-range it
+  // covers: a retained row at or above the fetch's LOWEST key that the fetch no longer emits is dropped (the
+  // bucket moved or was re-dated), while keys BELOW that range persist (deep history beyond the fetch window).
+  // Requires a sortable `key` (a 'YYYY-MM' month, an ISO day).
+  //
+  // 'snapshot' — the fetch is the COMPLETE set (a roster). A key it omits is DEPARTED, not missing: the row is
+  // kept in the ledger with the date it was last seen, and drops out of the current projection. Use it for any
+  // current-state list, where a row the service stops returning means the thing no longer exists.
+  retention: RetentionSchema.optional()
 })
 export type TableDataset = z.infer<typeof TableDatasetSchema>
 
@@ -89,8 +99,15 @@ export const rawTable = (
   columns: Column[],
   rows: Record<string, unknown>[],
   key?: string | string[],
-  rollup?: boolean
-): TableDataset => ({ id, shape: 'table', columns, rows, ...(key ? { key } : {}), ...(rollup ? { rollup } : {}) })
+  retention?: Retention
+): TableDataset => ({
+  id,
+  shape: 'table',
+  columns,
+  rows,
+  ...(key ? { key } : {}),
+  ...(retention ? { retention } : {})
+})
 
 export const rawRecord = (id: string, fields: Column[], value: Record<string, unknown>): RecordDataset => ({
   id,

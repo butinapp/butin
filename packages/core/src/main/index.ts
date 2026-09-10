@@ -28,6 +28,7 @@ import { installConsoleCapture, log, pruneLogs, setLogLevels, setLogRetention } 
 import { loadPlugins, plugins } from './plugin/plugins.js'
 import { getLogLevelOverrides, getSetting } from './store/config-file.js'
 import { applyActiveProfile, ensureProfilesInitialized, getActiveProfileId, profileDir } from './store/profiles.js'
+import { repairSnapshotCurrents } from './store/repair-snapshots.js'
 import { eraseLegacyStores } from './store/store.js'
 import { configureRequestPacing } from './transport/request-pacer.js'
 import { anyUnlocked, lockAll, vaultState } from './vault/vault.js'
@@ -181,6 +182,10 @@ void app.whenReady().then(async () => {
   // Best-effort removal of on-disk dirs superseded by the ledger model (reports/ → current/, history/ →
   // ledger/). Fires once per launch, does not block startup.
   void eraseLegacyStores()
+
+  // Bring cached rosters in line with what each service's last fetch actually returned — a roster captured
+  // before retention was recorded still projects everyone it ever saw. Derived from stored data, no refetch.
+  void repairSnapshotCurrents()
 
   // Clear any plaintext copies of encrypted documents a prior session opened and couldn't delete (the OS app
   // held them open). Viewers are closed here — this guarantees no leftovers.

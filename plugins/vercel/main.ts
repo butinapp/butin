@@ -306,7 +306,7 @@ export const buildVercelSummaryResult = (inputs: VercelSummaryInputs): Capabilit
     // the accrual backfill has the full spend series. `rollup` makes each fetch authoritative for the range it
     // covers, so a re-dated bucket is corrected in place rather than leaving a stale orphan month.
     key: 'month',
-    rollup: true,
+    retention: 'rollup',
     rows: monthly
   })
   const projects = topProjects.length

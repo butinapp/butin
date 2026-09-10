@@ -458,7 +458,9 @@ export const awsMembersResult = (members: AwsMember[]): CapabilityResult => {
       { key: 'username', label: 'Username', role: 'text' }
     ],
     rows: members.map((m) => ({ id: m.id, name: m.name, email: m.email, status: m.status, username: m.username })),
-    key: 'id'
+    key: 'id',
+    // A roster is the complete current-state set: a user the service stops returning has lost access.
+    retention: 'snapshot'
   })
 
   return capabilityResult({ sections: [members_.table({ title: 'Identity Center users' })] })

@@ -70,8 +70,15 @@ const currentPath = (pluginId: string, capabilityId: string): string =>
 export const ledgerPath = (pluginId: string, capabilityId: string): string =>
   join(dataRoot, pluginId, 'ledger', `${capabilityId}.json`)
 
-export const saveCurrent = async (pluginId: string, capabilityId: string, data: unknown): Promise<string> => {
-  const lastRunAt = new Date().toISOString()
+// `at` preserves an existing fetch time (a repair rewriting the projection of an OLD fetch); a real run omits
+// it so the cache is stamped now.
+export const saveCurrent = async (
+  pluginId: string,
+  capabilityId: string,
+  data: unknown,
+  at?: string
+): Promise<string> => {
+  const lastRunAt = at ?? new Date().toISOString()
 
   await writeJson(currentPath(pluginId, capabilityId), { pluginId, capabilityId, lastRunAt, data })
 

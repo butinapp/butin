@@ -306,7 +306,7 @@ export const buildBillingSummary = (
     key: 'month',
     // A re-derived rollup (both surfaces summed per month): a fetch is authoritative for the months it covers,
     // so a corrected bucket heals in place instead of leaving a stale orphan; older months persist.
-    rollup: true
+    retention: 'rollup'
   })
 
   return capabilityResult({

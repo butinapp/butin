@@ -161,7 +161,7 @@ const monthlyTable = (months: MonthPoint[], currency?: string) =>
     key: 'month',
     // A re-derived rollup: each fetch recomputes the recent months from the invoice window, so a re-dated or
     // vanished bucket is corrected rather than retained. Months below the fetched range persist (deep history).
-    rollup: true
+    retention: 'rollup'
   })
 
 // The Summary preset: a headline `account` stat (currentMtd + optional plan + caller

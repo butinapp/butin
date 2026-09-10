@@ -89,15 +89,26 @@ const mergeDatasetLog = (existing: DatasetLog | undefined, ds: StoredDataset, no
 
   // A rollup fetch is authoritative for the key-range it covers: drop a retained row at or above the fetch's
   // lowest key that this fetch no longer emits (the bucket moved or was re-dated to another month), keeping only
-  // keys BELOW the range — deep history beyond the rolling fetch window. An empty fetch retains everything, so a
-  // transient no-data fetch never wipes the series. Append logs (no `rollup`) keep every key ever seen.
-  if (ds.rollup && fetched.size > 0) {
+  // keys BELOW the range — deep history beyond the rolling fetch window. Append logs keep every key ever seen.
+  if (ds.retention === 'rollup' && fetched.size > 0) {
     const floor = [...fetched].reduce((lo, id) => (id < lo ? id : lo))
 
     rows = rows.filter((r) => fetched.has(r.id) || r.id < floor)
   }
 
-  return { id: ds.id, ...(ds.key !== undefined ? { key: ds.key } : {}), columns: ds.columns, rows }
+  // The fetch clock a snapshot's rows are judged against: a row whose seenTo predates it was absent from that
+  // fetch, so it has departed. An EMPTY fetch leaves the clock where it was — carrying no rows is indistinguish-
+  // able from a failure that returned none, and advancing it there would depart every member at once.
+  const lastFetchedAt = fetched.size > 0 ? now : existing?.lastFetchedAt
+
+  return {
+    id: ds.id,
+    ...(ds.key !== undefined ? { key: ds.key } : {}),
+    columns: ds.columns,
+    rows,
+    ...(ds.retention ? { retention: ds.retention } : {}),
+    ...(lastFetchedAt ? { lastFetchedAt } : {})
+  }
 }
 
 // A headline series carries at most one point per UTC day — the day's latest capture (its reading closest to
@@ -154,12 +165,15 @@ export const appendObservation = (existing: Ledger | undefined, obs: Observation
 export const readLedger = async (pluginId: string, capabilityId: string): Promise<Ledger | null> =>
   readJson<Ledger>(dataRootDir(), ledgerPath(pluginId, capabilityId))
 
+export const writeLedger = (pluginId: string, capabilityId: string, led: Ledger): Promise<void> =>
+  writeJson(dataRootDir(), ledgerPath(pluginId, capabilityId), led)
+
 // Append one observation to a capability's ledger on disk. Best-effort — warns + never throws into the run.
 export const accumulate = async (pluginId: string, capabilityId: string, obs: Observation): Promise<void> => {
   try {
     const next = appendObservation((await readLedger(pluginId, capabilityId)) ?? undefined, obs)
 
-    await writeJson(dataRootDir(), ledgerPath(pluginId, capabilityId), next)
+    await writeLedger(pluginId, capabilityId, next)
   } catch (err) {
     console.warn(`[butin:ledger] ${pluginId}/${capabilityId}: accumulate failed`, err)
   }
