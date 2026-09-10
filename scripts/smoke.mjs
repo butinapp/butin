@@ -55,11 +55,17 @@ try {
   win.on('console', (m) => m.type() === 'error' && warnings.push(m.text()))
   win.on('pageerror', (e) => failures.push(`pageerror: ${e.stack || e.message}`))
 
-  await win.waitForLoadState('domcontentloaded')
-
   // The preload must have exposed the IPC bridge — its absence is the exact symptom the preload crash
   // produced (undefined `window.butin` → renderer throws on first access → stuck on the splash).
-  const hasBridge = await win.evaluate(() => typeof window.butin === 'object' && window.butin !== null)
+  //
+  // Polled rather than read once: firstWindow() resolves as soon as the BrowserWindow exists, which can be
+  // before main has navigated it to the app. A load state awaited at that moment is satisfied by the initial
+  // empty document, and the navigation then destroys that context under a one-shot evaluate. waitForFunction
+  // re-runs in whichever context is current, so it outlives the navigation while asserting the same thing.
+  const hasBridge = await win
+    .waitForFunction(() => typeof window.butin === 'object' && window.butin !== null, { timeout: 15_000 })
+    .then(() => true)
+    .catch(() => false)
 
   if (!hasBridge) {
     failures.push('window.butin is not exposed — preload failed to load')
