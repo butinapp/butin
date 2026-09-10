@@ -29,7 +29,8 @@ const PeopleView = () => {
           result={peopleQ.data.result as never}
           tableState={prefs.initialState as never}
           onTableStateChange={prefs.onStateChange}
-          width="wide"
+          width="full"
+          search="always"
         />
       ) : (
         <p className="text-muted-foreground text-sm">{t.peopleEmpty}</p>

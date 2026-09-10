@@ -13,10 +13,17 @@ test('count gets thousands separators; percent renders a 0..1 fraction as a %', 
   expect(formatByRole(0.46306, 'percent')).toBe('46.3%')
 })
 
-test('label/status/identifier/text/url/timestamp pass through as strings', () => {
+test('label/status/identifier/text/url pass through as strings', () => {
   expect(formatByRole('paid', 'status')).toBe('paid')
-  expect(formatByRole('2026-05-10', 'timestamp')).toBe('2026-05-10')
   expect(formatByRole('https://x/a.pdf', 'url')).toBe('https://x/a.pdf')
+})
+
+test('a timestamp renders in the given date preset, and verbatim without one', () => {
+  const dates = { prefs: { currencyStyle: 'match' as const, dateFormat: 'us' as const }, locale: 'en-US' }
+
+  expect(formatByRole('2026-05-10', 'timestamp', undefined, 'en-US', dates)).toBe('May 10, 2026')
+  expect(formatByRole('2026-09-10T10:41:35.618Z', 'timestamp', undefined, 'en-US', dates)).toContain('2026')
+  expect(formatByRole('2026-05-10', 'timestamp')).toBe('2026-05-10')
 })
 
 test('null, undefined, and empty string render as an em dash', () => {

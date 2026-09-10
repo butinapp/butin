@@ -1,6 +1,7 @@
 // Pure, node-testable display-format helpers. The currency style overrides the NUMBER-formatting locale
-// only (grouping/symbol placement) — never the amount, never the currency code (no FX). Date helpers apply
-// a preset to app-generated dates (meta lines), in the machine's local zone, not to raw plugin-emitted cells.
+// only (grouping/symbol placement) — never the amount, never the currency code (no FX). Dates render in the
+// configured preset: `formatDateTime` for an instant, `formatTimestamp` for a value whose own precision
+// (date-only vs date+time) must survive.
 
 import { DateTime } from 'luxon'
 
@@ -59,6 +60,10 @@ export const resolveMoneyLocale = (prefs: FormatPrefs, appLocale: string): strin
 // Year→minute fields for the meta-line display.
 const isoLocal = (date: Date): string => DateTime.fromJSDate(date).toFormat('yyyy-MM-dd HH:mm')
 
+// The locale a preset formats in: the named presets pin a region, 'locale' follows the app.
+const presetLocale = (preset: DateFormatPreset, fallbackLocale: string): string =>
+  preset === 'us' ? 'en-US' : preset === 'eu' ? 'en-GB' : fallbackLocale
+
 export const formatDateTime = (value: string | number | Date, prefs: FormatPrefs, fallbackLocale: string): string => {
   if (value === '' || value == null) {
     return '—'
@@ -74,9 +79,38 @@ export const formatDateTime = (value: string | number | Date, prefs: FormatPrefs
     return isoLocal(date)
   }
 
-  const locale = prefs.dateFormat === 'us' ? 'en-US' : prefs.dateFormat === 'eu' ? 'en-GB' : fallbackLocale
+  return date.toLocaleString(presetLocale(prefs.dateFormat, fallbackLocale), {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  })
+}
 
-  return date.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
+const DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]/
+
+// A date whose own precision must survive: a date-only 'YYYY-MM-DD' stays a date and is parsed ZONE-FREE —
+// read as an instant it is UTC midnight, which any negative-offset zone renders as the PREVIOUS day. A value
+// that is neither unambiguously a date nor a date+time (a 'YYYY-MM' month key, an opaque id) passes through
+// verbatim: `new Date` would invent a day for it.
+export const formatTimestamp = (value: unknown, prefs: FormatPrefs, fallbackLocale: string): string => {
+  if (value == null || value === '') {
+    return '—'
+  }
+
+  if (typeof value === 'string' && DATE_ONLY.test(value)) {
+    if (prefs.dateFormat === 'iso') {
+      return value
+    }
+
+    return DateTime.fromISO(value)
+      .toJSDate()
+      .toLocaleDateString(presetLocale(prefs.dateFormat, fallbackLocale), { dateStyle: 'medium' })
+  }
+
+  const instant =
+    value instanceof Date || typeof value === 'number' || (typeof value === 'string' && DATE_TIME.test(value))
+
+  return instant ? formatDateTime(value as string | number | Date, prefs, fallbackLocale) : String(value)
 }
 
 // Largest unit whose magnitude is >= 1 (down to seconds), localized. Wording comes from the locale.

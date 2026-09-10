@@ -110,6 +110,25 @@ describe('mergePeople', () => {
   test('empty input yields empty output', () => {
     expect(mergePeople([])).toEqual({ people: [], access: [] })
   })
+
+  test('serviceNames lists the services alphabetically, deduped per service', () => {
+    const { people } = mergePeople([
+      svc('sentry', 'Sentry', [{ id: 'u1', email: 'yann@example.com', role: 'admin' }]),
+      svc('aws', 'AWS', [{ id: 'u2', email: 'yann@example.com' }]),
+      svc('hubspot', 'HubSpot', [
+        { id: 'h1', email: 'yann@example.com', role: 'admin' },
+        { id: 'h2', email: 'yann@example.com', role: 'viewer' }
+      ])
+    ])
+
+    expect(people[0]).toMatchObject({ services: 3, serviceNames: 'AWS, HubSpot, Sentry' })
+  })
+
+  test('a person in one service gets that service as their whole list', () => {
+    const { people } = mergePeople([svc('sentry', 'Sentry', [{ id: 'u1', name: 'Solo' }])])
+
+    expect(people[0]).toMatchObject({ services: 1, serviceNames: 'Sentry' })
+  })
 })
 
 describe('buildPeopleResult', () => {
@@ -132,5 +151,22 @@ describe('buildPeopleResult', () => {
       | undefined
 
     expect(view?.detail).toEqual({ dataset: 'access', on: 'personId' })
+  })
+
+  test('the people table carries both a service count and a truncating list of the names', () => {
+    const merged = mergePeople([
+      svc('sentry', 'Sentry', [{ id: 'u1', name: 'Yann', email: 'yann@example.com' }]),
+      svc('aws', 'AWS', [{ id: 'u2', name: 'Yann', email: 'yann@example.com' }])
+    ])
+    const people = buildPeopleResult(merged).datasets.find((d) => d.id === 'people')
+
+    expect(people?.shape === 'table' && people.columns.find((c) => c.key === 'serviceNames')).toMatchObject({
+      role: 'text',
+      truncate: true
+    })
+    expect(people?.shape === 'table' && people.columns.find((c) => c.key === 'services')).toMatchObject({
+      role: 'count'
+    })
+    expect(people?.shape === 'table' && people.rows[0]).toMatchObject({ services: 2, serviceNames: 'AWS, Sentry' })
   })
 })

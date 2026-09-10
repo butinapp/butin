@@ -18,7 +18,7 @@ import { Badge } from '../../components/badge.js'
 import { Button } from '../../components/button.js'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/card.js'
 import { selection, type DataTableColumn, type DataTableState } from '../../components/data-table-model.js'
-import { DataTable } from '../../components/data-table.js'
+import { DataTable, type SearchPlacement } from '../../components/data-table.js'
 import { Progress } from '../../components/progress.js'
 import { Sparkline } from '../../components/sparkline.js'
 import { TruncatedCell } from '../../components/truncated-cell.js'
@@ -30,7 +30,7 @@ import { StatCard } from '../charts.js'
 import { formatSize } from '../documents/doc-models.js'
 import { OpenFileButton, ViewFileLink } from '../documents/open-file-button.js'
 
-import { formatByRole } from './format-role.js'
+import { formatByRole, type DateContext } from './format-role.js'
 import { planViews } from './plan-views.js'
 import { TimeseriesChart } from './timeseries-chart.js'
 import {
@@ -90,12 +90,22 @@ const TONE_CLASS: Record<NonNullable<StatCardModel['tone']>, string> = {
   muted: 'text-muted-foreground'
 }
 
+// The date-format context every view formatting a cell needs: the configured preset plus the APP locale,
+// which is not the money locale the same views carry (that one tracks the base currency's region).
+const useDateContext = (): DateContext => {
+  const prefs = useFormat()
+  const t = useLabels()
+
+  return { prefs, locale: t.intlLocale }
+}
+
 const StatView = ({ ds, fields, locale }: { ds: RecordDataset; fields?: (string | StatField)[]; locale: string }) => {
   const t = useLabels()
+  const dates = useDateContext()
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {statCards(ds, fields, locale).map((c) => (
+      {statCards(ds, fields, locale, dates).map((c) => (
         <StatCard
           key={c.key}
           label={t.s(c.label)}
@@ -142,11 +152,12 @@ const KeyValueView = ({
   locale: string
 }) => {
   const t = useLabels()
+  const dates = useDateContext()
 
   return (
     <Panel title={title}>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
-        {recordRows(ds, fields, locale).map((r) => (
+        {recordRows(ds, fields, locale, dates).map((r) => (
           <div key={r.label} className="contents">
             <dt className="text-muted-foreground">{t.s(r.label)}</dt>
             <dd className="text-right tabular-nums">{r.value}</dd>
@@ -162,7 +173,7 @@ type TableRow = Record<string, unknown>
 // Render one cell body by its column's semantic role: a url → external-link icon, a status → sentiment badge,
 // a category → distinct-hue badge, a truncatable free-text → a peek/copy cell, everything else → formatByRole.
 // Shared by the main table and a nested row-detail table so both format identically.
-const renderRoleCell = (c: Column, raw: unknown, locale: string): ReactNode => {
+const renderRoleCell = (c: Column, raw: unknown, locale: string, dates: DateContext): ReactNode => {
   if (c.role === 'url' && typeof raw === 'string' && raw !== '') {
     return (
       <a
@@ -191,13 +202,14 @@ const renderRoleCell = (c: Column, raw: unknown, locale: string): ReactNode => {
     return <TruncatedCell text={String(raw)} />
   }
 
-  return formatByRole(raw, c.role, c.currency, locale)
+  return formatByRole(raw, c.role, c.currency, locale, dates)
 }
 
 // A parent row's expanded detail: a compact table of the child dataset's rows (already filtered to this
 // parent), drawn with the child's own column roles.
 const DetailTable = ({ ds, rows, locale }: { ds: TableDataset; rows: TableRow[]; locale: string }) => {
   const t = useLabels()
+  const dates = useDateContext()
   const cols = ds.columns.filter((c) => !c.hidden)
   const alignRight = (c: Column) => c.role === 'money' || c.role === 'count' || c.role === 'percent'
 
@@ -218,7 +230,7 @@ const DetailTable = ({ ds, rows, locale }: { ds: TableDataset; rows: TableRow[];
             <tr key={i} className="border-border/40 border-t">
               {cols.map((c) => (
                 <td key={c.key} className={cn('py-1 pr-4 tabular-nums', alignRight(c) && 'text-right')}>
-                  {renderRoleCell(c, row[c.key], locale)}
+                  {renderRoleCell(c, row[c.key], locale, dates)}
                 </td>
               ))}
             </tr>
@@ -242,7 +254,8 @@ const TableView = ({
   downloads,
   rowDaily,
   detailDataset,
-  detailOn
+  detailOn,
+  search
 }: {
   ds: TableDataset
   title?: string
@@ -263,8 +276,11 @@ const TableView = ({
   // over the cumulative daily drilldown. Absent → no static row detail.
   detailDataset?: TableDataset
   detailOn?: string
+  // Where this table's search sits. Absent → the collapsed magnifier in the panel's title row.
+  search?: SearchPlacement
 }) => {
   const t = useLabels()
+  const dates = useDateContext()
   const getRowId = (row: TableRow): string => String(ds.rows.indexOf(row))
   // A table with a date column opens newest-first; a saved sort pref (loaded into tableState) always wins.
   const initialState: DataTableState | undefined = tableState?.sort
@@ -309,7 +325,7 @@ const TableView = ({
 
       return typeof raw === 'number' ? raw : raw == null ? undefined : String(raw)
     },
-    cell: (row) => renderRoleCell(c, row[c.key], locale)
+    cell: (row) => renderRoleCell(c, row[c.key], locale, dates)
   }))
 
   // A cumulative column (an MTD-per-row counter) with a per-row daily series → a trailing Trend column: each
@@ -489,10 +505,10 @@ const TableView = ({
         expandable={expandable}
         actionBar={actionBar}
         paginated
-        toolbar={{ search: true, columns: true }}
-        // The search floats into the panel's title row; without a title there's no row to float into, so it
+        columnsMenu
+        // The search lifts into the panel's title row; without a title there's no row to lift into, so it
         // sits inline instead of drifting into the empty space above the card.
-        searchFloating={Boolean(title)}
+        search={search ?? (title ? 'floating' : 'inline')}
         initialState={initialState}
         onStateChange={onTableStateChange}
         onExport={onExport}
@@ -588,6 +604,7 @@ type TableProps = {
   state?: DataTableState
   onStateChange?: (next: DataTableState) => void
   onExport?: (blob: { text: string; mime: string }, filename: string) => void
+  search?: SearchPlacement
 }
 
 const renderView = (
@@ -628,6 +645,7 @@ const renderView = (
         tableState={tableProps?.state}
         onTableStateChange={tableProps?.onStateChange}
         onExport={tableProps?.onExport}
+        search={tableProps?.search}
         files={view.files}
         downloads={view.files ? downloads : undefined}
         rowDaily={rowDaily?.[dataset.id]}
@@ -702,7 +720,8 @@ export const DashboardRenderer = ({
   onTableStateChange,
   onExport,
   downloads,
-  width = 'auto'
+  width = 'auto',
+  search
 }: {
   result: CapabilityResult
   daily?: DailyPoint[]
@@ -717,8 +736,10 @@ export const DashboardRenderer = ({
   downloads?: TableFilesBridge
   // Container width. `auto` derives the tier from content (the densest table's column count) — right for a
   // standalone embed. A host showing several results side by side (the service page's tabs) pins `wide` so
-  // the width stays constant across them and switching never resizes the page.
-  width?: 'auto' | 'wide' | 'narrow'
+  // the width stays constant across them and switching never resizes the page. `full` drops the cap entirely.
+  width?: 'auto' | 'wide' | 'narrow' | 'full'
+  // Where each table's search sits; absent → the collapsed magnifier in the panel's title row.
+  search?: SearchPlacement
 }) => {
   const t = useLabels()
   const prefs = useFormat()
@@ -738,7 +759,7 @@ export const DashboardRenderer = ({
   // only small panels (record/keyvalue/stat) or slim tables from sprawling across a wide monitor. When the
   // host pins the tier (`wide`/`narrow`) that wins; otherwise it's derived from the densest table's columns.
   const maxTableCols = Math.max(0, ...plans.map((p) => (p.dataset.shape === 'table' ? p.dataset.columns.length : 0)))
-  const wide = width === 'auto' ? maxTableCols >= WIDE_TABLE_COLS : width === 'wide'
+  const tier = width === 'auto' ? (maxTableCols >= WIDE_TABLE_COLS ? 'wide' : 'narrow') : width
 
   // Centered, width-capped so the content doesn't stretch edge-to-edge on a wide monitor. A 2-column grid
   // lets narrow `keyvalue` panels (account, payment method) sit side by side; stat rows, charts, and tables
@@ -748,7 +769,11 @@ export const DashboardRenderer = ({
   return (
     <div
       data-testid="dashboard"
-      className={cn('mx-auto grid w-full grid-cols-1 gap-3 md:grid-cols-2', wide ? 'max-w-[110rem]' : 'max-w-6xl')}
+      className={cn(
+        'mx-auto grid w-full grid-cols-1 gap-3 md:grid-cols-2',
+        tier === 'wide' && 'max-w-[110rem]',
+        tier === 'narrow' && 'max-w-6xl'
+      )}
     >
       {plans.map((p, i) => (
         <div key={i} className={cn('min-w-0', p.view.type === 'keyvalue' ? 'md:col-span-1' : 'md:col-span-2')}>
@@ -757,7 +782,7 @@ export const DashboardRenderer = ({
             p.dataset,
             numberLocale,
             t.s,
-            { state: tableState, onStateChange: onTableStateChange, onExport },
+            { state: tableState, onStateChange: onTableStateChange, onExport, search },
             daily,
             downloads,
             rowDaily,
