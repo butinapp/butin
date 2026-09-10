@@ -26,10 +26,7 @@ export const acme = definePlugin({
     {
       id: 'billing',
       label: 'Billing',
-      collect: async ({ client }) =>
-        billing.result({
-          /* … */
-        })
+      collect: async ({ client }) => billing.result({/* … */})
     }
   ]
 })

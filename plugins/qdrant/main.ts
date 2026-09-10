@@ -384,13 +384,11 @@ export const displayMemberRole = (roles: RawRole[] = []): string | undefined => 
 // Pure transform — fixture-tested. Each user (email only) + their non-baseline role(s) → the members preset.
 export const buildQdrantMembers = (input: QdrantMembersInput): CapabilityResult =>
   members.result({
-    members: input.items.map(
-      (item): MemberInput => ({
-        id: item.user?.id ?? item.user?.email ?? 'unknown',
-        email: item.user?.email,
-        role: displayMemberRole(item.roles)
-      })
-    )
+    members: input.items.map((item): MemberInput => ({
+      id: item.user?.id ?? item.user?.email ?? 'unknown',
+      email: item.user?.email,
+      role: displayMemberRole(item.roles)
+    }))
   })
 
 const fetchQdrantMembers = async (ctx: CollectContext<QdrantConfig>): Promise<QdrantMembersInput> => {

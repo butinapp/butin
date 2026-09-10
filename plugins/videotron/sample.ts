@@ -110,14 +110,11 @@ export const sampleVidetronAccounts = (g: SampleGen): RawPlanAccount[] => {
 
 export const sampleVidetronBillingDetail = (g: SampleGen, config: SampleConfig): BillingDetailRaw => ({
   billing: sampleVidetronBilling(g, config),
-  mobileLinks: g.repeat(
-    Math.min(config.documents, 36),
-    (i): LegacyInvoiceLink => ({
-      date: `${g.monthsAgo(i).yearMonth}-06`,
-      dateFacturation: String(monthEpochMs(i)),
-      medium: 'FA',
-      resourceVersion: i < 3 ? 'R20240510' : 'R20180516',
-      amount: g.money(50, 70)
-    })
-  )
+  mobileLinks: g.repeat(Math.min(config.documents, 36), (i): LegacyInvoiceLink => ({
+    date: `${g.monthsAgo(i).yearMonth}-06`,
+    dateFacturation: String(monthEpochMs(i)),
+    medium: 'FA',
+    resourceVersion: i < 3 ? 'R20240510' : 'R20180516',
+    amount: g.money(50, 70)
+  }))
 })

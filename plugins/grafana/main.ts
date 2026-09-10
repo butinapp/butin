@@ -429,27 +429,25 @@ export const buildGrafanaUsage = (
     }
   ]
 
-  const stacks = (instanceList?.items ?? []).map(
-    (inst): GrafanaStack => ({
-      name: inst.name ?? 'unknown',
-      url: inst.url,
-      region: inst.regionPublicName,
-      status: inst.status ?? 'unknown',
-      version: shortVersion(inst.runningVersion),
-      planName: inst.planName,
-      billedUsers: inst.billingActiveUsers ?? 0,
-      activeUsers: inst.currentActiveUsers ?? 0,
-      adminUsers: inst.currentActiveAdminUsers ?? 0,
-      editorUsers: inst.currentActiveEditorUsers ?? 0,
-      viewerUsers: inst.currentActiveViewerUsers ?? 0,
-      dashboards: inst.dashboardCnt ?? 0,
-      alerts: inst.alertCnt ?? 0,
-      metricsSeries: Math.round(inst.hmInstancePromBillingUsage ?? 0),
-      logsGb: round2(inst.hlInstanceBillingUsage ?? 0),
-      tracesGb: round2(inst.htInstanceBillingUsage ?? 0),
-      profilesGb: round2(inst.hpInstanceBillingUsage ?? 0)
-    })
-  )
+  const stacks = (instanceList?.items ?? []).map((inst): GrafanaStack => ({
+    name: inst.name ?? 'unknown',
+    url: inst.url,
+    region: inst.regionPublicName,
+    status: inst.status ?? 'unknown',
+    version: shortVersion(inst.runningVersion),
+    planName: inst.planName,
+    billedUsers: inst.billingActiveUsers ?? 0,
+    activeUsers: inst.currentActiveUsers ?? 0,
+    adminUsers: inst.currentActiveAdminUsers ?? 0,
+    editorUsers: inst.currentActiveEditorUsers ?? 0,
+    viewerUsers: inst.currentActiveViewerUsers ?? 0,
+    dashboards: inst.dashboardCnt ?? 0,
+    alerts: inst.alertCnt ?? 0,
+    metricsSeries: Math.round(inst.hmInstancePromBillingUsage ?? 0),
+    logsGb: round2(inst.hlInstanceBillingUsage ?? 0),
+    tracesGb: round2(inst.htInstanceBillingUsage ?? 0),
+    profilesGb: round2(inst.hpInstanceBillingUsage ?? 0)
+  }))
 
   return {
     planName: current?.publicName ?? 'Unknown',
