@@ -10,19 +10,42 @@ const SERVICE_COUNT = visibleServices.length
 export const metadata: Metadata = {
   title: 'Tous vos comptes. Un seul endroit.',
   description:
-    'Une application de bureau locale qui réunit la facturation, l’utilisation et les documents de tous vos services au même endroit sur votre ordinateur.'
+    'Une application de bureau locale qui réunit la facturation, l’utilisation et les documents de tous vos services au même endroit sur votre ordinateur.',
+  openGraph: {
+    title: 'Butin — Vos données, chez vous.',
+    description:
+      'Une application de bureau locale qui réunit la facturation, l’utilisation et les documents de tous vos services au même endroit sur votre ordinateur.',
+    url: 'https://butin.app/fr',
+    siteName: 'Butin',
+    type: 'website',
+    images: [
+      {
+        url: '/fr/opengraph-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Butin — Vos comptes réunis. Chez vous.'
+      }
+    ]
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Butin — Vos données, chez vous.',
+    description:
+      'Une application de bureau locale qui réunit la facturation, l’utilisation et les documents de tous vos services au même endroit sur votre ordinateur.',
+    images: ['/fr/opengraph-image.png']
+  }
 }
 
 const stripServices = [
-  'Videotron',
-  'Hydro-Québec',
-  'Carnet Santé',
-  'Hydro-Solution',
+  'Vidéotron',
   'AWS',
-  'Stripe',
+  'Carnet Santé',
+  'Claude',
   'GitHub',
+  'Hydro-Solution',
   'Vercel',
-  'Claude'
+  'Airbnb',
+  'ChatGPT'
 ]
 
 const Kicker = ({ children }: { children: React.ReactNode }) => (

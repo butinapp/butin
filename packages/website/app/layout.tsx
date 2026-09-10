@@ -27,9 +27,23 @@ export const metadata: Metadata = {
       'A local-first desktop app that puts all your accounts in one place. Billing, usage, and documents stored locally on your machine.',
     url: 'https://butin.app',
     siteName: 'Butin',
-    type: 'website'
+    type: 'website',
+    images: [
+      {
+        url: '/opengraph-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Butin — your data, brought home'
+      }
+    ]
   },
-  twitter: { card: 'summary_large_image', title: 'Butin', description: 'Your data, brought home.' }
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Butin — your data, brought home',
+    description:
+      'A local-first desktop app that puts all your accounts in one place. Billing, usage, and documents stored locally on your machine.',
+    images: ['/opengraph-image.png']
+  }
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {

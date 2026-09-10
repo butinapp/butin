@@ -9,14 +9,14 @@ const SERVICE_COUNT = visibleServices.length
 // so "not just dev tools" lands at a glance.
 const stripServices = [
   'AWS',
-  'Stripe',
-  'GitHub',
-  'Vercel',
   'Videotron',
+  'GitHub',
   'Claude',
-  'Hydro-Solution',
+  'Vercel',
   'Carnet Santé',
-  'Airbnb'
+  'Airbnb',
+  'Hydro-Solution',
+  'ChatGPT'
 ]
 
 const Kicker = ({ children }: { children: React.ReactNode }) => (
