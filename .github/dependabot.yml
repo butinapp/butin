@@ -1,0 +1,15 @@
+version: 2
+
+# Third-party actions are pinned to a commit SHA rather than a tag, because a tag (and, for some publishers, a
+# major-version branch) is mutable — a compromised publisher can repoint it at new code that runs with whatever
+# the workflow's token and secrets allow. A SHA can't move, so the cost of pinning is staleness: Dependabot pays
+# it by opening the bump PR and rewriting both the SHA and its trailing version comment.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - '*'
