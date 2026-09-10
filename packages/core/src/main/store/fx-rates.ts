@@ -1,7 +1,7 @@
 import type { FxRates } from '@butinapp/sdk/util'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 
+import { readJson, writeJson } from './secure-fs.js'
 import { dataRootDir } from './store.js'
 
 // The user's currency settings: which currency the Overview rolls up into, and the rate table that gets
@@ -22,19 +22,12 @@ const DEFAULT: FxConfig = { baseCurrency: 'USD', rates: {} }
 const fxPath = (): string => join(dataRootDir(), 'fx.json')
 
 export const getFxConfig = async (): Promise<FxConfig> => {
-  try {
-    const stored = JSON.parse(await readFile(fxPath(), 'utf8')) as Partial<FxConfig>
+  const stored = await readJson<FxConfig>(dataRootDir(), fxPath())
 
-    return { ...DEFAULT, ...stored }
-  } catch {
-    return DEFAULT
-  }
+  return stored ? { ...DEFAULT, ...stored } : DEFAULT
 }
 
-export const setFxConfig = async (cfg: FxConfig): Promise<void> => {
-  await mkdir(dirname(fxPath()), { recursive: true })
-  await writeFile(fxPath(), JSON.stringify(cfg, null, 2))
-}
+export const setFxConfig = (cfg: FxConfig): Promise<void> => writeJson(dataRootDir(), fxPath(), cfg)
 
 // A rate lookup: value in `to` of 1 unit of `from` (so `rates[from] = fetchRate(from, base)`), or null when it
 // can't be had (offline, unsupported currency, a bad response). Best-effort and bounded — never throws.
@@ -45,7 +38,7 @@ const FETCH_TIMEOUT_MS = 5000
 // a half-day cache keeps a spend dashboard current without hitting the API on every open.
 const RATE_TTL_MS = 12 * 60 * 60 * 1000
 
-const readJson = async (url: string): Promise<{ rates?: Record<string, unknown> } | null> => {
+const fetchJson = async (url: string): Promise<{ rates?: Record<string, unknown> } | null> => {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS)
 
@@ -73,9 +66,9 @@ export const fetchRate: RateFetcher = async (from, to) => {
     return 1
   }
 
-  const frankfurter = rateFrom(await readJson(`https://api.frankfurter.dev/v1/latest?base=${from}&symbols=${to}`), to)
+  const frankfurter = rateFrom(await fetchJson(`https://api.frankfurter.dev/v1/latest?base=${from}&symbols=${to}`), to)
 
-  return frankfurter ?? rateFrom(await readJson(`https://open.er-api.com/v6/latest/${from}`), to)
+  return frankfurter ?? rateFrom(await fetchJson(`https://open.er-api.com/v6/latest/${from}`), to)
 }
 
 // The dominant currency among the services in play (the mode) — the auto base pick. Ties resolve to the first
