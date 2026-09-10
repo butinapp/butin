@@ -1,11 +1,15 @@
 import type { Ledger, StoredDataset, StoredSummary } from '@butinapp/shapes'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, expect, test } from 'vitest'
 
+import { isSealed, setScryptParamsForTest, setupVault } from '../vault/vault.js'
+
 import { accumulate, appendObservation, readLedger } from './ledger.js'
-import { setDataRoot } from './store.js'
+import { ledgerPath, setDataRoot } from './store.js'
+
+setScryptParamsForTest({ N: 2 ** 8, r: 8, p: 1 })
 
 const ds = (rows: Record<string, unknown>[], key: string | string[] = 'id'): StoredDataset => ({
   id: 'invoices',
@@ -231,6 +235,7 @@ test('pre-existing same-day duplicate points fold to one (latest of the day) on 
 })
 
 let tempDir: string
+let vaultDir: string
 
 test('accumulate persists and re-merges across calls', async () => {
   tempDir = mkdtempSync(join(tmpdir(), 'butin-led-'))
@@ -251,8 +256,35 @@ test('accumulate persists and re-merges across calls', async () => {
   expect(led!.datasets[0]!.rows.map((r) => r.id).sort()).toEqual(['a', 'b'])
 })
 
+// The ledger is profile data, so it goes through secure-fs like every other store: on an encrypted profile it
+// must round-trip sealed. Reading it as plaintext would return null and the next accumulate would overwrite the
+// whole accumulated history with a fresh one — in the clear.
+test('an encrypted profile keeps accumulating, sealed on disk', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'butin-ledger-vault-'))
+
+  vaultDir = dir
+  setDataRoot(dir)
+  setupVault(dir, 'correct horse battery staple')
+
+  await accumulate('p', 'billing', {
+    capturedAt: '2026-06-15T00:00:00Z',
+    datasets: [ds([{ id: 'a', status: 'open' }])],
+    summaries: []
+  })
+  await accumulate('p', 'billing', {
+    capturedAt: '2026-06-16T00:00:00Z',
+    datasets: [ds([{ id: 'b', status: 'open' }])],
+    summaries: []
+  })
+
+  expect(isSealed(readFileSync(ledgerPath('p', 'billing')))).toBe(true)
+  expect((await readLedger('p', 'billing'))!.datasets[0]!.rows.map((r) => r.id).sort()).toEqual(['a', 'b'])
+})
+
 afterAll(() => {
-  if (tempDir) {
-    rmSync(tempDir, { recursive: true, force: true })
+  for (const dir of [tempDir, vaultDir]) {
+    if (dir) {
+      rmSync(dir, { recursive: true, force: true })
+    }
   }
 })

@@ -1,10 +1,14 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 
+import { isSealed, setScryptParamsForTest, setupVault } from '../vault/vault.js'
+
 import { getFxConfig, resolveFxConfig, setFxConfig, type RateFetcher } from './fx-rates.js'
 import { setDataRoot } from './store.js'
+
+setScryptParamsForTest({ N: 2 ** 8, r: 8, p: 1 })
 
 let dir: string
 
@@ -82,4 +86,14 @@ test('offline (fetcher returns null) leaves the rate absent without throwing', a
   const cfg = await resolveFxConfig(['CAD', 'USD'], f.fetch)
 
   expect(cfg.rates.USD).toBeUndefined()
+})
+
+// fx.json is profile data like any other, so an encrypted profile must round-trip it sealed rather than read
+// past it to the default table and rewrite it in the clear.
+test('an encrypted profile round-trips the rate table, sealed on disk', async () => {
+  setupVault(dir, 'correct horse battery staple')
+  await setFxConfig({ baseCurrency: 'CAD', rates: { USD: 1.37 }, source: 'manual' })
+
+  expect(isSealed(readFileSync(join(dir, 'fx.json')))).toBe(true)
+  expect(await getFxConfig()).toMatchObject({ baseCurrency: 'CAD', rates: { USD: 1.37 } })
 })

@@ -8,10 +8,9 @@ import {
   type StoredDataset,
   type StoredSummary
 } from '@butinapp/shapes'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
 
-import { ledgerPath } from './store.js'
+import { readJson, writeJson } from './secure-fs.js'
+import { dataRootDir, ledgerPath } from './store.js'
 
 export interface Observation {
   capturedAt: string
@@ -152,22 +151,15 @@ export const appendObservation = (existing: Ledger | undefined, obs: Observation
   }
 }
 
-export const readLedger = async (pluginId: string, capabilityId: string): Promise<Ledger | null> => {
-  try {
-    return JSON.parse(await readFile(ledgerPath(pluginId, capabilityId), 'utf8')) as Ledger
-  } catch {
-    return null
-  }
-}
+export const readLedger = async (pluginId: string, capabilityId: string): Promise<Ledger | null> =>
+  readJson<Ledger>(dataRootDir(), ledgerPath(pluginId, capabilityId))
 
 // Append one observation to a capability's ledger on disk. Best-effort — warns + never throws into the run.
 export const accumulate = async (pluginId: string, capabilityId: string, obs: Observation): Promise<void> => {
   try {
     const next = appendObservation((await readLedger(pluginId, capabilityId)) ?? undefined, obs)
-    const path = ledgerPath(pluginId, capabilityId)
 
-    await mkdir(dirname(path), { recursive: true })
-    await writeFile(path, JSON.stringify(next, null, 2))
+    await writeJson(dataRootDir(), ledgerPath(pluginId, capabilityId), next)
   } catch (err) {
     console.warn(`[butin:ledger] ${pluginId}/${capabilityId}: accumulate failed`, err)
   }
