@@ -111,6 +111,87 @@ test('width prop pins the container tier, overriding the content-derived one', (
   expect(container.firstChild).toHaveClass('max-w-6xl')
 })
 
+test("width='full' drops the cap so the table reaches both edges", () => {
+  const { container } = render(
+    <DashboardRenderer
+      result={{ datasets: [invoices], views: [{ type: 'table', dataset: 'invoices' }] }}
+      width="full"
+    />
+  )
+
+  expect(container.firstChild).not.toHaveClass('max-w-[110rem]')
+  expect(container.firstChild).not.toHaveClass('max-w-6xl')
+})
+
+test("search='always' pins an open search field above the table", () => {
+  const { rerender } = render(
+    <DashboardRenderer
+      result={{ datasets: [invoices], views: [{ type: 'table', dataset: 'invoices', title: 'People' }] }}
+      search="always"
+    />
+  )
+
+  expect(screen.getByPlaceholderText('Search…')).toBeInTheDocument()
+
+  rerender(
+    <DashboardRenderer
+      result={{ datasets: [invoices], views: [{ type: 'table', dataset: 'invoices', title: 'People' }] }}
+    />
+  )
+  expect(screen.queryByPlaceholderText('Search…')).not.toBeInTheDocument()
+})
+
+test('a timestamp cell renders in the date preset, not as the raw stored value', () => {
+  const stamped = tableFixture(
+    'runs',
+    [
+      { key: 'service', label: 'Service', role: 'label' },
+      { key: 'asOf', label: 'As of', role: 'timestamp' }
+    ],
+    [
+      { service: 'Sentry', asOf: '2026-09-10T10:41:35.618Z' },
+      { service: 'AWS', asOf: '2026-09-09' }
+    ]
+  )
+
+  render(<DashboardRenderer result={{ datasets: [stamped], views: [{ type: 'table', dataset: 'runs' }] }} />)
+
+  expect(screen.queryByText('2026-09-10T10:41:35.618Z')).not.toBeInTheDocument()
+  expect(screen.getByText('Sep 9, 2026')).toBeInTheDocument()
+})
+
+test('a timestamp inside an expanded row detail is formatted too', () => {
+  const people = tableFixture(
+    'people',
+    [{ key: 'name', label: 'Name', role: 'label' }],
+    [{ name: 'Yann', personId: 'p1' }],
+    'personId'
+  )
+  const access = tableFixture(
+    'access',
+    [
+      { key: 'service', label: 'Service', role: 'label' },
+      { key: 'asOf', label: 'As of', role: 'timestamp' },
+      { key: 'personId', role: 'identifier', hidden: true }
+    ],
+    [{ service: 'Sentry', asOf: '2026-09-10', personId: 'p1' }]
+  )
+
+  render(
+    <DashboardRenderer
+      result={{
+        datasets: [people, access],
+        views: [{ type: 'table', dataset: 'people', detail: { dataset: 'access', on: 'personId' } }]
+      }}
+    />
+  )
+
+  fireEvent.click(screen.getByText('Yann'))
+
+  expect(screen.getByText('Sep 10, 2026')).toBeInTheDocument()
+  expect(screen.queryByText('2026-09-10')).not.toBeInTheDocument()
+})
+
 test('short scalar columns get noWrap; free-text columns wrap', () => {
   const svc = tableFixture(
     'svc',

@@ -11,7 +11,7 @@ import type { DailyPoint } from '@butinapp/shapes'
 
 import { monthlyBuckets } from '../../lib/monthly-buckets.js'
 
-import { formatByRole } from './format-role.js'
+import { formatByRole, type DateContext } from './format-role.js'
 
 // The default sentiment a status value carries, so a role:'status' column auto-tones with no per-plugin map.
 // Keys are lowercase; matched case-insensitively. A plugin's `badges` map overrides an entry here, and any
@@ -123,15 +123,20 @@ const pick = (cols: Column[], keys?: string[]): Column[] =>
 
 // Record dataset -> formatted label/value rows. Feeds both the stat-tile and key/value renderers (they
 // differ only in layout). `fields` narrows/orders which fields show.
-export const recordRows = (ds: RecordDataset, fields?: string[], locale?: string): LabelledValue[] =>
+export const recordRows = (
+  ds: RecordDataset,
+  fields?: string[],
+  locale?: string,
+  dates?: DateContext
+): LabelledValue[] =>
   pick(ds.fields, fields).map((col) => ({
     label: col.label ?? col.key,
-    value: formatByRole(ds.value[col.key], col.role, col.currency, locale)
+    value: formatByRole(ds.value[col.key], col.role, col.currency, locale, dates)
   }))
 
 // Table dataset -> header labels + per-cell formatted text. A url-role cell with a value also carries an
 // `href` so the renderer can make it a link. `columns` narrows/orders which columns show.
-export const tableModel = (ds: TableDataset, columns?: string[], locale?: string): TableModel => {
+export const tableModel = (ds: TableDataset, columns?: string[], locale?: string, dates?: DateContext): TableModel => {
   const cols = pick(ds.columns, columns)
 
   return {
@@ -144,7 +149,7 @@ export const tableModel = (ds: TableDataset, columns?: string[], locale?: string
           return { text: raw, href: raw }
         }
 
-        return { text: formatByRole(raw, c.role, c.currency, locale) }
+        return { text: formatByRole(raw, c.role, c.currency, locale, dates) }
       })
     )
   }
@@ -228,7 +233,8 @@ const clamp01 = (n: number): number => Math.max(0, Math.min(1, n))
 export const statCards = (
   ds: RecordDataset,
   fields: (string | StatField)[] | undefined,
-  locale?: string
+  locale?: string,
+  dates?: DateContext
 ): StatCardModel[] => {
   const specs: StatField[] = fields
     ? fields.map((f) => (typeof f === 'string' ? { key: f } : f))
@@ -245,14 +251,14 @@ export const statCards = (
     const card: StatCardModel = {
       key: spec.key,
       label: col.label ?? col.key,
-      value: formatByRole(raw, col.role, col.currency, locale),
+      value: formatByRole(raw, col.role, col.currency, locale, dates),
       unit: spec.unit,
       caption: spec.caption,
       tone: spec.tone
     }
 
     if (spec.max != null && spec.max > 0 && typeof raw === 'number' && Number.isFinite(raw)) {
-      card.denominator = formatByRole(spec.max, col.role, col.currency, locale)
+      card.denominator = formatByRole(spec.max, col.role, col.currency, locale, dates)
       card.progress = clamp01(raw / spec.max)
       card.percentLabel = `${Math.round((raw / spec.max) * 100)}%`
     }

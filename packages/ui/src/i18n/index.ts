@@ -11,6 +11,7 @@ export {
   moneyLocale,
   formatBytes,
   formatDateTime,
+  formatTimestamp,
   formatRelative
 } from './format.js'
 export type { FormatPrefs, CurrencyStyle, DateFormatPreset } from './format.js'

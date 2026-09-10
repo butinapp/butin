@@ -18,7 +18,7 @@ import {
   Download,
   Search
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 
 import { useLabels } from '../i18n/context.js'
 import { cn } from '../lib/utils.js'
@@ -75,15 +75,18 @@ export type DataTableProps<Row> = {
   onExport?: (blob: { text: string; mime: string }, filename: string) => void
   exportName?: string
 
-  toolbar?: { search?: boolean; columns?: boolean }
+  // Where the search affordance sits. 'floating' and 'always' occupy a title row above the table and so cost
+  // the table no vertical space — valid only when the host renders such a row; 'inline' is the titleless
+  // fallback, at the top-right of the table itself. 'always' holds the input expanded; the rest collapse to a
+  // magnifier until clicked.
+  search?: SearchPlacement
+  columnsMenu?: boolean
   toolbarExtra?: ReactNode
   actionBar?: ReactNode
   emptyLabel?: string
-  // Whether the search affordance floats up into a title row above the table (costing no vertical space).
-  // True only when the host renders such a row; without one (a titleless panel) the search sits inline at the
-  // top-right of the table instead of floating into the empty space above the card.
-  searchFloating?: boolean
 }
+
+export type SearchPlacement = 'off' | 'floating' | 'inline' | 'always'
 
 // The per-row expansion hooks the row renderers need, derived once from the `expandable` prop: the detail
 // builder (null → no chevron for that row), and open-state read/toggle keyed by row id.
@@ -114,11 +117,11 @@ export const DataTable = <Row,>({
   onStateChange,
   onExport,
   exportName = 'export',
-  toolbar,
+  search = 'off',
+  columnsMenu: showColumns,
   toolbarExtra,
   actionBar,
-  emptyLabel,
-  searchFloating = true
+  emptyLabel
 }: DataTableProps<Row>) => {
   const t = useLabels()
   const selectable = Boolean(selection && onSelectionChange)
@@ -310,13 +313,12 @@ export const DataTable = <Row,>({
   }
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
-  // The top toolbar is just a collapsed search affordance (an icon that expands into an input, right-aligned)
-  // so it costs almost no space; select-all lives in the header-row checkbox; column/export live in the footer.
+  // The top toolbar holds only the search affordance; select-all lives in the header-row checkbox, and
+  // column/export live in the footer.
   const hideableCount = table.getAllLeafColumns().filter((c) => c.getCanHide()).length
-  const showColumnsMenu = Boolean(toolbar?.columns) && hideableCount > 0
-  const searchEnabled = Boolean(toolbar?.search)
+  const showColumnsMenu = Boolean(showColumns) && hideableCount > 0
 
-  // The search floats up into the right of the section's title row (absolute, negative-top) so it costs the
+  // A search row above the table lifts into the section's title row (absolute, negative-top) so it costs the
   // table no vertical space — the data starts at the very top. Sticky offsets therefore ignore it.
   const headTop = 'top-0'
   const groupTop = 'top-9'
@@ -361,9 +363,14 @@ export const DataTable = <Row,>({
 
   return (
     <div className="relative space-y-2">
-      {searchEnabled ? (
-        <div className={cn('z-30 flex items-center justify-end', searchFloating && 'absolute -top-8 right-0')}>
-          <TableSearch query={query} onChange={setQuery} placeholder={t.searchPlaceholder} />
+      {search !== 'off' ? (
+        <div className={cn('z-30 flex items-center justify-end', search !== 'inline' && 'absolute -top-8 right-0')}>
+          <TableSearch
+            query={query}
+            onChange={setQuery}
+            placeholder={t.searchPlaceholder}
+            alwaysOpen={search === 'always'}
+          />
         </div>
       ) : null}
 
@@ -373,7 +380,7 @@ export const DataTable = <Row,>({
         <table className="w-full text-xs">
           <thead className="text-muted-foreground">
             <tr className="text-left">
-              {expand ? <th className={cn('bg-card sticky z-10 w-6 border-b py-1 pl-0.5', headTop)} /> : null}
+              {expand ? <th className={cn('bg-card sticky z-10 w-6 border-b py-1 pr-3 pl-0.5', headTop)} /> : null}
               {selectable ? (
                 <th className={cn('bg-card sticky z-10 w-6 border-b py-1 pr-3 pl-0.5', headTop)}>
                   <Checkbox
@@ -525,18 +532,20 @@ export const DataTable = <Row,>({
 
 // Collapsed-by-default search: a magnifier button that expands into an input on click, so the top of the
 // table costs only an icon's width until you actually search. Stays expanded while a query is present;
-// Escape or blurring an empty field collapses it back to the icon.
+// Escape or blurring an empty field collapses it back to the icon. `alwaysOpen` holds it expanded.
 const TableSearch = ({
   query,
   onChange,
-  placeholder
+  placeholder,
+  alwaysOpen = false
 }: {
   query: string
   onChange: (next: string) => void
   placeholder: string
+  alwaysOpen?: boolean
 }) => {
   const [open, setOpen] = useState(false)
-  const expanded = open || query.length > 0
+  const expanded = alwaysOpen || open || query.length > 0
 
   if (!expanded) {
     return (
@@ -555,7 +564,9 @@ const TableSearch = ({
     <div className="relative">
       <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2" />
       <Input
-        autoFocus
+        // Autofocus only when the input APPEARED on a click — a pinned one is present from mount, and
+        // stealing focus on every page open would swallow the first keystroke meant for the page.
+        autoFocus={!alwaysOpen}
         value={query}
         onChange={(e) => onChange(e.target.value)}
         onBlur={() => {
@@ -570,7 +581,7 @@ const TableSearch = ({
           }
         }}
         placeholder={placeholder}
-        className="h-7 w-48 pl-7 text-xs"
+        className={cn('h-7 pl-7 text-xs', alwaysOpen ? 'w-72' : 'w-48')}
       />
     </div>
   )
@@ -598,15 +609,29 @@ const DataRow = <Row,>({
   const detail = expand ? expand.detail(row) : null
   const isOpen = Boolean(expand && rowId != null && expand.isOpen(rowId))
   const colSpan = cols.length + (selectable ? 1 : 0) + (expand ? 1 : 0)
+  const toggle = detail != null && expand && rowId != null ? () => expand.toggle(rowId) : undefined
+
+  // Clicking the row toggles its detail, except on a control the row itself contains — a truncated cell's peek
+  // button, a link, a checkbox, the chevron — whose click is that control's alone and must not also expand.
+  const onRowClick = toggle
+    ? (e: MouseEvent<HTMLTableRowElement>) => {
+        if (!(e.target as HTMLElement).closest('button, a, input, label, select, [role="button"]')) {
+          toggle()
+        }
+      }
+    : undefined
 
   return (
     <>
-      <tr className="border-border/50 hover:bg-muted/30 border-t transition-colors">
+      <tr
+        onClick={onRowClick}
+        className={cn('border-border/50 hover:bg-muted/30 border-t transition-colors', toggle && 'cursor-pointer')}
+      >
         {expand ? (
-          <td className="w-6 py-1 pl-0.5 align-middle">
-            {detail != null ? (
+          <td className="w-6 py-1 pr-3 pl-0.5 align-middle">
+            {toggle ? (
               <button
-                onClick={() => rowId != null && expand.toggle(rowId)}
+                onClick={toggle}
                 aria-expanded={isOpen}
                 aria-label={t.toggleRowDetails}
                 className="text-muted-foreground hover:text-foreground inline-flex"

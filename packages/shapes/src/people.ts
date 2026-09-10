@@ -13,7 +13,14 @@ export type ServiceMembers = {
   rows: Record<string, unknown>[]
 }
 
-export type PersonRow = { personId: string; name: string | null; email: string | null; services: number }
+export type PersonRow = {
+  personId: string
+  name: string | null
+  email: string | null
+  services: number
+  // Every service the person has access to, alphabetical, comma-joined.
+  serviceNames: string
+}
 export type AccessRow = { personId: string; service: string; role: string | null; asOf: string | null }
 export type MergedPeople = { people: PersonRow[]; access: AccessRow[] }
 
@@ -43,7 +50,14 @@ const majorityName = (names: string[]): string | null => {
 // a row without an email stays its own entry (keyed by service + row id) so name-only rows never falsely
 // merge. Access rows carry the raw per-service role plus the report's fetch time.
 export const mergePeople = (inputs: ServiceMembers[]): MergedPeople => {
-  type Acc = { personId: string; email: string | null; names: string[]; pluginIds: Set<string>; access: AccessRow[] }
+  type Acc = {
+    personId: string
+    email: string | null
+    names: string[]
+    pluginIds: Set<string>
+    serviceNames: Set<string>
+    access: AccessRow[]
+  }
 
   const byId = new Map<string, Acc>()
 
@@ -63,7 +77,7 @@ export const mergePeople = (inputs: ServiceMembers[]): MergedPeople => {
       let acc = byId.get(personId)
 
       if (!acc) {
-        acc = { personId, email, names: [], pluginIds: new Set(), access: [] }
+        acc = { personId, email, names: [], pluginIds: new Set(), serviceNames: new Set(), access: [] }
         byId.set(personId, acc)
       }
 
@@ -72,6 +86,7 @@ export const mergePeople = (inputs: ServiceMembers[]): MergedPeople => {
       }
 
       acc.pluginIds.add(svc.pluginId)
+      acc.serviceNames.add(svc.serviceName)
       acc.access.push({ personId, service: svc.serviceName, role: str(row.role), asOf: svc.asOf ?? null })
     })
   }
@@ -81,7 +96,8 @@ export const mergePeople = (inputs: ServiceMembers[]): MergedPeople => {
     personId: a.personId,
     name: majorityName(a.names),
     email: a.email,
-    services: a.pluginIds.size
+    services: a.pluginIds.size,
+    serviceNames: [...a.serviceNames].sort((x, y) => x.localeCompare(y)).join(', ')
   }))
   const label = (p: PersonRow): string => p.name ?? p.email ?? p.personId
 
@@ -136,6 +152,9 @@ export const buildPeopleResult = (merged: MergedPeople): CapabilityResult => {
       { key: 'name', role: 'label', label: 'Name' },
       { key: 'email', role: 'identifier', label: 'Email' },
       { key: 'services', role: 'count', label: 'Services' },
+      // Truncating makes this the row's greedy column: it takes the leftover width and ellipsizes there, so the
+      // remaining columns size to their content.
+      { key: 'serviceNames', role: 'text', label: 'Access', truncate: true },
       { key: 'personId', role: 'identifier', hidden: true }
     ],
     rows: merged.people,

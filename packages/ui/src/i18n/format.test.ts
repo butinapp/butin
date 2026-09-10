@@ -6,6 +6,7 @@ import {
   DEFAULT_FORMAT_PREFS,
   formatDateTime,
   formatRelative,
+  formatTimestamp,
   moneyLocale,
   resolveMoneyLocale,
   resolveNumberLocale
@@ -52,6 +53,36 @@ test('formatDateTime honors the date preset, in the local zone', () => {
   expect(formatDateTime(local, { currencyStyle: 'match', dateFormat: 'iso' }, 'en-US')).toBe('2026-06-14 15:42')
   expect(formatDateTime(local, { currencyStyle: 'match', dateFormat: 'us' }, 'fr-CA')).toContain('2026')
   expect(formatDateTime('', DEFAULT_FORMAT_PREFS, 'en-US')).toBe('—')
+})
+
+const prefs = (dateFormat: 'locale' | 'iso' | 'us' | 'eu') => ({ currencyStyle: 'match' as const, dateFormat })
+
+test('formatTimestamp keeps a date-only value a date, in the configured preset', () => {
+  expect(formatTimestamp('2026-09-10', prefs('iso'), 'en-US')).toBe('2026-09-10')
+  expect(formatTimestamp('2026-09-10', prefs('us'), 'fr-CA')).toBe('Sep 10, 2026')
+  expect(formatTimestamp('2026-09-10', prefs('eu'), 'en-US')).toBe('10 Sept 2026')
+})
+
+test('a date-only value never shifts a day, whatever the machine zone', () => {
+  for (const preset of ['locale', 'iso', 'us', 'eu'] as const) {
+    expect(formatTimestamp('2026-09-10', prefs(preset), 'en-US')).toContain('10')
+    expect(formatTimestamp('2026-09-10', prefs(preset), 'en-US')).not.toContain('09-09')
+  }
+})
+
+test('formatTimestamp renders a value carrying a time as date + time', () => {
+  const local = new Date(2026, 5, 14, 15, 42)
+
+  expect(formatTimestamp(local.toISOString(), prefs('iso'), 'en-US')).toBe('2026-06-14 15:42')
+  expect(formatTimestamp('2026-06-14T15:42:00', prefs('iso'), 'en-US')).toBe('2026-06-14 15:42')
+  expect(formatTimestamp(local, prefs('us'), 'en-US')).toContain('2026')
+})
+
+test('formatTimestamp leaves a value that is not a date alone rather than inventing a day', () => {
+  expect(formatTimestamp('2026-06', prefs('us'), 'en-US')).toBe('2026-06')
+  expect(formatTimestamp('never', prefs('us'), 'en-US')).toBe('never')
+  expect(formatTimestamp(null, DEFAULT_FORMAT_PREFS, 'en-US')).toBe('—')
+  expect(formatTimestamp('', DEFAULT_FORMAT_PREFS, 'en-US')).toBe('—')
 })
 
 test('formatRelative picks the largest unit, localized', () => {
