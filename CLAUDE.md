@@ -465,7 +465,9 @@ fabricates the time-series so Overview trends, "what changed" movers, and per-da
   `.js`→`.ts`. The cross-package `@butinapp/sdk` (+ `/data` · `/presets` · `/integrations` · `/util` · `/testing` · `/libs`), `@butinapp/ui` (+ `/primitives` ·
   `/dashboard` · `/i18n`), and `@butinapp/shapes` (+ `/bundle`) subpath imports resolve via each package's `exports` map (+ core's tsconfig `paths`).
 - **Arrow functions** over `function` declarations. **Named exports only** (no default exports). **`type` over `interface`** for object shapes — one
-  declaration form, and it composes (unions, intersections, mapped types) where `interface` doesn't.
+  declaration form, and it composes (unions, intersections, mapped types) where `interface` doesn't. The one exception is declaration merging, which is
+  the whole mechanism of augmenting an ambient type (`declare global { interface Window }`, a library's `declare module` block) — a `type` there collides
+  with the existing declaration instead of extending it, so those stay `interface` and say why.
 - **Comments only when the WHY is non-obvious.** Wrap code/comments at **150 cols**, never hard-wrap at 70/80.
 - **Integrate, don't accrete.** Before adding code, read the enclosing function and its neighbors — an addition reads as if the file had always been this way (match
   naming, idiom, comment density). Reach for an existing helper (check the SDK subpaths: `@butinapp/sdk` for `table`/`record`/`define*`, `@butinapp/sdk/util` for

@@ -18,7 +18,7 @@ import { MergeDialog } from './MergeDialog.js'
 import { ProfileCard } from './ProfileCard.js'
 import { RecordingRow } from './RecordingRow.js'
 
-interface Run {
+type Run = {
   runId: string
   label: string
   startUrl: string
@@ -26,7 +26,7 @@ interface Run {
   requestCount: number
 }
 
-interface Props {
+type Props = {
   surface: string
   partition: string
   /** The Butin app holds this profile open, so recording it is blocked. */

@@ -17,7 +17,7 @@ const STRIPE_BILLING_ORIGIN = 'https://billing.stripe.com'
 
 // The three tokens Stripe's hosted billing portal embeds in its page markup to authorize its own API:
 // the session id (path segment), an ephemeral key (Bearer), and the connected account (stripe-account header).
-export interface StripePortalSession {
+export type StripePortalSession = {
   bps: string
   ek: string
   account: string
@@ -104,14 +104,14 @@ export const fetchStripePortalResource = async <T>(
 
 // ── Stripe wire shapes (only the fields collectors read) — money in CENTS, dates in unix seconds. ──
 
-export interface RawStripeLine {
+export type RawStripeLine = {
   amount?: number
   description?: string
   short_description?: string
   price_details?: { product?: { name?: string } }
 }
 
-export interface RawStripeInvoice {
+export type RawStripeInvoice = {
   id?: string
   number?: string
   status?: string
@@ -129,7 +129,7 @@ export interface RawStripeInvoice {
   lines?: { data?: RawStripeLine[] }
 }
 
-export interface RawStripeInvoiceList {
+export type RawStripeInvoiceList = {
   data?: RawStripeInvoice[]
   has_more?: boolean
 }

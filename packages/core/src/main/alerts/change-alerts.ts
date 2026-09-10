@@ -4,7 +4,7 @@ import type { AlertConfigDto, AlertFacet, AlertWindow, NotificationDraft } from 
 
 import { periodPair } from './windows.js'
 
-export interface SeriesInput {
+export type SeriesInput = {
   pluginId: string
   facet: AlertFacet
   currency: string

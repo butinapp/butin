@@ -30,7 +30,7 @@ const API = 'https://api.screenshotapi.net'
 // ── types ─────────────────────────────────────────────────────────────────────────
 // Raw* = the wire shapes the API returns (only the fields we read); the rest are the normalized domain types.
 
-export interface RawInvoice {
+export type RawInvoice = {
   // DOLLARS (not cents) — e.g. 99 = $99.
   amount?: number
   planName?: string
@@ -39,13 +39,13 @@ export interface RawInvoice {
   date?: string
 }
 
-export interface RawInvoicesResponse {
+export type RawInvoicesResponse = {
   success?: boolean
   invoices?: RawInvoice[]
   legacy?: boolean
 }
 
-export interface RawBillingInfo {
+export type RawBillingInfo = {
   subscriptionStatus?: string
   cardBrand?: string
   cardLastFour?: string
@@ -68,11 +68,11 @@ export interface RawBillingInfo {
   current_billing_period_count?: number
 }
 
-export interface RawBillingInfoResponse {
+export type RawBillingInfoResponse = {
   billingInfo?: RawBillingInfo
 }
 
-export interface RawSubscription {
+export type RawSubscription = {
   status?: string
   currency?: string
   // Unix seconds.
@@ -90,18 +90,18 @@ export interface RawSubscription {
   plan_name?: string
 }
 
-export interface RawSubscriptionHistory {
+export type RawSubscriptionHistory = {
   subscriptions?: RawSubscription[]
 }
 
-export interface RawUsageDay {
+export type RawUsageDay = {
   // Short label like "May 13" (no year).
   day?: string
   successful?: number
   failed?: number
 }
 
-export interface RawUsageResponse {
+export type RawUsageResponse = {
   success?: boolean
   usage?: {
     days?: RawUsageDay[]
@@ -112,7 +112,7 @@ export interface RawUsageResponse {
 }
 
 // Normalized billing report (all money in USD dollars).
-export interface ScreenshotApiInvoice {
+export type ScreenshotApiInvoice = {
   date?: string // 'YYYY-MM-DD' (buckets the monthly chart)
   status: string
   amount: number // dollars
@@ -120,7 +120,7 @@ export interface ScreenshotApiInvoice {
   hostedUrl?: string | null // the Stripe-hosted invoice page; the PDF is resolved from it at download time
 }
 
-export interface ScreenshotApiSubscription {
+export type ScreenshotApiSubscription = {
   status: string
   planName: string
   monthlyAmount: number // recurring fee, dollars
@@ -136,7 +136,7 @@ export interface ScreenshotApiSubscription {
   usedThisPeriod: number
 }
 
-export interface ScreenshotApiBillingReport {
+export type ScreenshotApiBillingReport = {
   currentMtd: number | null
   subscription: ScreenshotApiSubscription
   invoices: ScreenshotApiInvoice[] // newest-first
@@ -144,13 +144,13 @@ export interface ScreenshotApiBillingReport {
   currency: string
 }
 
-export interface ScreenshotApiUsageDay {
+export type ScreenshotApiUsageDay = {
   day: string
   successful: number
   failed: number
 }
 
-export interface ScreenshotApiUsageReport {
+export type ScreenshotApiUsageReport = {
   days: ScreenshotApiUsageDay[]
   totalSuccessfulPeriod: number
   totalFailedPeriod: number
@@ -247,7 +247,7 @@ export const buildScreenshotapiSummaryResult = (report: ScreenshotApiBillingRepo
 // subscription account record (plan, status, period, card, quota, monthly fee) + the downloadable invoice
 // history (Stripe-hosted receipts).
 
-interface BillingAccountRow {
+type BillingAccountRow = {
   plan: string
   status: string
   period: string | null
@@ -260,7 +260,7 @@ interface BillingAccountRow {
 
 // Row type for the downloadable invoices table. The PDF has no direct URL (it's resolved from `hostedUrl` at
 // download time via fetchFile), so the table downloads through the fetch source; `name` (hidden) is the filename.
-interface BillingInvoiceRow {
+type BillingInvoiceRow = {
   date: string | null
   amount: number
   status: string
@@ -340,7 +340,7 @@ export const buildScreenshotapiBillingTab = (report: ScreenshotApiBillingReport)
 
 // Summary + Billing read the same three billing endpoints; both fetch the same raw bundle and the core query
 // cache dedupes the underlying reads. fetch returns the RAW wire bundle; buildScreenshotapiBilling normalizes.
-export interface RawScreenshotapiBilling {
+export type RawScreenshotapiBilling = {
   invoices: RawInvoicesResponse | null
   info: RawBillingInfoResponse | null
   subHistory: RawSubscriptionHistory | null
@@ -396,7 +396,7 @@ export const buildScreenshotapiUsageMetrics = (report: ScreenshotApiUsageReport)
 ]
 
 // Row type for the daily screenshot breakdown table.
-interface DailyRow {
+type DailyRow = {
   day: string
   successful: number
   failed: number
@@ -427,7 +427,7 @@ export const buildScreenshotapiUsageResult = (report: ScreenshotApiUsageReport):
 }
 
 // fetch returns the RAW wire bundle; buildScreenshotapiUsage normalizes it.
-export interface RawScreenshotapiUsage {
+export type RawScreenshotapiUsage = {
   usage: RawUsageResponse | null
   info: RawBillingInfoResponse | null
 }

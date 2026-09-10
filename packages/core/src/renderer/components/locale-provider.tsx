@@ -15,7 +15,7 @@ const initialLocale = (): Locale => {
   return navigator.language.toLowerCase().startsWith('fr') ? 'fr' : 'en'
 }
 
-interface LocaleSetting {
+type LocaleSetting = {
   locale: Locale
   setLocale: (locale: Locale) => void
 }

@@ -10,12 +10,12 @@ import { logCachedRequest } from './log.js'
 // receive a shared, read-only ButinResponse on a hit; collectors only read `.data`.
 export const QUERY_CACHE_TTL_MS = 30_000
 
-interface Entry {
+type Entry = {
   at: number // ms timestamp; set at fetch start, refreshed to completion time when the promise settles
   promise: Promise<ButinResponse>
 }
 
-export interface RequestCache {
+export type RequestCache = {
   run: (
     method: string,
     url: string,

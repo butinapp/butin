@@ -52,12 +52,12 @@ const X_SDK_CLIENT =
   'eyJldmVudF9pZCI6ImV2ZW50LWlkLWVjODBhNGViLWI2MWEtNDdjNi05ZTAyLTQ3ZDQxMWNiZTcwNiIsImFwcF9zZXNzaW9uX2lkIjoiYXBwLXNlc3Npb24taWQtZWQ4MTEwZTQtYWIxNC00MTZiLTgyM2UtYjgzYzdiZGQwOGJjIiwicGVyc2lzdGVudF9pZCI6InBlcnNpc3RlbnQtaWQtN2IzMDc3MDktMWZiMi00ZTcyLTlkZTktMWVjYWRlZGZjZTY1IiwiY2xpZW50X3NlbnRfYXQiOiIyMDI2LTA2LTExVDE0OjA4OjEzLjIyOVoiLCJ0aW1lem9uZSI6IkFtZXJpY2EvTmV3X1lvcmsiLCJhcHAiOnsiaWRlbnRpZmllciI6ImNvbnNvbGUuZ3JvcS5jb20ifSwic2RrIjp7ImlkZW50aWZpZXIiOiJTdHl0Y2guanMgSmF2YXNjcmlwdCBTREsiLCJ2ZXJzaW9uIjoiNS40My4wIn19'
 
 // --- types: all Raw* wire shapes + normalized domain types (the data dictionary) ---
-interface StytchResponse {
+type StytchResponse = {
   data?: { session_jwt?: string }
   session_jwt?: string
 }
 
-export interface RawGroqInvoice {
+export type RawGroqInvoice = {
   id?: string
   file_url?: string
   created_at?: number // epoch ms
@@ -66,11 +66,11 @@ export interface RawGroqInvoice {
   total_amount_cents?: number
 }
 
-export interface RawGroqInvoiceList {
+export type RawGroqInvoiceList = {
   data?: RawGroqInvoice[]
 }
 
-export interface RawCurrentUsage {
+export type RawCurrentUsage = {
   from_datetime?: string
   to_datetime?: string
   currency?: string
@@ -78,12 +78,12 @@ export interface RawCurrentUsage {
   amount_cents?: number
 }
 
-export interface RawGroqProfile {
+export type RawGroqProfile = {
   user?: { orgs?: { data?: { id?: string; billing_plan?: string }[] } }
 }
 
 // summary + billing share these org-scoped reads; the orgId rides along so build can resolve the plan.
-export interface GroqBillingData {
+export type GroqBillingData = {
   orgId: string
   invoices: RawGroqInvoiceList
   current: RawCurrentUsage
@@ -91,7 +91,7 @@ export interface GroqBillingData {
   profile: RawGroqProfile | null
 }
 
-export interface RawActivityRow {
+export type RawActivityRow = {
   model?: string
   timestamp?: number // epoch seconds, day-bucketed
   num_requests?: number
@@ -100,18 +100,18 @@ export interface RawActivityRow {
   cost?: number // dollars (float)
 }
 
-export interface RawActivityList {
+export type RawActivityList = {
   data?: RawActivityRow[]
 }
 
 // usage's fetch bundles the activity feed with the period bounds off usage/current.
-export interface GroqUsageData {
+export type GroqUsageData = {
   activity: RawActivityList
   current: RawCurrentUsage
 }
 
 // Per-model consumption for the open period: requests, input/output tokens, dollar cost.
-interface GroqModelUsage {
+type GroqModelUsage = {
   model: string
   requests: number
   inputTokens: number
@@ -119,7 +119,7 @@ interface GroqModelUsage {
   cost: number // dollars
 }
 
-interface GroqUsage {
+type GroqUsage = {
   periodStart?: string
   periodEnd?: string
   totalRequests: number
@@ -130,7 +130,7 @@ interface GroqUsage {
   daily: TrendPoint[] // per-day cost, ascending
 }
 
-export interface RawGroqApiKey {
+export type RawGroqApiKey = {
   id?: string
   name?: string
   secret_key?: string // already masked by Groq
@@ -138,20 +138,20 @@ export interface RawGroqApiKey {
   last_use?: number // epoch ms; 0 = never used
 }
 
-export interface RawGroqApiKeyList {
+export type RawGroqApiKeyList = {
   data?: RawGroqApiKey[]
 }
 
-export interface RawGroqOrgUser {
+export type RawGroqOrgUser = {
   role?: string
   user?: { id?: string; name?: string; email?: string }
 }
 
-export interface RawGroqUsers {
+export type RawGroqUsers = {
   members?: { data?: RawGroqOrgUser[] }
 }
 
-export interface RawGroqBillingInfo {
+export type RawGroqBillingInfo = {
   name?: string
   customer_type?: string
   country?: string
@@ -294,7 +294,7 @@ export const buildGroqSummaryResult = (
 // The headline (MTD / plan / monthly chart) lives on Summary; the account block is dropped when everything
 // is blank (a fresh org).
 
-interface GroqInvoiceRow {
+type GroqInvoiceRow = {
   // Hidden — the Groq invoice id rides as the ledger key so an invoice's status/amount accumulates past the
   // fetch window (date coerces to '' when created_at is absent, so it isn't a stable identity).
   id: string
@@ -416,7 +416,7 @@ export const buildGroqUsage = (rawActivity: RawActivityList, rawCurrent: RawCurr
   }
 }
 
-interface GroqUsageTotalsRow {
+type GroqUsageTotalsRow = {
   requests: number
   inputTokens: number
   outputTokens: number
@@ -424,7 +424,7 @@ interface GroqUsageTotalsRow {
   period: string | null
 }
 
-interface GroqUsageModelRow {
+type GroqUsageModelRow = {
   model: string
   requests: number
   inputTokens: number
@@ -533,7 +533,7 @@ const fetchGroqMembers = async (ctx: CollectContext<GroqConfig>): Promise<RawGro
 
 // --- account: org billing identity (`/billing/info`) + the plan, folded into the Billing tab. ---
 
-interface GroqAccountRow {
+type GroqAccountRow = {
   plan: string | null
   name: string | null
   customerType: string | null

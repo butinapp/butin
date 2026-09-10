@@ -12,21 +12,21 @@ import { omitUndef } from '@butinapp/sdk/util'
 
 import type { StoredColumn, StoredDataset, StoredSummary } from './ledger.js'
 
-export interface ColumnPresentation {
+export type ColumnPresentation = {
   label?: string
   badges?: Record<string, BadgeTone>
   hidden?: boolean
   truncate?: boolean
 }
 
-export interface SummaryPresentation {
+export type SummaryPresentation = {
   label?: string
   spark?: { dataset: string; x: string; y: string }
 }
 
 // How to draw a capability's data. Re-derived from plugin code per render; bundled on export. Never stored
 // next to the ledger (so old data renders with today's UI).
-export interface PresentationManifest {
+export type PresentationManifest = {
   views: View[]
   columns?: Record<string, Record<string, ColumnPresentation>>
   summaries?: Record<string, SummaryPresentation>

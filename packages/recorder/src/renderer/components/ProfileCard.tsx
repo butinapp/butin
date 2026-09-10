@@ -21,7 +21,7 @@ type BadgeVariant = ComponentProps<typeof Badge>['variant']
 const confidenceBadge = (c: Confidence): BadgeVariant =>
   c === 'high' ? 'cyan' : c === 'medium' ? 'neutral' : 'outline'
 
-interface GuessRowProps<T> {
+type GuessRowProps<T> = {
   label: string
   guess: Guess<T>
   formatValue: (v: T) => string
@@ -96,7 +96,7 @@ const shortEndpoint = (e: EndpointHint): string => {
   }
 }
 
-interface Props {
+type Props = {
   profile: DomainProfile
 }
 

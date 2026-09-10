@@ -22,7 +22,8 @@ import { getRequestCache, type RequestCache } from './request-cache.js'
 // the UI re-prompts Magic Login (and drop any cached spa-bearer so the next run re-mints), then rethrow.
 // A 401 raised by a SECONDARY backend (tagged `fromBackend` by createBackendClient) is left alone: that's the
 // backend's own session, and wiping the primary would disconnect the whole service over one tab's expiry —
-// the failure just surfaces on its tab. Mirrors testConnection, which never clears for a secondary probe.
+// the failure just surfaces on its tab. A secondary backend's 401 never clears the primary session, whichever
+// path raised it.
 // A capability that tags its error `permissionDenied` is also left alone: some services return 401 for a
 // per-route authorization denial (the same session reads other routes fine), so that status is not proof the
 // session died — it surfaces as a permission error on the failing tab instead of disconnecting the service.

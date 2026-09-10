@@ -24,7 +24,7 @@ export const defaultViews = (datasets: Dataset[]): View[] => {
   return views
 }
 
-export interface PlannedView {
+export type PlannedView = {
   view: View
   dataset: Dataset
 }

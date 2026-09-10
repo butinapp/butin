@@ -56,7 +56,7 @@ const APPS = '/ember/admins/apps.json'
 // ── types: billing wire shapes (only the fields we read) ────────────────────────────────
 
 // Intercom-native invoice: `amount` is already in dollars.
-export interface RawNativeInvoice {
+export type RawNativeInvoice = {
   object?: undefined
   id?: string
   number?: string
@@ -68,7 +68,7 @@ export interface RawNativeInvoice {
 }
 
 // A raw Stripe invoice object: money in cents.
-export interface RawStripeInvoice {
+export type RawStripeInvoice = {
   object: 'invoice'
   id?: string
   number?: string
@@ -83,7 +83,7 @@ export interface RawStripeInvoice {
 
 export type RawInvoice = RawNativeInvoice | RawStripeInvoice
 
-export interface RawSubscriptionItem {
+export type RawSubscriptionItem = {
   id?: string
   quantity?: number
   total_amount?: number // cents
@@ -91,19 +91,19 @@ export interface RawSubscriptionItem {
   nickname?: string
 }
 
-export interface RawSubscriptionItemGroup {
+export type RawSubscriptionItemGroup = {
   product_name?: string
   items?: RawSubscriptionItem[]
 }
 
-export interface RawProduct {
+export type RawProduct = {
   type?: string
   id?: string
   total_amount?: number // cents
   items?: RawSubscriptionItemGroup[]
 }
 
-export interface RawSubscriptionDetails {
+export type RawSubscriptionDetails = {
   next_payment_date?: string
   current_period_start?: string
   current_period_end?: string
@@ -118,7 +118,7 @@ export interface RawSubscriptionDetails {
   intercom_account_credit?: number // cents
 }
 
-export interface RawCurrentPeriodCharges {
+export type RawCurrentPeriodCharges = {
   invoice_date?: string
   current_period_start?: string
   current_period_end?: string
@@ -130,7 +130,7 @@ export interface RawCurrentPeriodCharges {
   is_renewal_month?: boolean
 }
 
-export interface RawAppBillingDetails {
+export type RawAppBillingDetails = {
   cadence?: string
   customer_type?: string
   in_trial?: boolean
@@ -139,7 +139,7 @@ export interface RawAppBillingDetails {
 
 // ── types: normalized billing domain (DOLLARS) ──────────────────────────────────────────
 
-export interface IntercomInvoice {
+export type IntercomInvoice = {
   id: string
   number: string
   date?: string // YYYY-MM-DD
@@ -149,14 +149,14 @@ export interface IntercomInvoice {
   pdfUrl?: string | null
 }
 
-export interface IntercomProductLine {
+export type IntercomProductLine = {
   name: string // display name, e.g. 'Full seats'
   pricingMetric: string // e.g. 'core_seat_count'
   quantity: number
   totalUsd: number
 }
 
-export interface IntercomSubscription {
+export type IntercomSubscription = {
   plan: string
   planName: string
   cadence: string
@@ -174,7 +174,7 @@ export interface IntercomSubscription {
   creditUsd: number
 }
 
-export interface IntercomCurrentPeriod {
+export type IntercomCurrentPeriod = {
   invoiceDate?: string
   periodStart?: string
   periodEnd?: string
@@ -186,7 +186,7 @@ export interface IntercomCurrentPeriod {
   isRenewalMonth: boolean
 }
 
-export interface IntercomBillingReport {
+export type IntercomBillingReport = {
   subscription: IntercomSubscription
   currentPeriod: IntercomCurrentPeriod
   // Finalized invoices, newest-first.
@@ -321,7 +321,7 @@ export const buildIntercomSummaryResult = (report: IntercomBillingReport): Capab
 // subscription account record (plan, period, totals, total billed), the per-product line breakdown, and the
 // downloadable invoice history.
 
-interface BillingAccountRow {
+type BillingAccountRow = {
   plan: string
   cadence: string
   customerType: string
@@ -334,14 +334,14 @@ interface BillingAccountRow {
   totalBilled: number
 }
 
-interface ProductRow {
+type ProductRow = {
   name: string
   metric: string
   quantity: number
   total: number
 }
 
-interface BillingInvoiceRow {
+type BillingInvoiceRow = {
   date: string | null
   number: string
   amount: number
@@ -443,7 +443,7 @@ export const buildIntercomBillingTab = (report: IntercomBillingReport): Capabili
 
 type MetricMap = Record<string, number | null | undefined>
 
-export interface RawUsageStatistic {
+export type RawUsageStatistic = {
   created_at?: string
   core_seat_count?: number | null
   latest_daily_admin_count?: number | null
@@ -453,25 +453,25 @@ export interface RawUsageStatistic {
   emails_sent?: number | null
 }
 
-export interface RawUsageContract {
+export type RawUsageContract = {
   prepaid_usage?: MetricMap
   total_usage?: MetricMap
   billing_cycle_end_date?: string
 }
 
-export interface RawUsage {
+export type RawUsage = {
   contract?: RawUsageContract
   usage_statistics?: RawUsageStatistic[]
 }
 
-export interface RawPricingMetric {
+export type RawPricingMetric = {
   metric_key?: string
   metric_nickname?: string
   usage_category?: string
 }
 
 // ── types: members wire shape ──────────────────────────────────────────────────────────
-export interface RawIntercomAdmin {
+export type RawIntercomAdmin = {
   id?: string | number
   email?: string
   name?: string
@@ -483,12 +483,12 @@ export interface RawIntercomAdmin {
   is_github_bot?: boolean
   is_facebook_bot?: boolean
 }
-export interface RawIntercomAdminList {
+export type RawIntercomAdminList = {
   admins?: RawIntercomAdmin[]
 }
 
 // One workspace the session can read (GET /ember/admins/apps.json).
-export interface RawIntercomApp {
+export type RawIntercomApp = {
   id?: string
   id_code?: string
   name?: string
@@ -498,7 +498,7 @@ export interface RawIntercomApp {
 
 const num = (v?: number | null): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 
-export interface IntercomUsageMetric {
+export type IntercomUsageMetric = {
   key: string
   label: string
   usage: number // current consumption this period
@@ -506,7 +506,7 @@ export interface IntercomUsageMetric {
   category?: string
 }
 
-export interface IntercomDailyUsage {
+export type IntercomDailyUsage = {
   date: string
   coreSeats: number
   resolutions: number
@@ -515,7 +515,7 @@ export interface IntercomDailyUsage {
   emailsSent: number
 }
 
-export interface IntercomUsageReport {
+export type IntercomUsageReport = {
   periodStart?: string
   periodEnd?: string
   metrics: IntercomUsageMetric[]
@@ -631,7 +631,7 @@ const withAppId = (path: string, id: string): string => `${path}?app_id=${encode
 // Summary + Billing share the same four billing endpoints. The fetch returns the raw four-endpoint bundle;
 // each tab's pure build derives its result from it (so the demo sample renders exactly what a live fetch
 // would). Both capabilities call fetchIntercomBilling; the core query cache dedupes the underlying reads.
-export interface RawIntercomBillingBundle {
+export type RawIntercomBillingBundle = {
   invoices: RawInvoice[] | null
   subscription: RawSubscriptionDetails | null
   current: RawCurrentPeriodCharges | null
@@ -654,7 +654,7 @@ const billingReport = (raw: RawIntercomBillingBundle): IntercomBillingReport =>
   buildIntercomBilling(raw.invoices, raw.subscription, raw.current, raw.app)
 
 // The usage capability's raw bundle (the contract + the active pricing-metric list).
-export interface RawIntercomUsageBundle {
+export type RawIntercomUsageBundle = {
   usage: RawUsage | null
   metrics: RawPricingMetric[] | null
 }

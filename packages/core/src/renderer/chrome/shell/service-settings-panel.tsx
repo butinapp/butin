@@ -40,8 +40,8 @@ export type ServiceSettingsBusy = {
 export type MoveTargetProfile = { id: string; name: string }
 
 // An additional login a service needs beyond its primary session (a backend on a different host that
-// requires its own Magic Login). Structurally mirrors core's SecondarySessionDto (decoupled so @butinapp/ui
-// stays free of core). `key` is passed back to the reconnect/disconnect handlers.
+// requires its own Magic Login). Declared here rather than imported so @butinapp/ui stays free of core; it is
+// structurally compatible with the DTO core sends. `key` is passed back to the reconnect/disconnect handlers.
 export type SecondarySessionView = { key: string; label: string; connected: boolean }
 
 // One row of the data inventory: a capability + how much it holds, when it last ran, and the count of
@@ -55,8 +55,8 @@ export type ServiceInventoryRow = {
   spark?: number[]
 }
 
-// How Butin reads this service, for the "Under the hood" section. Structurally mirrors core's
-// ServiceMechanicsDto (decoupled so @butinapp/ui stays free of core).
+// How Butin reads this service, for the "Under the hood" section. Declared here rather than imported so
+// @butinapp/ui stays free of core; it is structurally compatible with the DTO core sends.
 export type ServiceMechanicsView = {
   authKind: string
   authSummary: string

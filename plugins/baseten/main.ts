@@ -191,7 +191,7 @@ const INVITED_USERS_QUERY = `query InvitedUsers {
 // ── types ─────────────────────────────────────────────────────────────────────────
 
 // billing wire shapes
-interface RawInvoice {
+type RawInvoice = {
   created?: string | null
   periodStart?: string | null
   periodEnd?: string | null
@@ -201,18 +201,18 @@ interface RawInvoice {
   status?: string | null
   pdfLink?: string | null
 }
-interface RawPaymentMethod {
+type RawPaymentMethod = {
   brand?: string | null
   last4?: string | null
   paymentMethodTitle?: string | null
   paymentMethodSubtitle?: string | null
 }
-interface RawOrgBudget {
+type RawOrgBudget = {
   organization?: {
     currentNetSpend?: { netSpendDollars?: string | null; creditsUsedDollars?: string | null } | null
   } | null
 }
-interface RawMonetaryCredits {
+type RawMonetaryCredits = {
   organization?: {
     creditGranted?: number | null
     creditBalance?: number | null
@@ -221,27 +221,27 @@ interface RawMonetaryCredits {
 }
 
 /** The four billing queries the Summary + Billing tabs share. */
-export interface BasetenBillingRaw {
+export type BasetenBillingRaw = {
   invoices: RawInvoice[]
   paymentMethod: RawPaymentMethod | null
   orgBudget: RawOrgBudget
   credits: RawMonetaryCredits
 }
 
-export interface BasetenInvoice extends BillingInvoiceInput {
+export type BasetenInvoice = BillingInvoiceInput & {
   /** Billing period start, 'YYYY-MM-DD'. */
   periodStart?: string
   /** Billing period end, 'YYYY-MM-DD'. */
   periodEnd?: string
 }
-interface BasetenPaymentMethod {
+type BasetenPaymentMethod = {
   brand: string
   last4: string
   title: string
   subtitle: string
 }
 
-export interface BasetenBillingReport {
+export type BasetenBillingReport = {
   invoices: BasetenInvoice[]
   /** Net spend in the current (in-progress) billing period, USD dollars. */
   currentNetSpend: number
@@ -258,23 +258,23 @@ export interface BasetenBillingReport {
 }
 
 // usage wire shapes
-interface RawBillingPeriod {
+type RawBillingPeriod = {
   start?: string | null
   end?: string | null
   isCurrent?: boolean | null
 }
-interface RawUsagePerDay {
+type RawUsagePerDay = {
   date?: string | null
   /** DOLLARS string. */
   cost?: string | null
   requests?: string | null
 }
-interface RawEntity {
+type RawEntity = {
   name?: string | null
   modelName?: string | null
   oracle?: { name?: string | null } | null
 }
-interface RawBillItem {
+type RawBillItem = {
   minutes?: number | null
   /** DOLLARS string. */
   cost?: string | null
@@ -283,24 +283,24 @@ interface RawBillItem {
   entity?: RawEntity | null
   billingEntity?: { instanceType?: string | null; environmentName?: string | null } | null
 }
-interface RawProductCategoryUsage {
+type RawProductCategoryUsage = {
   category?: string | null
   items?: RawBillItem[] | null
 }
-interface RawDedicatedUsage {
+type RawDedicatedUsage = {
   /** DOLLARS string. */
   currentPeriodTotal?: string | null
   productCategoryUsages?: RawProductCategoryUsage[] | null
   startDate?: string | null
   endDate?: string | null
 }
-interface RawTrainingUsage {
+type RawTrainingUsage = {
   minutes?: string | number | null
   /** DOLLARS string. */
   cost?: string | null
 }
 
-export interface RawUsageSummary {
+export type RawUsageSummary = {
   usageSummaryForDateRange?: {
     dedicatedUsage?: RawDedicatedUsage | null
     trainingUsage?: RawTrainingUsage | null
@@ -308,12 +308,12 @@ export interface RawUsageSummary {
 }
 
 /** The usage summary plus the billing period it was scoped to (discovered before the usage query). */
-export interface BasetenUsageRaw {
+export type BasetenUsageRaw = {
   usage: RawUsageSummary
   period: { start: string; end: string }
 }
 
-export interface BasetenModelUsageRow {
+export type BasetenModelUsageRow = {
   category: string
   model: string
   instanceType: string
@@ -323,14 +323,14 @@ export interface BasetenModelUsageRow {
   /** USD dollars. */
   cost: number
 }
-interface BasetenDailyCost {
+type BasetenDailyCost = {
   date: string
   /** USD dollars. */
   cost: number
   requests: number
 }
 
-export interface BasetenUsageReport {
+export type BasetenUsageReport = {
   periodStart: string
   periodEnd: string
   /** Dedicated (model-serving) spend for the period, USD dollars. */
@@ -346,19 +346,19 @@ export interface BasetenUsageReport {
 }
 
 // keys wire shape
-interface RawApiKey {
+type RawApiKey = {
   id?: string | null
   revoked?: boolean | null
 }
 
 /** Org-scoped + user-scoped key lists (the two key queries). */
-export interface BasetenKeysRaw {
+export type BasetenKeysRaw = {
   orgKeys: RawApiKey[]
   userKeys: RawApiKey[]
 }
 
 // members wire shapes
-interface RawBasetenUser {
+type RawBasetenUser = {
   id: string
   name?: string | null
   email: string
@@ -366,7 +366,7 @@ interface RawBasetenUser {
   roleName?: string | null
   status?: string | null
 }
-interface RawInvitedUser {
+type RawInvitedUser = {
   id: string
   email: string
   roleName?: string | null
@@ -374,7 +374,7 @@ interface RawInvitedUser {
 }
 
 /** The org roster plus pending invites (the two user queries). */
-export interface BasetenMembersRaw {
+export type BasetenMembersRaw = {
   users: RawBasetenUser[]
   invited: RawInvitedUser[]
 }
@@ -484,7 +484,7 @@ export const buildBasetenSummaryResult = (report: BasetenBillingReport): Capabil
 
 // Billing tab — invoice history + credits + payment card, not the Overview rollup.
 
-interface BasetenInvoiceRow {
+type BasetenInvoiceRow = {
   // Hidden — the Orb invoice id (the stable path of the invoice URL, minus its rotating token) rides as the
   // ledger key. Baseten reissues several invoices on the same period_end date with identical amounts, so
   // date/amount can't tell them apart; the invoice URL's path is each one's unique identity.
@@ -497,7 +497,7 @@ interface BasetenInvoiceRow {
   name: string
 }
 
-interface BasetenCreditsRow {
+type BasetenCreditsRow = {
   currentNetSpend: number
   currentCreditsUsed: number
   creditBalance: number
@@ -505,7 +505,7 @@ interface BasetenCreditsRow {
   paymentMethodStatus: string
 }
 
-interface BasetenPaymentMethodRow {
+type BasetenPaymentMethodRow = {
   brand: string
   last4: string
   title: string
@@ -683,7 +683,7 @@ export const buildBasetenUsageReport = (
 // The usage report → an overview record + a per-model table + a daily-cost timeseries, with a usage.primary
 // summary (period spend = dedicated + training) for the rollup.
 
-interface BasetenOverviewRow {
+type BasetenOverviewRow = {
   dedicatedTotal: number
   trainingCost: number
   totalRequests: number

@@ -4,7 +4,7 @@ import { DateTime } from 'luxon'
 
 import type { AlertWindow } from '../../shared/ipc.js'
 
-export interface PeriodPair {
+export type PeriodPair = {
   prev: number
   curr: number
   periodId: string

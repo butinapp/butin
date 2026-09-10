@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 
 import type { NotificationView } from './types.js'
 
-export interface NotificationBellProps {
+export type NotificationBellProps = {
   items: NotificationView[]
   format: (n: NotificationView) => { title: string; body: string }
   // Optional relative time per item (e.g. "2h ago"); the host supplies a localized formatter. Absent → no timestamp.

@@ -21,7 +21,7 @@ const loaders = import.meta.glob<Record<string, unknown>>('../../../../../plugin
 
 // One plugin that didn't make it into the registry: its source path + why. Surfaced to the UI (a banner)
 // so a silently-missing service is explainable instead of a console-only mystery.
-export interface PluginLoadFailure {
+export type PluginLoadFailure = {
   path: string
   reason: string
 }

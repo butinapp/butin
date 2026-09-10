@@ -83,12 +83,12 @@ const STATEMENT_KINDS: Record<string, string> = { pre_printed: 'Issued', synthes
 // ── types ─────────────────────────────────────────────────────────────────────────
 // Money arrives three ways: a bare number (accounts), `{ amount }` as a number (account details), and
 // `{ amount: '12.34', cadAmount }` (mortgage payments, category totals).
-interface WireAmount {
+type WireAmount = {
   amount?: number | string
   cadAmount?: number | null
 }
 
-export interface RawAccount {
+export type RawAccount = {
   id: string
   number?: string | null
   nickname?: string | null
@@ -101,12 +101,12 @@ export interface RawAccount {
   categorization?: { category?: string; subCategory?: string; extraSubCategory?: string | null }
 }
 
-export interface RawAccountsResponse {
+export type RawAccountsResponse = {
   accounts?: RawAccount[]
   meta?: { categories?: { id: string; balanceTotal?: WireAmount | null }[] }
 }
 
-export interface RawTransactionsResponse {
+export type RawTransactionsResponse = {
   transactions?: {
     date?: string
     transactionDescription?: string
@@ -122,7 +122,7 @@ export interface RawTransactionsResponse {
 // ("21", "20", …) that the next range query reuses, so `key` is a synthesized identity: the account, the day,
 // both amounts, the running-ledger position, and the description. Two genuinely identical same-day entries on an
 // account that reports no running balance collapse into one row — the only case this can't separate.
-export interface RawTransaction {
+export type RawTransaction = {
   key: string
   accountId: string
   account: string
@@ -134,7 +134,7 @@ export interface RawTransaction {
   status: string
 }
 
-export interface RawStatementListResponse {
+export type RawStatementListResponse = {
   eStatementLists?: {
     id?: string
     statementId?: string
@@ -144,7 +144,7 @@ export interface RawStatementListResponse {
   }[]
 }
 
-export interface RawStatement {
+export type RawStatement = {
   key: string
   accountId: string
   account: string
@@ -158,7 +158,7 @@ export interface RawStatement {
   name: string
 }
 
-export interface RawMortgageDetails {
+export type RawMortgageDetails = {
   balance?: WireAmount | null
   interestRate?: number | null
   interestRateType?: string | null
@@ -182,11 +182,11 @@ export interface RawMortgageDetails {
   }[]
 }
 
-export interface RawAccountDetailsResponse {
+export type RawAccountDetailsResponse = {
   accountDetails?: { details?: RawMortgageDetails | null }
 }
 
-export interface RawMortgagePayment {
+export type RawMortgagePayment = {
   paymentDate?: string
   principal?: WireAmount | null
   interest?: WireAmount | null
@@ -195,13 +195,13 @@ export interface RawMortgagePayment {
   totalAmount?: WireAmount | null
 }
 
-export interface RawMortgagePaymentsResponse {
+export type RawMortgagePaymentsResponse = {
   mortgagePayments?: RawMortgagePayment[]
   meta?: { hasNext?: boolean }
 }
 
 // One mortgage with everything its tab draws: the terms, the payment ledger, and the per-year statement.
-export interface RawMortgage {
+export type RawMortgage = {
   accountId: string
   account: string
   details?: RawMortgageDetails
@@ -245,14 +245,14 @@ const fetchAccounts = async (ctx: CollectContext): Promise<RawAccountsResponse> 
   ctx.client.get<RawAccountsResponse>(ACCOUNTS)
 
 // ── accounts: the holdings across every product ─────────────────────────────────────
-interface TotalsRow {
+type TotalsRow = {
   deposits: number
   investments: number
   credit: number
   net: number
 }
 
-interface AccountRow {
+type AccountRow = {
   accountId: string
   account: string
   kind: string
@@ -329,7 +329,7 @@ export const buildCibcAccounts = (res: RawAccountsResponse): CapabilityResult =>
 // The account id keys the fetch, not the row — the table names the account instead.
 type TransactionRow = Omit<RawTransaction, 'accountId'>
 
-interface FlowRow {
+type FlowRow = {
   month: string
   direction: string
   amount: number
@@ -591,7 +591,7 @@ const fetchStatementPdf = async (ctx: CollectContext, row: Record<string, unknow
 }
 
 // ── mortgages: the terms, the amortization split, and the annual statement ────────────
-interface MortgageRow {
+type MortgageRow = {
   accountId: string
   account: string
   balance: number
@@ -606,7 +606,7 @@ interface MortgageRow {
   prepaymentRoom: number
 }
 
-interface MortgagePaymentRow {
+type MortgagePaymentRow = {
   key: string
   account: string
   day: string
@@ -617,14 +617,14 @@ interface MortgagePaymentRow {
   total: number
 }
 
-interface AmortizationRow {
+type AmortizationRow = {
   key: string
   day: string
   part: string
   amount: number
 }
 
-interface AnnualRow {
+type AnnualRow = {
   key: string
   account: string
   year: string

@@ -100,30 +100,30 @@ const MONTHS_BACK = 11
 
 // The minimal Cost Explorer row shape this plugin reads — decoupled from the @aws-sdk types so the pure
 // builder is testable with plain fixtures.
-export interface CeGroup {
+export type CeGroup = {
   Keys?: string[]
   Metrics?: Record<string, { Amount?: string; Unit?: string }>
 }
-export interface CeResultByTime {
+export type CeResultByTime = {
   TimePeriod?: { Start?: string; End?: string }
   Groups?: CeGroup[]
 }
 
-export interface AwsMonthRow {
+export type AwsMonthRow = {
   month: string // 'YYYY-MM'
   amount: number
 }
-export interface AwsServiceRow {
+export type AwsServiceRow = {
   service: string
   amount: number
 }
-export interface AwsAccountRow {
+export type AwsAccountRow = {
   accountId: string
   accountName: string
   amount: number
 }
 
-export interface AwsBillingReport {
+export type AwsBillingReport = {
   currency: string
   grandTotal: number // spend across the whole window
   thisMonth: number // current (partial) month — the live MTD
@@ -135,7 +135,7 @@ export interface AwsBillingReport {
 
 // The minimal Invoicing `InvoiceSummary` shape this plugin reads — decoupled from @aws-sdk (and with the SDK's
 // `Date` fields flattened to ISO strings by `fetchInvoices`) so the pure builder is testable with plain fixtures.
-export interface RawInvoiceSummary {
+export type RawInvoiceSummary = {
   InvoiceId?: string
   InvoiceType?: string // 'INVOICE' | 'CREDIT_MEMO' | 'PAYMENT_RECEIPT'
   IssuedDate?: string // ISO
@@ -145,7 +145,7 @@ export interface RawInvoiceSummary {
   BaseCurrencyAmount?: { TotalAmount?: string; CurrencyCode?: string }
 }
 
-export interface AwsInvoiceRow {
+export type AwsInvoiceRow = {
   billingPeriod: string // 'YYYY-MM'
   invoiceId: string
   invoiceType: string
@@ -159,14 +159,14 @@ export interface AwsInvoiceRow {
 // The invoice list plus its billing currency — set only when it differs from the plugin's reported USD, so the
 // amount column can override the stamped default for a foreign-billed payer account (all of one payer's invoices
 // share one currency).
-export interface AwsInvoicesReport {
+export type AwsInvoicesReport = {
   rows: AwsInvoiceRow[]
   currency?: string
 }
 
 // The raw Cost Explorer bundle Summary + Usage share — the two grouped GetCostAndUsage result sets plus the
 // account-id→name map, straight off the wire. `buildBillingReport` folds it into a normalized report.
-export interface AwsBillingRaw {
+export type AwsBillingRaw = {
   serviceResults: CeResultByTime[]
   accountResults: CeResultByTime[]
   accountNames: Record<string, string>
@@ -265,7 +265,7 @@ export const buildBillingReport = (
 }
 
 // Stat record row type for the billing headline (thisMonth / lastMonth / grandTotal).
-interface AwsAccountStatRow {
+type AwsAccountStatRow = {
   thisMonth: number
   lastMonth: number
   grandTotal: number
@@ -407,7 +407,7 @@ export const awsUsageResult = (r: AwsBillingReport): CapabilityResult => {
 }
 
 // The minimal Identity Store user shape this plugin reads — decoupled from @aws-sdk for testability.
-export interface IdentityUserLike {
+export type IdentityUserLike = {
   UserId?: string
   UserName?: string
   DisplayName?: string
@@ -416,7 +416,7 @@ export interface IdentityUserLike {
   UserStatus?: string
 }
 
-export interface AwsMember {
+export type AwsMember = {
   id: string
   name: string | null
   email: string | null
@@ -438,7 +438,7 @@ export const mapIdentityUser = (u: IdentityUserLike): AwsMember => {
 
 // Row type for the Identity Center users table (mapped subset of AwsMember). `id` rides along as a hidden
 // row-identity field (email can be absent on a user), keying the roster so members accumulate stably.
-interface AwsMemberRow {
+type AwsMemberRow = {
   id: string
   name: string | null
   email: string | null
@@ -466,7 +466,7 @@ export const awsMembersResult = (members: AwsMember[]): CapabilityResult => {
 
 // --- AWS SDK wiring (thin; the credential resolution is the SDK's, not Butin's) -------------------
 
-interface AwsClientConfig {
+type AwsClientConfig = {
   region: string
   profile?: string
   credentials?: { accessKeyId: string; secretAccessKey: string }

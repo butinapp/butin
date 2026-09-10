@@ -55,7 +55,7 @@ export const parseAmazonDate = (text?: string): string | undefined => {
 }
 
 // One order scraped from a Your-Orders card.
-export interface AmazonOrder {
+export type AmazonOrder = {
   orderId: string
   /** 'YYYY-MM-DD' from the card's "Order placed" / "Subscription charged on" date. */
   date?: string
@@ -168,7 +168,7 @@ export const parseInvoicePopover = (html: string): string[] => {
 
 // One downloadable order row. date/total/orderId/items render; `popoverUrl` + `name` ride hidden — `popoverUrl`
 // is what the capability's fetchFile replays to resolve the invoice PDF on demand (never up front).
-interface OrderRow {
+type OrderRow = {
   date: string | null
   total: number
   orderId: string

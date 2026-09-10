@@ -5,7 +5,7 @@ import { round2 } from '@butinapp/sdk/util'
 import { groupBy, sumBy } from 'lodash-es'
 import { DateTime } from 'luxon'
 
-export interface MonthBucket {
+export type MonthBucket = {
   month: string
   amount: number
 }

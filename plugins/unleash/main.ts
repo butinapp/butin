@@ -41,7 +41,7 @@ const apiBase = (ctx: CollectContext<UnleashConfig>): string => `${BASE}/${resol
 // ── types (the data dictionary) ─────────────────────────────────────────────────────
 
 // billing — invoices carry NO raw numeric amount, only a pre-formatted string ("US $464.00").
-export interface RawUnleashInvoice {
+export type RawUnleashInvoice = {
   amountFormatted?: string
   paid?: boolean
   created?: string // ISO timestamp
@@ -49,15 +49,15 @@ export interface RawUnleashInvoice {
   invoiceURL?: string
   invoicePDF?: string
 }
-export interface RawUnleashInvoicesResponse {
+export type RawUnleashInvoicesResponse = {
   invoices?: RawUnleashInvoice[]
 }
 // Plain dollar unit-rates (already numeric): base monthly, per-seat, per-million-requests.
-export interface RawUnleashPrices {
+export type RawUnleashPrices = {
   pro?: { base?: number; seat?: number; traffic?: number }
   payg?: { seat?: number; traffic?: number }
 }
-export interface RawUnleashStatus {
+export type RawUnleashStatus = {
   plan?: string
   billing?: string
   seats?: number // purchased/active seats
@@ -66,7 +66,7 @@ export interface RawUnleashStatus {
   automaticallyPayForTraffic?: boolean
   emailDomain?: string
 }
-export interface RawUnleashAdminStats {
+export type RawUnleashAdminStats = {
   users?: number
   licensedUsers?: number
   activeUsers?: { last7?: number; last30?: number; last60?: number; last90?: number }
@@ -75,14 +75,14 @@ export interface RawUnleashAdminStats {
 // The raw bundle the Summary + Billing tabs both fetch (the four billing endpoints, the latter three
 // best-effort). `buildUnleashBilling` is the pure transform off this; the two tabs' `build` differ only in
 // which result they shape from it.
-export interface UnleashBillingRaw {
+export type UnleashBillingRaw = {
   invoices: RawUnleashInvoicesResponse | null
   prices: RawUnleashPrices | null
   status: RawUnleashStatus | null
   stats: RawUnleashAdminStats | null
 }
 
-export interface UnleashInvoice {
+export type UnleashInvoice = {
   date?: string // 'YYYY-MM-DD'
   amount: number // parsed USD dollars
   amountFormatted: string // original string, e.g. "US $464.00"
@@ -92,7 +92,7 @@ export interface UnleashInvoice {
   pdfUrl?: string
 }
 
-export interface UnleashSubscription {
+export type UnleashSubscription = {
   plan: string
   billingMode: string
   state: string
@@ -106,7 +106,7 @@ export interface UnleashSubscription {
   recurringFee: number | null
 }
 
-export interface UnleashBilling {
+export type UnleashBilling = {
   invoices: UnleashInvoice[]
   totalBilled: number
   // The recurring subscription fee accruing in the open period (USD). null when unpriceable.
@@ -115,7 +115,7 @@ export interface UnleashBilling {
 }
 
 // keys — secret looks like "<projects>:<environment>.<hash>"; we mask the hash, never returning the raw value.
-export interface RawUnleashToken {
+export type RawUnleashToken = {
   secret?: string
   tokenName?: string
   type?: string // 'client' | 'frontend' | 'admin' …
@@ -127,7 +127,7 @@ export interface RawUnleashToken {
   alias?: string | null
   seenAt?: string | null
 }
-export interface RawUnleashTokensResponse {
+export type RawUnleashTokensResponse = {
   tokens?: RawUnleashToken[]
 }
 
@@ -249,7 +249,7 @@ export const buildUnleashSummaryResult = (billingData: UnleashBilling): Capabili
 // record (plan, billing mode, seats vs included minimum, state, recurring fee, per-seat & per-traffic rates) and
 // the downloadable invoice history. Sections with no rows are dropped.
 
-interface UnleashSubscriptionRow {
+type UnleashSubscriptionRow = {
   plan: string
   billingMode: string
   state: string
@@ -259,7 +259,7 @@ interface UnleashSubscriptionRow {
   autoPayTraffic: string
 }
 
-interface UnleashInvoiceRow {
+type UnleashInvoiceRow = {
   date: string | null
   amount: number
   status: string
@@ -408,7 +408,7 @@ const fetchUnleashKeys = (ctx: CollectContext<UnleashConfig>): Promise<RawUnleas
 // (no separate data-plane token needed). It returns the instance roster under `users`. rootRole is the
 // numeric root-role id (1 Admin / 2 Editor / 3 Viewer); newer builds also carry a human `rootRoleName`,
 // preferred when present so we don't hardcode the id→name map.
-export interface RawUnleashRosterUser {
+export type RawUnleashRosterUser = {
   id?: number | string
   name?: string | null
   username?: string | null
@@ -417,7 +417,7 @@ export interface RawUnleashRosterUser {
   roleId?: number | null
   rootRoleName?: string | null
 }
-export interface RawUnleashRosterResponse {
+export type RawUnleashRosterResponse = {
   users?: RawUnleashRosterUser[]
 }
 

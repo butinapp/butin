@@ -6,7 +6,7 @@ import type { DomainSummary } from '../../main/ipc.js'
 
 import { NewRecordingDialog } from './NewRecordingDialog.js'
 
-interface Props {
+type Props = {
   /** The selected profile's browser partition — the scope for this list. */
   partition: string
   selected: string | undefined

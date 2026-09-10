@@ -1,6 +1,6 @@
 import type { DevCookieDto } from '../../../shared/ipc.js'
 
-export interface CookieGroup {
+export type CookieGroup = {
   domain: string
   cookies: DevCookieDto[]
   count: number

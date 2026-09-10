@@ -49,19 +49,19 @@ const query = (params: Record<string, string | number>): string =>
 
 // --- raw front-API shapes (only the fields we use) ---
 
-interface RawPrice {
+type RawPrice = {
   type?: 'licensed' | 'metered'
   billableItemSlug?: string
   quantity?: number
   maxQuantity?: number
 }
 
-interface RawProduct {
+type RawProduct = {
   slug?: string
   prices?: RawPrice[]
 }
 
-interface RawBillingAddress {
+type RawBillingAddress = {
   line1?: string
   line2?: string
   city?: string
@@ -70,27 +70,27 @@ interface RawBillingAddress {
   postalCode?: string
 }
 
-export interface RawSubscription {
+export type RawSubscription = {
   plan?: string
   account?: { billingName?: string; billingAddress?: RawBillingAddress; createdAt?: number; stripeCustomerId?: string }
   payment?: { status?: string; openInvoices?: unknown[] }
   products?: RawProduct[]
 }
 
-interface RawUsageProject {
+type RawUsageProject = {
   id?: string
   name?: string
   value?: number // dollars
   percent?: number // 0..1
 }
 
-export interface RawUsageSummary {
+export type RawUsageSummary = {
   data?: { onDemandCharges?: number; usage?: RawUsageProject[] }
   plan?: string
   cycle?: { start?: number; end?: number } // epoch ms
 }
 
-interface RawCard {
+type RawCard = {
   brand?: string
   display_brand?: string
   last4?: string
@@ -98,23 +98,23 @@ interface RawCard {
   exp_year?: number
 }
 
-interface RawPaymentSource {
+type RawPaymentSource = {
   id?: string
   card?: RawCard
   billing_details?: { email?: string | null }
 }
 
-export interface RawPaymentMethods {
+export type RawPaymentMethods = {
   defaultSource?: string
   sources?: RawPaymentSource[]
 }
 
-interface RawGroup {
+type RawGroup = {
   id?: string
   total?: string
 }
 
-interface RawInvoice {
+type RawInvoice = {
   id?: string
   invoiceNumber?: string
   status?: string
@@ -126,11 +126,11 @@ interface RawInvoice {
   groups?: RawGroup[]
 }
 
-export interface RawInvoiceList {
+export type RawInvoiceList = {
   data?: RawInvoice[]
 }
 
-interface RawMember {
+type RawMember = {
   uid?: string
   email?: string
   role?: string
@@ -138,7 +138,7 @@ interface RawMember {
   username?: string
 }
 
-export interface RawMembersList {
+export type RawMembersList = {
   members?: RawMember[]
 }
 
@@ -180,7 +180,7 @@ const pickPaymentMethod = (
   }
 }
 
-export interface VercelLicensedItem {
+export type VercelLicensedItem = {
   slug: string
   quantity: number
   maxQuantity: number | null
@@ -213,7 +213,7 @@ const buildLicensedItems = (subscription: RawSubscription): { items: VercelLicen
   return { items, teamSeats }
 }
 
-export interface VercelBillingInputs {
+export type VercelBillingInputs = {
   subscription: RawSubscription
   usage?: RawUsageSummary | null
   payment?: RawPaymentMethods | null
@@ -251,20 +251,20 @@ export const buildMonthly = (invoices: RawInvoice[]): MonthPoint[] => {
 // skips Vercel rather than reading a misleading 0. The enterprise licensed/committed base fee is NOT
 // exposed as a dollar amount anywhere in the front API, so MTD reflects only the variable spend that accrues.
 
-export interface VercelSummaryInputs {
+export type VercelSummaryInputs = {
   subscription: RawSubscription
   usage?: RawUsageSummary | null
   invoices?: RawInvoiceList | null
 }
 
-interface VercelAccountRow {
+type VercelAccountRow = {
   currentMtd: number | null
   plan: string
   teamSeats: number
   invoiceCount: number | null
 }
 
-interface VercelTopProjectRow {
+type VercelTopProjectRow = {
   name: string
   value: number
   percent: number
@@ -354,14 +354,7 @@ export const buildVercelSummaryResult = (inputs: VercelSummaryInputs): Capabilit
 // line items. The two keyvalue panels (account details + payment method) are ordered adjacently so the
 // renderer's 2-column grid pairs them side by side.
 
-export interface VercelBillingInputs {
-  subscription: RawSubscription
-  usage?: RawUsageSummary | null
-  payment?: RawPaymentMethods | null
-  invoices?: RawInvoiceList | null
-}
-
-interface VercelInvoiceRow {
+type VercelInvoiceRow = {
   // The invoice number — hidden, the ledger key so an invoice accumulates its status/amount past the fetch window.
   invoiceNumber: string
   date: string | null
@@ -372,7 +365,7 @@ interface VercelInvoiceRow {
   name: string
 }
 
-interface VercelDetailsRow {
+type VercelDetailsRow = {
   billingName: string | null
   billingEmail: string | null
   address: string | null
@@ -382,13 +375,13 @@ interface VercelDetailsRow {
   cycle: string | null
 }
 
-interface VercelPaymentMethodRow {
+type VercelPaymentMethodRow = {
   brand: string
   last4: string | null
   expiry: string | null
 }
 
-interface VercelLicensedRow {
+type VercelLicensedRow = {
   slug: string
   quantity: number
   maxQuantity: number | null
@@ -500,7 +493,7 @@ export const buildVercelBillingResult = (inputs: VercelBillingInputs): Capabilit
 // needs payment). Both collects call loadVercelData; the core query cache dedupes the underlying reads
 // (keyed by team id via the call site). Subscription is load-bearing; the rest are best-effort (a failing
 // one degrades its section rather than blanking the tab).
-export interface VercelData {
+export type VercelData = {
   subscription: RawSubscription
   usage: RawUsageSummary | null
   payment: RawPaymentMethods | null

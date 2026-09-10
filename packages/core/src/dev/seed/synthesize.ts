@@ -25,7 +25,7 @@ import { backfillMonthlySeries, type EvolveOptions, evolveObservations } from '.
 // widest setting (the 24-months column option) instead of pocked with holes where a service's sample was short.
 const DENSE_MONTHS = 24
 
-export interface CurrentData {
+export type CurrentData = {
   datasets: StoredDataset[]
   summaries: StoredSummary[]
   manifest: PresentationManifest

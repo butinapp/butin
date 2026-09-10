@@ -57,7 +57,7 @@ const qs = (params: Record<string, string | number>): string => {
 // A scoped client over one enterprise's billing dashboard. `getHtml` is cookie-only (document
 // navigations); `getJson` lazily scrapes the verified-fetch nonce once (shared across every JSON call
 // in this collect) and attaches it. The cookie itself is applied by core's auth layer.
-export interface Dashboard {
+export type Dashboard = {
   slug: string
   billingBase: string
   licensingPath: string

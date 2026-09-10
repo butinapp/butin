@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 // optional connection test. This is the onboarding surface for `external`/api-key plugins that have no
 // Magic Login. Secret fields render as password inputs and seed blank (a blank secret means "leave the
 // stored value as-is"); `select` fields render as a dropdown and can gate other fields via `showWhen`.
-export interface PluginConfigFormProps {
+export type PluginConfigFormProps = {
   fields: ConfigFieldView[]
   // Current non-secret values to prefill; secrets are always blank.
   values?: Record<string, string>

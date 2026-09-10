@@ -61,7 +61,7 @@ const AUTH_SERVICE = 'auth_mgmt.AuthManagement'
 // No explicit invoice-total field exists — the total is the sum of each invoice's per-model/per-usage line
 // items. Money is CENTS here (line-item #6 + the spending-limit values), unlike the usage buckets below.
 
-export interface XaiLineItem {
+export type XaiLineItem = {
   region?: string
   model?: string // e.g. 'Chat grok-4.3'
   usageType?: string // e.g. 'Completion text tokens'
@@ -69,7 +69,7 @@ export interface XaiLineItem {
   cost: number // dollars
 }
 
-export interface XaiInvoice {
+export type XaiInvoice = {
   date?: string // billing month 'YYYY-MM-01'
   number?: string // human invoice number, e.g. 'YUEZ-NHMC-G645'
   status: string
@@ -78,12 +78,12 @@ export interface XaiInvoice {
   hostedUrl?: string // deep link to the console invoice detail page (where the PDF download lives)
 }
 
-export interface XaiModelSpend {
+export type XaiModelSpend = {
   label: string // '<model> · <usageType>'
   cost: number
 }
 
-export interface XaiBillingReport {
+export type XaiBillingReport = {
   invoices: XaiInvoice[]
   totalBilled: number
   currentPeriodAccrued: number // current unbilled period (GetAmountToPay), dollars
@@ -187,7 +187,7 @@ export const buildBillingReport = (
 export const billingEmail = (resp: ProtoMessage): string | undefined =>
   getString(getMessage(resp, 10) ?? new Map(), 30) || undefined
 
-interface TopModelRow {
+type TopModelRow = {
   label: string
   cost: number
 }
@@ -248,14 +248,14 @@ const USAGE_METRICS = ['usd', 'items', 'units'] as const
 const USAGE_DAILY = 3
 const USAGE_WINDOW_DAYS = 30
 
-export interface XaiUsageDay {
+export type XaiUsageDay = {
   date: string
   cost: number
   requests: number
   units: number
 }
 
-export interface XaiUsageReport {
+export type XaiUsageReport = {
   days: XaiUsageDay[]
   totalCost: number
   totalRequests: number
@@ -299,7 +299,7 @@ export const buildXaiUsageResult = (report: XaiUsageReport): CapabilityResult =>
     dailyTitle: 'Daily spend'
   })
 
-export interface RawXaiUsage {
+export type RawXaiUsage = {
   usage: ProtoMessage
 }
 
@@ -348,7 +348,7 @@ const fetchXaiUsage = async (ctx: CollectContext<XaiConfig>): Promise<RawXaiUsag
 // The product ids the console asks for on its Team-members page.
 const SEAT_PRODUCT_IDS = ['prd_V6Gd', 'prd_UCd6']
 
-export interface XaiMember {
+export type XaiMember = {
   id: string
   name?: string
   email?: string
@@ -381,7 +381,7 @@ export const buildMembersReport = (responses: ProtoMessage[]): XaiMember[] => {
 
 export const buildXaiMembersResult = (list: XaiMember[]): CapabilityResult => members.result({ members: list })
 
-export interface RawXaiMembers {
+export type RawXaiMembers = {
   assignments: ProtoMessage[]
 }
 
@@ -477,7 +477,7 @@ export const findFlightMessage = <T>(flight: string, typeName: string): T | unde
 const flightSeconds = (value?: string): number | undefined => (value ? Number(value.replace(/^\$n/, '')) : undefined)
 
 // One key as the page carries it. The console only ever renders the masked 'xai-…suffix' hint, never the secret.
-export interface RawXaiApiKey {
+export type RawXaiApiKey = {
   redactedApiKey?: string
   name?: string
   userId?: string
@@ -487,7 +487,7 @@ export interface RawXaiApiKey {
   createTime?: { seconds?: string }
 }
 
-export interface XaiApiKey {
+export type XaiApiKey = {
   id: string
   name: string
   keyHint: string // masked hint, e.g. 'xai-…jJaR'
@@ -498,7 +498,7 @@ export interface XaiApiKey {
   disabled: boolean
 }
 
-export interface XaiKeysReport {
+export type XaiKeysReport = {
   keys: XaiApiKey[]
   totalKeys: number
 }
@@ -527,7 +527,7 @@ export const buildKeysReport = (raw: RawXaiKeys): XaiKeysReport => {
   return { keys, totalKeys: keys.length }
 }
 
-interface KeyDetailRow {
+type KeyDetailRow = {
   // The key id — hidden, the ledger key so each key's creator/scope history accumulates past the fetch window.
   id: string
   name: string
@@ -664,7 +664,7 @@ const readOptional = async (
 
 // The billing RPC responses, decoded, plus the team id (needed to build invoice detail URLs). This is the RAW
 // wire-decoded shape the build half transforms — sample.ts synthesizes one via the encoder.
-export interface RawXaiBilling {
+export type RawXaiBilling = {
   invoices: ProtoMessage
   amountToPay: ProtoMessage
   spendingLimits: ProtoMessage
@@ -691,7 +691,7 @@ const fetchXaiBilling = async (ctx: CollectContext<XaiConfig>): Promise<RawXaiBi
 }
 
 // The ListApiKeys response, decoded — the raw wire shape the build half transforms.
-export interface RawXaiKeys {
+export type RawXaiKeys = {
   keys: RawXaiApiKey[]
   // The roster the key's `userId` resolves against — the page names the creator by id only.
   members: XaiMember[]

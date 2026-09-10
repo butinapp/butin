@@ -11,7 +11,7 @@ import type { RawAccount, RawAccountsResponse, RawMortgage, RawStatement, RawTra
 // generator below — each seeded on its own capability — labels the same account the same way.
 const identity = createSampleGen('cibc:accounts')
 
-interface DemoAccount {
+type DemoAccount = {
   id: string
   kind: string
   number: string

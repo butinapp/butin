@@ -43,7 +43,7 @@ const BILLING_PATHS = ['/billing', '/billing/payment', '/billing/credits']
 // ── types (the data dictionary) ──────────────────────────────────────────────────────
 
 // billing
-export interface RawCerebrasInvoice {
+export type RawCerebrasInvoice = {
   created?: number // epoch seconds
   status?: string
   total?: number // cents — the dashboard figure (NOT amount_paid)
@@ -53,21 +53,21 @@ export interface RawCerebrasInvoice {
   hosted_invoice_url?: string | null
   invoice_pdf?: string | null // direct PDF (the download source); hosted_invoice_url is the Stripe-hosted page
 }
-export interface RawLineItem {
+export type RawLineItem = {
   amount?: number // cents
   description?: string
 }
-export interface RawCreditBalance {
+export type RawCreditBalance = {
   available?: number
   ledger?: number
 } // cents
-export interface RawCustomer {
+export type RawCustomer = {
   balance?: number // cents
   email?: string
   delinquent?: boolean
   currency?: string
 }
-export interface RawCreditGrant {
+export type RawCreditGrant = {
   name?: string
   category?: string
   amount?: number // cents — granted
@@ -77,7 +77,7 @@ export interface RawCreditGrant {
   expires_at?: number | null // epoch seconds
 }
 
-export interface CerebrasInvoice {
+export type CerebrasInvoice = {
   date?: string
   number?: string
   status: string
@@ -85,7 +85,7 @@ export interface CerebrasInvoice {
   hostedUrl?: string | null
   pdfUrl?: string | null
 }
-export interface CerebrasCreditGrant {
+export type CerebrasCreditGrant = {
   name: string
   category: string
   granted: number
@@ -93,7 +93,7 @@ export interface CerebrasCreditGrant {
   effective?: string
   expires?: string
 }
-export interface CerebrasBilling {
+export type CerebrasBilling = {
   invoices: CerebrasInvoice[]
   currentSpend: number
   currentBreakdown: Array<{ label: string; amount: number }>
@@ -109,7 +109,7 @@ export interface CerebrasBilling {
 
 // The raw billing wire bundle a capability's fetch returns: the five server-action payloads buildCerebrasBilling
 // composes. Summary + Billing both fetch this; the query cache dedupes the underlying chunk GETs + action POSTs.
-export interface CerebrasBillingRaw {
+export type CerebrasBillingRaw = {
   invoices: RawCerebrasInvoice[] | null
   upcoming: RawLineItem[] | null
   balance: RawCreditBalance | null
@@ -121,7 +121,7 @@ const billingFromRaw = (raw: CerebrasBillingRaw): CerebrasBilling =>
   buildCerebrasBilling(raw.invoices, raw.upcoming, raw.balance, raw.customer, raw.grants)
 
 // keys
-export interface RawCerebrasApiKey {
+export type RawCerebrasApiKey = {
   id?: string
   name?: string
   secretKey?: string
@@ -133,29 +133,29 @@ export interface RawCerebrasApiKey {
 }
 
 // members
-export interface RawCerebrasMember {
+export type RawCerebrasMember = {
   user?: { id?: string; name?: string; email?: string }
   role?: string
 }
 
 // usage
-export interface RawModel {
+export type RawModel = {
   id?: string
   name?: string
   deprecated?: boolean
 }
-export interface RawQuota {
+export type RawQuota = {
   modelId?: string
   requestsPerMinute?: string
   tokensPerMinute?: string
   requestsPerDay?: string
   maxCompletionTokens?: string
 }
-export interface RawGraphPoint {
+export type RawGraphPoint = {
   timeWindow?: string
   requestCount?: number
 }
-export interface CerebrasModelQuota {
+export type CerebrasModelQuota = {
   modelId: string
   name: string
   rpm: number
@@ -163,7 +163,7 @@ export interface CerebrasModelQuota {
   rpd: number
   maxCompletion: number
 }
-export interface CerebrasUsage {
+export type CerebrasUsage = {
   totalRequests: number
   daily: Array<{ date: string; requests: number }>
   models: CerebrasModelQuota[]
@@ -192,13 +192,13 @@ const billingUrl = (org: string, path = '/billing'): string => `${ORIGIN}/platfo
 // tree (no result) rather than the action's return value — a silent empty. So each action is POSTed to the
 // billing sub-route whose chunk declared it (`getCustomerBillingId` on /billing, `listCustomerInvoices` on
 // /billing/payment, `listCreditGrantHistory` on /billing/credits, …), captured alongside its hash at discovery.
-interface ActionRoute {
+type ActionRoute = {
   url: string
   tree: string
 }
 
 // A discovered action: its rotating per-deploy id (`hash`) and the billing sub-route that registers it (`path`).
-interface ActionEntry {
+type ActionEntry = {
   hash: string
   path: string
 }
@@ -555,16 +555,16 @@ export const buildCerebrasSummaryResult = (billingData: CerebrasBilling): Capabi
 
 // Billing tab — the financial detail (no chart, no spend headline; Summary owns those): the account/credits
 // records, the accrued line-item breakdown, the credit-grant ledger, and the downloadable invoice history.
-interface AccountRow {
+type AccountRow = {
   email: string | null
   balance: number
   status: string
 }
-interface LineItemRow {
+type LineItemRow = {
   label: string
   amount: number
 }
-interface GrantRow {
+type GrantRow = {
   name: string
   category: string
   granted: number
@@ -572,7 +572,7 @@ interface GrantRow {
   effective: string | null
   expires: string | null
 }
-interface InvoiceRow {
+type InvoiceRow = {
   date: string | null
   number: string
   amount: number
@@ -861,12 +861,12 @@ export const buildCerebrasUsage = (
   }
 }
 
-interface CerebrasDailyRow {
+type CerebrasDailyRow = {
   date: string | null
   requests: number
 }
 
-interface CerebrasQuotaRow {
+type CerebrasQuotaRow = {
   name: string | null
   rpm: number
   tpm: number
@@ -942,7 +942,7 @@ const ids = (arr: Array<{ id?: string }> | undefined): string[] =>
 
 // The raw usage wire bundle: request-volume + per-model quotas + the model catalog + the resolved window, the
 // inputs buildCerebrasUsage composes.
-export interface CerebrasUsageRaw {
+export type CerebrasUsageRaw = {
   totalRequests: number
   graph: RawGraphPoint[]
   quotas: RawQuota[] | null

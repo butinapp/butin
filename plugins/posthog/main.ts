@@ -51,13 +51,13 @@ const trailingWindow = (days = 30): { start: string; end: string } => ({ start: 
 // The Stripe billing-portal invoice/list shapes (RawStripeInvoice / RawStripeInvoiceList) come from
 // @butinapp/sdk — money in CENTS, timestamps in unix seconds.
 
-interface RawBillingPeriod {
+type RawBillingPeriod = {
   current_period_start?: string
   current_period_end?: string
   interval?: string
 }
 
-export interface RawProduct {
+export type RawProduct = {
   type?: string
   name?: string
   subscribed?: boolean
@@ -71,7 +71,7 @@ export interface RawProduct {
   unit?: string | null
 }
 
-export interface RawBilling {
+export type RawBilling = {
   billing_plan?: string | null
   subscription_level?: string
   has_active_subscription?: boolean
@@ -88,20 +88,20 @@ export interface RawBilling {
   stripe_portal_url?: string | null
 }
 
-interface RawBreakdownSeries {
+type RawBreakdownSeries = {
   id?: number
   label?: string
   data?: number[]
   dates?: string[]
 }
 
-export interface RawBreakdowns {
+export type RawBreakdowns = {
   results?: RawBreakdownSeries[]
 }
 
 // The raw bundle the billing fetch returns (Summary + Billing share it): the billing payload + the
 // trailing-window spend breakdown + the Stripe-portal invoice history.
-export interface PosthogBillingRaw {
+export type PosthogBillingRaw = {
   billing: RawBilling
   spend: RawBreakdowns
   stripeInvoices: RawStripeInvoiceList
@@ -109,14 +109,14 @@ export interface PosthogBillingRaw {
 
 // The raw bundle the usage fetch returns: the billing payload (for per-product usage vs limit) + the
 // trailing-window usage breakdown.
-export interface PosthogUsageRaw {
+export type PosthogUsageRaw = {
   billing: RawBilling
   usage: RawBreakdowns
 }
 
 // ── normalized domain types ───────────────────────────────────────────────────────────
 
-export interface PosthogProductSpend {
+export type PosthogProductSpend = {
   type: string
   name: string
   subscribed: boolean
@@ -125,19 +125,19 @@ export interface PosthogProductSpend {
 }
 
 // A timeseries ready for a stacked chart: one date axis, one series per product.
-export interface PosthogTimeseries {
+export type PosthogTimeseries = {
   dates: string[]
   series: Array<{ label: string; data: number[] }>
 }
 
-export interface PosthogInvoice extends BillingInvoiceInput {
+export type PosthogInvoice = BillingInvoiceInput & {
   date?: string
   status: string
   amount: number
   hostedUrl?: string
 }
 
-export interface PosthogBillingReport {
+export type PosthogBillingReport = {
   plan?: string
   subscriptionLevel?: string
   hasActiveSubscription: boolean
@@ -164,7 +164,7 @@ export interface PosthogBillingReport {
   portalUrl?: string
 }
 
-export interface PosthogUsageProduct {
+export type PosthogUsageProduct = {
   type: string
   name: string
   currentUsage: number
@@ -175,7 +175,7 @@ export interface PosthogUsageProduct {
   unit?: string
 }
 
-export interface PosthogUsageReport {
+export type PosthogUsageReport = {
   period: { start?: string; end?: string; interval?: string }
   products: PosthogUsageProduct[]
   usage: PosthogTimeseries
@@ -269,7 +269,7 @@ export const buildBillingReport = (
 // cross-service spend.mtd summary) feeding off the Stripe-portal invoices, plus extra headline stats (plan,
 // subscription, projected period spend) and a per-product current/projected-spend table.
 export const buildPosthogSummaryResult = (report: PosthogBillingReport): CapabilityResult => {
-  interface ProductRow {
+  type ProductRow = {
     name: string
     currentAmount: number
     projectedAmount: number
@@ -315,7 +315,7 @@ export const buildPosthogSummaryResult = (report: PosthogBillingReport): Capabil
 // ── billing tab (the detail: subscription record + downloadable invoice history) ──
 
 // The subscription record row.
-interface PosthogAccountRow {
+type PosthogAccountRow = {
   plan: string | null
   subscription: string | null
   period: string | null
@@ -325,7 +325,7 @@ interface PosthogAccountRow {
 
 // The invoices table row. `name` rides hidden (names each downloaded file); `hostedUrl` is the per-row source
 // the fetchFile hook resolves into a PDF.
-interface PosthogInvoiceRow {
+type PosthogInvoiceRow = {
   date: string | null
   amount: number
   status: string
@@ -490,7 +490,7 @@ export const buildPosthogUsageResult = (report: PosthogUsageReport): CapabilityR
   }
 
   // Dynamic columns keyed by series label — cast via `never` because Row is open-ended.
-  interface DailyRow {
+  type DailyRow = {
     date: string
     [series: string]: string | number
   }
@@ -539,19 +539,19 @@ const LEVEL_TO_ROLE: Record<number, string> = { 1: 'member', 8: 'admin', 15: 'ow
 // Raw org-members wire shape — only the fields we read. The same dashboard SESSION cookie that reaches
 // /api/billing/ also reaches GET /api/organizations/@current/members/ (Django session auth, no personal
 // API key needed). The endpoint is paginated ({ results, next, ... }); we read the first page only.
-interface RawMemberUser {
+type RawMemberUser = {
   uuid?: string
   first_name?: string
   last_name?: string
   email?: string
 }
 
-interface RawMember {
+type RawMember = {
   level?: number
   user?: RawMemberUser
 }
 
-export interface RawMembersList {
+export type RawMembersList = {
   results?: RawMember[]
 }
 

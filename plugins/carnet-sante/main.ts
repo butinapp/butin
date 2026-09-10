@@ -173,7 +173,7 @@ export const buildProfileResult = (p: CleanProfile): CapabilityResult =>
 // Typed shape of the /Citoyens bundle a profile fetch returns — a loose superset of what normalizeProfile's
 // zod schemas accept, so a sample can be authored against it. The connected-user object is the bare /Citoyens
 // call; the rest are best-effort sub-resources.
-export interface ProfileRawBundle extends ProfileRaw {
+export type ProfileRawBundle = ProfileRaw & {
   citoyen: RawCitoyen
 }
 
@@ -199,7 +199,7 @@ const fetchProfile = async (ctx: CollectContext): Promise<ProfileRawBundle> => {
 
 // --- medications ---------------------------------------------------------------------------------
 
-interface MedicationRow {
+type MedicationRow = {
   prescribedAt: string
   drugName: string
   din: string
@@ -337,7 +337,7 @@ const fetchMedicalServices = async (ctx: CollectContext): Promise<RawMedicalServ
 // (base64-inline via /Rapports) through the capability's fetchFile, named/located by the hidden
 // name/itemId/citizenId fields. The analysis values live only in the PDF — the API exposes no structured
 // lab data — so the table is the index + the PDFs are the content.
-interface LabRow {
+type LabRow = {
   date: string
   prescriber: string
   status: string
@@ -384,7 +384,7 @@ export const buildLabsResult = (list: Record<string, unknown>[], citizenId: stri
 
 // The labs build takes the flattened Prelevements list + the citizenId (carried onto each row for fetchFile),
 // so a fetch returns both. normalizeLabs is the table builder itself (buildLabsResult); the list is loose.
-export interface RawLabList {
+export type RawLabList = {
   citizenId: string
   list: Record<string, unknown>[]
 }
@@ -429,7 +429,7 @@ const fetchLabFile = async (ctx: CollectContext, row: Record<string, unknown>): 
 
 // The ExamensImagerie LIST → a DOWNLOADABLE table: each row's imaging-report PDF is fetched on demand
 // (DetailRapport → reportId → Rapport) through the capability's fetchFile.
-interface ImagingRow {
+type ImagingRow = {
   date: string
   description: string
   prescriber: string
@@ -479,7 +479,7 @@ export const buildImagingResult = (list: Record<string, unknown>[], citizenId: s
   })
 
 // The imaging build takes the ExamensImagerie list + the citizenId (carried onto each row for fetchFile).
-export interface RawImagingList {
+export type RawImagingList = {
   citizenId: string
   list: Record<string, unknown>[]
 }
@@ -511,7 +511,7 @@ const fetchImagingFile = async (ctx: CollectContext, row: Record<string, unknown
 
 // --- access journal ------------------------------------------------------------------------------
 
-interface AccessRow {
+type AccessRow = {
   date: string
   time: string
   person: string

@@ -25,7 +25,7 @@ const BASE_URL = 'https://app.infisical.com'
 
 // ── types: Raw* wire shapes + normalized domain types (the data dictionary) ────────────
 
-interface RawInvoice {
+type RawInvoice = {
   id?: string
   _id?: string
   created?: number // unix seconds
@@ -35,7 +35,7 @@ interface RawInvoice {
   total?: number // grand total, CENTS
 }
 
-interface RawPlanBilling {
+type RawPlanBilling = {
   currentPeriodStart?: number // unix seconds
   currentPeriodEnd?: number // unix seconds
   interval?: string
@@ -45,16 +45,16 @@ interface RawPlanBilling {
   identities?: number
 }
 
-interface RawPlanWrapper {
+type RawPlanWrapper = {
   plan?: { slug?: string; status?: string }
 }
 
-interface RawBillingDetails {
+type RawBillingDetails = {
   email?: string
   name?: string
 }
 
-interface RawPaymentMethod {
+type RawPaymentMethod = {
   brand?: string
   funding?: string
   exp_month?: number
@@ -62,7 +62,7 @@ interface RawPaymentMethod {
   last4?: string
 }
 
-export interface InfisicalBillingInput {
+export type InfisicalBillingInput = {
   invoices: RawInvoice[]
   planBilling?: RawPlanBilling
   plan?: RawPlanWrapper
@@ -70,7 +70,7 @@ export interface InfisicalBillingInput {
   paymentMethods?: RawPaymentMethod[]
 }
 
-interface RawUsagePlan {
+type RawUsagePlan = {
   plan?: {
     slug?: string
     status?: string
@@ -85,17 +85,17 @@ interface RawUsagePlan {
 // product-stats: each product group is a record of `<thing>Count` numbers.
 type RawProductStats = Record<string, Record<string, number> | undefined>
 
-interface RawPlanTableRow {
+type RawPlanTableRow = {
   name?: string
   allowed?: boolean
   used?: string // display string, e.g. "29" or "-"
 }
 
-interface RawPlanTable {
+type RawPlanTable = {
   rows?: RawPlanTableRow[]
 }
 
-export interface InfisicalUsageInput {
+export type InfisicalUsageInput = {
   plan?: RawUsagePlan
   productStats?: RawProductStats
   planTable?: RawPlanTable
@@ -105,7 +105,7 @@ export interface InfisicalUsageInput {
 // The token response carries no body refresh token — the rotated `jid` arrives in Set-Cookie, so we read
 // response headers via client.request (client.post only returns the body) and patch the stored cookie.
 
-interface TokenResponse {
+type TokenResponse = {
   token?: string
 }
 
@@ -198,7 +198,7 @@ const orgIdOf = (ctx: CollectContext<InfisicalConfig>): string => {
 
 // ── billing: Stripe-backed invoice history + current subscription + contact + card ──────
 
-export interface InfisicalSubscription {
+export type InfisicalSubscription = {
   planSlug: string
   status: string
   interval: string
@@ -211,12 +211,12 @@ export interface InfisicalSubscription {
   currentPeriodEnd?: string
 }
 
-export interface InfisicalInvoice extends BillingInvoiceInput {
+export type InfisicalInvoice = BillingInvoiceInput & {
   id: string
   number: string
 }
 
-export interface InfisicalBillingReport {
+export type InfisicalBillingReport = {
   subscription: InfisicalSubscription
   invoices: InfisicalInvoice[]
   contact: { name: string; email: string }
@@ -302,7 +302,7 @@ export const buildInfisicalSummary = (input: InfisicalBillingInput): CapabilityR
 // The Billing tab: the subscription record, the downloadable invoice table (each row's Stripe PDF), the
 // billing contact + the card on file. The headline + monthly chart live on Summary.
 
-interface InfisicalSubscriptionRow {
+type InfisicalSubscriptionRow = {
   planSlug: string
   status: string
   unitAmount: number
@@ -314,19 +314,19 @@ interface InfisicalSubscriptionRow {
   currentPeriodEnd: string | null
 }
 
-interface InfisicalContactRow {
+type InfisicalContactRow = {
   name: string
   email: string
 }
 
-interface InfisicalPaymentMethodRow {
+type InfisicalPaymentMethodRow = {
   brand: string | null
   last4: string | null
   funding: string | null
   expiry: string | null
 }
 
-interface InfisicalInvoiceRow {
+type InfisicalInvoiceRow = {
   date: string | null
   number: string
   amount: number
@@ -472,13 +472,13 @@ export const humanizeMetric = (field: string): string => startCase(field.replace
 // Seats render as the usage metrics (members / identities / projects), per-product counts join into a
 // resource table, and the plan feature/limit matrix into its own table.
 
-interface InfisicalProductRow {
+type InfisicalProductRow = {
   product: string
   metric: string
   count: number
 }
 
-interface InfisicalFeatureRow {
+type InfisicalFeatureRow = {
   name: string
   allowed: string
   used: string
@@ -564,7 +564,7 @@ const fetchInfisicalUsage = async (ctx: CollectContext<InfisicalConfig>): Promis
 // `user: { id, firstName, lastName, email }` with the org `role` at the top level. Same org route family
 // as the billing routes above, so it's reachable with the very same minted user JWT.
 
-interface RawMembership {
+type RawMembership = {
   id?: string
   role?: string
   user?: {
@@ -575,7 +575,7 @@ interface RawMembership {
   } | null
 }
 
-export interface RawMemberships {
+export type RawMemberships = {
   users?: RawMembership[]
 }
 

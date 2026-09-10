@@ -2,19 +2,19 @@ import { capabilityResult, table } from '../data/builders.js'
 import type { CapabilityResult } from '../data/result.js'
 
 // One person in the user-management domain.
-export interface MemberInput {
+export type MemberInput = {
   id: string
   name?: string
   email?: string
   role?: string
 }
 
-export interface MembersInput {
+export type MembersInput = {
   members: MemberInput[]
 }
 
 // id rides along as a row field (not a column) so members accumulate stably even when name/email change.
-interface MemberRow {
+type MemberRow = {
   id: string
   name: string | null
   email: string | null

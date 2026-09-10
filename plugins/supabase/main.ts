@@ -57,7 +57,7 @@ export type SupabaseConfig = ConfigOf<typeof supabaseConfigSchema>
 // Raw* = the wire shapes the platform API returns (only the fields we read); the rest are normalized domain
 // types (all money in USD dollars).
 
-export interface RawInvoice {
+export type RawInvoice = {
   id?: string
   number?: string
   // Invoice subtotal in CENTS.
@@ -71,7 +71,7 @@ export interface RawInvoice {
   payment_is_processing?: boolean
 }
 
-export interface RawUpcomingLine {
+export type RawUpcomingLine = {
   amount?: number
   amount_before_discount?: number
   description?: string
@@ -83,7 +83,7 @@ export interface RawUpcomingLine {
   usage_metric?: string
 }
 
-export interface RawUpcomingInvoice {
+export type RawUpcomingInvoice = {
   subscription_id?: string
   // Current cycle total so far, DOLLARS.
   amount_total?: number
@@ -96,12 +96,12 @@ export interface RawUpcomingInvoice {
   lines?: RawUpcomingLine[]
 }
 
-interface RawOrgPlan {
+type RawOrgPlan = {
   id?: string
   name?: string
 }
 
-export interface RawOrg {
+export type RawOrg = {
   slug?: string
   name?: string
   plan?: RawOrgPlan
@@ -110,7 +110,7 @@ export interface RawOrg {
 }
 
 // Normalized billing report (all money in USD dollars).
-export interface SupabaseInvoice {
+export type SupabaseInvoice = {
   id: string
   number?: string
   // 'YYYY-MM-DD' (period end).
@@ -121,7 +121,7 @@ export interface SupabaseInvoice {
   pdfUrl?: string
 }
 
-export interface SupabaseUpcomingLine {
+export type SupabaseUpcomingLine = {
   itemName: string
   description?: string
   amount: number
@@ -131,7 +131,7 @@ export interface SupabaseUpcomingLine {
   usageMetric?: string
 }
 
-export interface SupabaseUpcoming {
+export type SupabaseUpcoming = {
   amountTotal: number
   amountProjected: number
   cycleStart?: string
@@ -141,7 +141,7 @@ export interface SupabaseUpcoming {
   lines: SupabaseUpcomingLine[]
 }
 
-export interface SupabaseBillingReport {
+export type SupabaseBillingReport = {
   planName: string
   tier?: string
   usageBillingEnabled: boolean
@@ -251,7 +251,7 @@ export const buildSupabaseSummaryResult = (report: SupabaseBillingReport): Capab
 }
 
 // Subscription account record row.
-interface SupabaseAccountRow {
+type SupabaseAccountRow = {
   plan: string
   tier: string | null
   cycle: string | null
@@ -260,7 +260,7 @@ interface SupabaseAccountRow {
 }
 
 // Upcoming line-items row.
-interface SupabaseUpcomingLineRow {
+type SupabaseUpcomingLineRow = {
   itemName: string
   unitPriceDesc: string | null
   amount: number
@@ -268,7 +268,7 @@ interface SupabaseUpcomingLineRow {
 
 // Invoice row: the `name` field is hidden — carried for the download filename, not rendered. `id` (the raw
 // Stripe invoice id) rides hidden as the ledger key so an invoice accumulates its status past the fetch window.
-interface SupabaseInvoiceRow {
+type SupabaseInvoiceRow = {
   id: string
   date: string | null
   number: string | null
@@ -381,7 +381,7 @@ const resolveOrgSlug = async (ctx: CollectContext<SupabaseConfig>): Promise<stri
 // Summary + Billing share the same three billing reads. Both capabilities fetch the same raw bundle; the
 // core query cache dedupes the underlying fetches. The raw wire bundle is the network half; buildSupabaseBilling
 // is the pure raw→report transform Summary/Billing both build on.
-export interface RawBillingBundle {
+export type RawBillingBundle = {
   orgs: RawOrg[] | null
   slug: string
   invoices: RawInvoice[] | null
@@ -409,7 +409,7 @@ const billingReport = (raw: RawBillingBundle): SupabaseBillingReport => {
 // ── usage ─────────────────────────────────────────────────────────────────────────
 // Per-metric current-cycle usage + cost (DOLLARS, no /100) + the project inventory.
 
-interface RawUsageMetric {
+type RawUsageMetric = {
   metric?: string
   usage?: number
   // Charge so far this cycle, DOLLARS.
@@ -420,12 +420,12 @@ interface RawUsageMetric {
   project_allocations?: unknown[]
 }
 
-export interface RawUsage {
+export type RawUsage = {
   usage_billing_enabled?: boolean
   usages?: RawUsageMetric[]
 }
 
-interface RawProject {
+type RawProject = {
   name?: string
   ref?: string
   region?: string
@@ -435,11 +435,11 @@ interface RawProject {
   disk_volume_size_gb?: number
 }
 
-export interface RawProjectList {
+export type RawProjectList = {
   projects?: RawProject[]
 }
 
-export interface SupabaseUsageMetric {
+export type SupabaseUsageMetric = {
   metric: string
   usage: number
   // Charge so far this cycle, dollars.
@@ -451,7 +451,7 @@ export interface SupabaseUsageMetric {
   projectCount: number
 }
 
-export interface SupabaseProject {
+export type SupabaseProject = {
   name: string
   ref: string
   region?: string
@@ -461,7 +461,7 @@ export interface SupabaseProject {
   diskGb: number
 }
 
-export interface SupabaseUsageReport {
+export type SupabaseUsageReport = {
   usageBillingEnabled: boolean
   // Total cost across metered metrics this cycle, dollars.
   totalCost: number
@@ -503,7 +503,7 @@ export const buildSupabaseUsage = (
 
 // Projects table row. `ref` (the project's immutable Supabase reference) rides hidden as the ledger key so a
 // project accumulates across fetches even if renamed.
-interface SupabaseProjectRow {
+type SupabaseProjectRow = {
   ref: string
   name: string
   region: string | null
@@ -547,7 +547,7 @@ export const buildSupabaseUsageResult = (report: SupabaseUsageReport): Capabilit
 }
 
 // The raw wire bundle for the usage tab; buildSupabaseUsage is the pure raw→report transform.
-export interface RawUsageBundle {
+export type RawUsageBundle = {
   usage: RawUsage | null
   projects: RawProjectList | null
 }
@@ -566,7 +566,7 @@ const fetchSupabaseUsage = async (ctx: CollectContext<SupabaseConfig>): Promise<
 // The org member roster, reachable on the SAME studioJwt (spa-bearer) that billing/usage use — the Studio
 // SPA lists members from `/platform/organizations/<slug>/members` with its session JWT. Read-only here.
 
-export interface RawMember {
+export type RawMember = {
   user_id?: string
   gotrue_id?: string
   user_name?: string

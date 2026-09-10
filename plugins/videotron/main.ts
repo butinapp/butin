@@ -42,11 +42,11 @@ const MONESPACE_AUTH_CAPTURE_URL_PATTERNS = ['https://monespace.videotron.com/re
 // ── types ─────────────────────────────────────────────────────────────────────────
 // The marvel backend wraps single-object + list payloads in a { data, operationResult } envelope on most
 // endpoints; a few (billingAccounts, inquireBillingAccountsWithInvoiceInfo) return the array bare.
-interface Envelope<T> {
+type Envelope<T> = {
   data: T
 }
 
-interface RawUser {
+type RawUser = {
   customerId: number
   name?: string
   uname?: string
@@ -54,7 +54,7 @@ interface RawUser {
   lastName?: string
 }
 
-export interface RawInvoiceInfo {
+export type RawInvoiceInfo = {
   invoiceNumber?: string
   invoiceDate?: number // epoch ms
   dueDate?: number // epoch ms
@@ -66,7 +66,7 @@ export interface RawInvoiceInfo {
 }
 
 // monespace `/rest/api/invoices/last` — the current mobile invoice (dates already 'YYYY-MM-DD').
-interface RawMonespaceInvoice {
+type RawMonespaceInvoice = {
   invoiceDate?: string
   amount?: number // CAD dollars
   balance?: number
@@ -76,33 +76,33 @@ interface RawMonespaceInvoice {
 }
 
 // monespace `/rest/api/wcc/dashboard/customer` — the mobile dashboard rollup (payment + period + balance).
-interface RawWccDashboard {
+type RawWccDashboard = {
   payment?: { data?: { automaticWithdrawal?: boolean } }
   account?: { data?: { startDate?: string; endDate?: string; nbDaysLeftInPeriod?: number; services?: string[] } }
   billing?: { data?: { balance?: number; dueDate?: string } }
 }
 
 // monespace `/rest/api/user` — the legacy account identity.
-interface RawMonespaceUser {
+type RawMonespaceUser = {
   accountNumber?: string
   firstname?: string
   lastname?: string
 }
 
 // What the mobile tab gathers from the monespace Bearer API before normalizing.
-export interface MobileBundle {
+export type MobileBundle = {
   last: RawMonespaceInvoice
   dashboard?: RawWccDashboard
   user?: RawMonespaceUser
 }
 
-interface RawInvoiceAccount {
+type RawInvoiceAccount = {
   accountId: number
   acctNo?: string
   invoiceInfo?: RawInvoiceInfo
 }
 
-export interface RawFinancialInfo {
+export type RawFinancialInfo = {
   currentBalance?: number // CAD dollars
   lastInvoiceAmount?: number
   monthlyPayment?: number
@@ -111,15 +111,15 @@ export interface RawFinancialInfo {
 }
 
 // `activeBillingAccountsWithInvoiceInfoList` — one paged year of real billed invoices, each with a docIdFr.
-interface RawInvoiceListEntry {
+type RawInvoiceListEntry = {
   invoiceInfo?: RawInvoiceInfo
   acctNo?: string
 }
-interface RawInvoiceListPage {
+type RawInvoiceListPage = {
   content?: RawInvoiceListEntry[]
 }
 
-export interface RawPlanAccount {
+export type RawPlanAccount = {
   customerBillingAccount?: {
     acctNo?: string
     statusName?: string
@@ -130,21 +130,21 @@ export interface RawPlanAccount {
 }
 
 // What billing's collect() gathers before normalizing: the financial standing + the real invoice history.
-export interface BillingBundle {
+export type BillingBundle = {
   financial: RawFinancialInfo
   invoices: RawInvoiceInfo[] // newest-first off the wire; build*() sorts ascending
 }
 
 // The full raw billing fetch carries the resolved invoice billing-account id alongside the bundle — the id is
 // discovered (not a wire field) and the invoices table needs it for the per-row PDF fetchFile.
-export interface BillingRaw {
+export type BillingRaw = {
   bundle: BillingBundle
   billingAccountId: string
 }
 
 // The Billing tab's raw fetch: the marvel billing bundle + the legacy mobile invoice links, merged into one
 // downloadable invoice table by build. (`LegacyInvoiceLink` is the scraped per-PDF ref, defined below.)
-export interface BillingDetailRaw {
+export type BillingDetailRaw = {
   billing: BillingRaw
   mobileLinks: LegacyInvoiceLink[]
 }
@@ -218,14 +218,14 @@ const fetchInvoiceInfoList = async (
 
 // The account headline stat: the most recent statement's amount (no live month-to-date accrual on a consumer
 // telecom bill) + the month-over-month delta + an (always-null) plan slot.
-interface BillingAccountRow {
+type BillingAccountRow = {
   currentMtd: number | null
   momDelta: number
   plan: string | null
 }
 
 // The financial standing the invoice list can't show — its own keyvalue record (on the Billing tab).
-interface BalanceRow {
+type BalanceRow = {
   currentBalance: number | null
   dueDate: string | null
   creditRating: string | null
@@ -236,7 +236,7 @@ interface BalanceRow {
 // values head the collapsible sections). The rest ride hidden for the capability's fetchFile to replay the
 // right download: marvel invoices via `docId` + `billingAccountId` (POST), legacy mobile invoices via the
 // scraped `dateFacturation`/`medium`/`resourceVersion` (browser).
-interface InvoiceRow {
+type InvoiceRow = {
   date: string | null
   amount: number | null
   status: string | null
@@ -465,7 +465,7 @@ const familyLabel = (code?: string): string => {
   return FAMILY_LABELS[code.toUpperCase()] ?? capitalize(code)
 }
 
-interface AccountRow {
+type AccountRow = {
   account: string
   service: string
   status: string
@@ -509,7 +509,7 @@ const fetchAccounts = async (ctx: CollectContext): Promise<RawPlanAccount[]> => 
 
 // ── mobile: the bill + account standing on the legacy monespace backend (different host + token) ──
 
-interface MobileRow {
+type MobileRow = {
   amount: number | null
   balance: number | null
   dueDate: string | null
@@ -570,7 +570,7 @@ const fetchMobile = async (ctx: CollectContext): Promise<MobileBundle> => {
 // `<a href=…displayFacturePdf&dateFacturation=…&date=…&medium=…&resourceVersion=…>` — the four params the
 // PDF servlet needs. resourceVersion varies per era (older bills use an older template), so it's per-link.
 // Each history row also carries the billed amount (`data-total="$X"`), so the table shows it without a fetch.
-export interface LegacyInvoiceLink {
+export type LegacyInvoiceLink = {
   dateFacturation: string
   date: string
   medium: string

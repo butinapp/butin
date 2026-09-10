@@ -1,6 +1,6 @@
 import type { AlertWindow, NotificationView } from './types.js'
 
-export interface NotificationLabels {
+export type NotificationLabels = {
   windowDod: string
   windowWow: string
   windowMom: string
@@ -14,7 +14,7 @@ export interface NotificationLabels {
   fxMissingBody: (currency: string, base: string, service: string) => string
 }
 
-export interface FormatContext {
+export type FormatContext = {
   serviceName: (id?: string) => string
   baseCurrency: string
   money: (n: number, ccy?: string) => string

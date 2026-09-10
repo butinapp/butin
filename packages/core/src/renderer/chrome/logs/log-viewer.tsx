@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 export type LogViewerLevel = 'debug' | 'info' | 'warn' | 'error'
 
 // Structurally compatible with core's LogEntryDto, declared here so @butinapp/ui carries no core dependency.
-export interface LogViewerEntry {
+export type LogViewerEntry = {
   seq: number
   ts: string
   level: LogViewerLevel
@@ -20,7 +20,7 @@ export interface LogViewerEntry {
   data?: Record<string, unknown>
 }
 
-export interface LogViewerProps {
+export type LogViewerProps = {
   entries: LogViewerEntry[]
   onClear: () => void
   onReveal: () => void

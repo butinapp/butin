@@ -71,14 +71,14 @@ const ACCESS_TOKEN_KEY_INCLUDES = ['@@auth0spajs@@', 'https://api.openai.com/v1'
 // ── types (the data dictionary) ───────────────────────────────────────────────────────
 
 // One org the mint returns; only non-personal orgs carry billable API spend.
-export interface PlatformOrg {
+export type PlatformOrg = {
   id: string
   title: string
   personal?: boolean
 }
 
 // billing — invoices (GET /v1/dashboard/billing/invoices?system=api, one call per org)
-export interface RawInvoice {
+export type RawInvoice = {
   id?: string
   number?: string | null
   total?: number // CENTS
@@ -91,45 +91,45 @@ export interface RawInvoice {
   pdf_url?: string | null
   hosted_invoice_url?: string | null
 }
-export interface RawInvoiceList {
+export type RawInvoiceList = {
   data?: RawInvoice[]
 }
 // One org's invoice list bundled with its identity (assembled in collect()).
-export interface RawOrgInvoices {
+export type RawOrgInvoices = {
   orgId: string
   orgName: string
   invoices: RawInvoice[]
 }
 
 // billing — spend breakdown (GET /v1/dashboard/billing/usage, current month)
-export interface RawLineItem {
+export type RawLineItem = {
   name?: string
   cost?: number // CENTS
   project_id?: string
   project_name?: string
   organization_name?: string
 }
-export interface RawDailyCost {
+export type RawDailyCost = {
   timestamp?: number // unix seconds
   line_items?: RawLineItem[]
 }
-export interface RawUsage {
+export type RawUsage = {
   daily_costs?: RawDailyCost[]
 }
 // One org's usage bundle (assembled in collect()).
-export interface RawOrgUsage {
+export type RawOrgUsage = {
   org: PlatformOrg
   usage: RawUsage
 }
 
-export interface SpendLimits {
+export type SpendLimits = {
   softLimitUsd: number | null
   hardLimitUsd: number | null
   planTitle: string | null
 }
 
 // apiKeys
-export interface RawApiKey {
+export type RawApiKey = {
   sensitive_id?: string
   name?: string | null
   tracking_id?: string
@@ -141,12 +141,12 @@ export interface RawApiKey {
   organization?: { id: string; title?: string } | null
   user?: { id: string; name?: string | null; is_service_account?: boolean } | null
 }
-export interface RawApiKeyList {
+export type RawApiKeyList = {
   data?: RawApiKey[]
 }
 
 // normalized domain types
-export interface PlatformInvoice {
+export type PlatformInvoice = {
   id: string
   number: string | null
   orgId: string
@@ -159,19 +159,19 @@ export interface PlatformInvoice {
   hostedUrl: string | null
   pdfUrl: string | null
 }
-export interface OrgInvoiceSummary {
+export type OrgInvoiceSummary = {
   orgId: string
   name: string
   total: number
   count: number
 }
-export interface PlatformBilling {
+export type PlatformBilling = {
   invoices: PlatformInvoice[] // merged across orgs, newest-first
   orgs: OrgInvoiceSummary[] // per-org totals, descending
   limits: SpendLimits
 }
 
-export interface SpendReport {
+export type SpendReport = {
   period: string // 'YYYY-MM'
   grandTotal: number // USD
   currentMtd: number | null // USD — grandTotal when the report covers the current month, else null
@@ -180,31 +180,31 @@ export interface SpendReport {
 
 // usage — the current-month $ breakdown, read from the SAME daily_costs the spend report reads but keeping the
 // per-project and per-model dimensions the Summary/Overview roll away.
-export interface UsageProjectRow {
+export type UsageProjectRow = {
   orgName: string
   project: string
   spend: number // USD, month-to-date
   share: number // 0..1 of the month's total
   key: string // hidden — `<orgId>:<projectId>`, the stable per-project ledger key (→ a monthly-MTD trend)
 }
-export interface UsageModelRow {
+export type UsageModelRow = {
   model: string
   spend: number // USD, month-to-date
   share: number // 0..1
 }
-export interface UsageDayPoint {
+export type UsageDayPoint = {
   date: string // YYYY-MM-DD
   project: string // project name, or 'Other' for projects past the chart's top-N
   value: number // USD
 }
-export interface UsageBreakdown {
+export type UsageBreakdown = {
   total: number // USD, month-to-date across all projects
   byProject: UsageProjectRow[]
   byModel: UsageModelRow[]
   daily: UsageDayPoint[] // long-format (one row per date × project) for the stacked chart
 }
 
-export interface ApiKeyRow {
+export type ApiKeyRow = {
   id: string
   name: string
   keyHint: string // masked, e.g. sk-svcac…5x0A
@@ -217,7 +217,7 @@ export interface ApiKeyRow {
   lastUsed: string | null // YYYY-MM-DD
   enabled: boolean
 }
-export interface ApiKeyInventory {
+export type ApiKeyInventory = {
   keys: ApiKeyRow[]
   totalKeys: number
   legacyKeys: number
@@ -225,13 +225,13 @@ export interface ApiKeyInventory {
 }
 
 // members — one org's user list (GET /v1/organization/users?limit=100&after=<cursor>)
-export interface RawOrgUser {
+export type RawOrgUser = {
   id?: string
   name?: string | null
   email?: string
   role?: string // 'owner' | 'reader'
 }
-export interface RawOrgUserList {
+export type RawOrgUserList = {
   data?: RawOrgUser[]
   has_more?: boolean
 }
@@ -394,7 +394,7 @@ export const buildOpenaiSummaryResult = (billingData: PlatformBilling, spend: Sp
 // their Stripe hosted/pdf receipt, so the list is a fileTable (a PDF per row). Each section is dropped when
 // it has no rows.
 
-interface OrgRow {
+type OrgRow = {
   name: string
   total: number
   count: number
@@ -403,7 +403,7 @@ interface OrgRow {
 }
 
 // `name` is hidden — carried for the download filename, not rendered.
-interface InvoiceRow {
+type InvoiceRow = {
   date: string | null
   org: string
   amount: number
@@ -705,7 +705,7 @@ export const buildOpenaiKeysResult = (inventory: ApiKeyInventory): CapabilityRes
 // resulting `sess-` token is the Bearer for every dashboard call; the org list drives the per-org loop.
 // Both the token (`user.session.sensitive_id`) and the org list (`user.orgs.data`) hang off `user`.
 
-interface RawLoginResponse {
+type RawLoginResponse = {
   // The dashboard session token (`sess-` prefix) and the org list both hang off `user`. A flat `session`
   // shape is tolerated for the token.
   user?: {
@@ -715,7 +715,7 @@ interface RawLoginResponse {
   session?: { sensitive_id?: string }
 }
 
-export interface MintedSession {
+export type MintedSession = {
   sessToken: string
   orgs: PlatformOrg[]
 }
@@ -780,7 +780,7 @@ const workOrgs = async (ctx: CollectContext): Promise<PlatformOrg[]> => {
   return orgs.filter((o) => !o.personal)
 }
 
-interface RawSubscription {
+type RawSubscription = {
   soft_limit_usd?: number
   hard_limit_usd?: number
   plan?: { title?: string }
@@ -789,7 +789,7 @@ interface RawSubscription {
 // The raw billing bundle Summary + Billing both fetch: the per-org invoice/usage lists, the org spend
 // limits, and the capture moment + current month (so the pure build can decide whether the spend report is
 // MTD). `build` runs buildOpenaiBilling/buildOpenaiSpend over it.
-export interface OpenaiBillingRaw {
+export type OpenaiBillingRaw = {
   perOrgInvoices: RawOrgInvoices[]
   perOrgUsage: RawOrgUsage[]
   limits: SpendLimits
@@ -856,7 +856,7 @@ export const buildOpenaiUsageResult = (raw: OpenaiBillingRaw): CapabilityResult 
   buildOpenaiUsageTab(buildOpenaiUsage(raw.perOrgUsage))
 
 // The raw apiKeys bundle: each work org's standard-key list + the legacy user-level keys.
-export interface OpenaiKeysRaw {
+export type OpenaiKeysRaw = {
   orgKeyLists: RawApiKeyList[]
   userKeys: RawApiKeyList
 }
@@ -939,7 +939,7 @@ const fetchOrgUsers = async (ctx: CollectContext, orgId: string): Promise<RawOrg
 }
 
 // The raw members bundle: each work org's full user list.
-export interface OpenaiMembersRaw {
+export type OpenaiMembersRaw = {
   lists: RawOrgUserList[]
 }
 

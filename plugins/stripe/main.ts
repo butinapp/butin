@@ -76,20 +76,20 @@ const MONTH_NAMES = [
 // The async report-run object: a run owns a `reporting_query` whose `status` reaches 'completed' once results
 // are ready. The run-level `status` lags (stays 'pending' after the query completes), so the query status is
 // the completion signal.
-interface RawReportRun {
+type RawReportRun = {
   id?: string
   reporting_query?: { id?: string; status?: string }
 }
 
 // A Sigma results page: positional rows against a named column list. The all_fees summary columns are
 // suite · product · feature_name · feature_description · amount · tax · currency.
-interface RawSigmaResults {
+type RawSigmaResults = {
   columns?: { name: string }[] | null
   data?: { row?: unknown[] }[] | null
 }
 
 // One normalized fee line for a period — major-unit USD.
-export interface StripeFee {
+export type StripeFee = {
   suite: string
   product: string
   feature: string
@@ -98,14 +98,14 @@ export interface StripeFee {
 }
 
 // One calendar month's fees: the [start, next-month-start) interval to query + the normalized result.
-interface MonthSpec {
+type MonthSpec = {
   key: string // 'YYYY-MM'
   label: string // 'May 2026'
   startSec: number
   endSec: number
 }
 
-export interface StripeMonthFees extends MonthSpec {
+export type StripeMonthFees = MonthSpec & {
   total: number // USD sum of the month's fee lines
   fees: StripeFee[]
 }
@@ -219,7 +219,7 @@ export const buildStripeFeesSummaryResult = (
 // --- Fees tab (the Plans & fees breakdown; NOT the Overview rollup) ---
 // A month's fee lines as a table, largest first — what the dashboard's Plans & fees page shows.
 
-interface FeeTableRow {
+type FeeTableRow = {
   suite: string
   product: string
   feature: string
@@ -281,7 +281,7 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 
 // `/ajax/preloaded` is the cookie-authed dashboard endpoint that hands the SPA its session key — the response
 // is `{ id, json: { session_api_key: 'uk_…', … } }`.
-interface StripePreloaded {
+type StripePreloaded = {
   json?: { session_api_key?: string }
 }
 
@@ -360,7 +360,7 @@ const loadMonthFees = async (ctx: CollectContext<StripeConfig>, spec: MonthSpec)
 }
 
 // The Summary tab's raw bundle: the recent COMPLETE months (for the chart) + the current month-to-date.
-export interface StripeFeesSummaryRaw {
+export type StripeFeesSummaryRaw = {
   completeMonths: StripeMonthFees[]
   current: StripeMonthFees
 }

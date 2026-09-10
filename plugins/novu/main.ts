@@ -56,7 +56,7 @@ const CURRENCY = 'USD'
 //     (RawStripeInvoice / RawStripeLine / RawStripeInvoiceList) + the portal session come from @butinapp/sdk. ---
 
 // api.novu.co/v1/billing/subscription → `{ data: {...} }`.
-export interface RawNovuSubscription {
+export type RawNovuSubscription = {
   data?: {
     apiServiceLevel?: string
     isActive?: boolean
@@ -72,19 +72,19 @@ export interface RawNovuSubscription {
 }
 
 // GET /v1/client body — the active session's freshly-minted token lives under .response.sessions[].
-interface RawClerkClient {
+type RawClerkClient = {
   response?: RawClerkClientBody
   client?: RawClerkClientBody
   sessions?: RawClerkSession[]
   last_active_session_id?: string
 }
 
-interface RawClerkClientBody {
+type RawClerkClientBody = {
   sessions?: RawClerkSession[]
   last_active_session_id?: string
 }
 
-interface RawClerkSession {
+type RawClerkSession = {
   id?: string
   last_active_token?: { jwt?: string }
   last_active_organization_id?: string
@@ -93,12 +93,12 @@ interface RawClerkSession {
 // GET /v1/organizations/{orgId}/memberships → `{ response: { data: [...] } }`. Novu's org roster lives on
 // Clerk (same __client cookie → minted Bearer the billing/usage capabilities replay). Each membership nests
 // the person under public_user_data and carries the un-prefixed-on-display Clerk role (org:owner, …).
-export interface RawClerkMembershipList {
+export type RawClerkMembershipList = {
   response?: { data?: RawClerkMembership[] }
   data?: RawClerkMembership[]
 }
 
-export interface RawClerkMembership {
+export type RawClerkMembership = {
   id?: string // orgmem_…
   role?: string // org:owner | org:admin | org:author | org:viewer
   role_name?: string
@@ -112,7 +112,7 @@ export interface RawClerkMembership {
 
 // Normalized plan summary — the Summary headline reads the plan slug + status; the Billing tab record reads
 // the full set (period, billing interval, trial, payment method, cancel date).
-export interface NovuPlanSummary {
+export type NovuPlanSummary = {
   plan: string
   status: string
   hasPaymentMethod: boolean
@@ -228,7 +228,7 @@ const planLabel = (plan: string): string | undefined => (plan && plan !== 'unkno
 
 // One billing fetch normalized once: the Stripe-portal invoice history + the api.novu.co subscription plan.
 // Summary and Billing both build from this — the collects share it, the query cache dedupes the fetches.
-export interface NovuBillingReport {
+export type NovuBillingReport = {
   invoices: BillingInvoiceInput[]
   plan: NovuPlanSummary
 }
@@ -280,7 +280,7 @@ export const buildNovuSummaryResult = (
 // subscription account record (plan, status, period, billing interval, trial, payment method, cancel date) and
 // the downloadable invoice history (PDF, falling back to the hosted invoice URL).
 
-interface NovuAccountRow {
+type NovuAccountRow = {
   plan: string
   status: string
   billingInterval: string
@@ -290,7 +290,7 @@ interface NovuAccountRow {
   cancelAt: string | null
 }
 
-interface NovuInvoiceRow {
+type NovuInvoiceRow = {
   date: string | null
   amount: number
   status: string
@@ -385,7 +385,7 @@ const fetchStripeInvoices = async (ctx: CollectContext, limit = 24): Promise<Raw
 
 // Summary + Billing share this one billing fetch (the query cache dedupes the underlying reads): the raw Stripe-
 // portal invoice history + the raw api.novu.co subscription, the wire shapes both tabs' build closures normalize.
-export interface RawNovuBilling {
+export type RawNovuBilling = {
   invoices: RawStripeInvoiceList
   sub: RawNovuSubscription
 }
@@ -417,22 +417,22 @@ const USAGE_REPORT_TYPES = [
 
 // /v1/activity/charts → `{ data: { <reportType>: … } }`. Scorecards are a current/previous pair; the *-trend
 // slices are daily point arrays; workflow-by-volume is a per-workflow send count.
-interface RawScorecard {
+type RawScorecard = {
   currentPeriod?: number
   previousPeriod?: number
 }
 
-interface RawWorkflowVolume {
+type RawWorkflowVolume = {
   workflowName?: string
   count?: number
 }
 
-interface RawRunsTrendPoint {
+type RawRunsTrendPoint = {
   timestamp?: string
   completed?: number
 }
 
-interface RawDeliveryTrendPoint {
+type RawDeliveryTrendPoint = {
   timestamp?: string
   inApp?: number
   email?: number
@@ -441,7 +441,7 @@ interface RawDeliveryTrendPoint {
   push?: number
 }
 
-export interface RawActivityCharts {
+export type RawActivityCharts = {
   data?: {
     'messages-delivered'?: RawScorecard
     'active-subscribers'?: RawScorecard
@@ -595,7 +595,7 @@ export const buildNovuUsageResult = (rawSub: RawNovuSubscription, rawCharts: Raw
 
 // The metered allowance comes off the subscription; the engagement scorecards + trends + top workflows off a
 // single activity-charts call over the rolling window (best-effort — a failure still leaves the allowance card).
-export interface RawNovuUsage {
+export type RawNovuUsage = {
   sub: RawNovuSubscription
   charts: RawActivityCharts
 }

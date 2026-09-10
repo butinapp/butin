@@ -4,7 +4,7 @@ import { addSections, capabilityResult, record, table } from './builders.js'
 import type { Column } from './dataset.js'
 import { CapabilityResultSchema, validateCapabilityResult } from './result.js'
 
-interface InvoiceRow {
+type InvoiceRow = {
   date: string | null
   amount: number
   status: string

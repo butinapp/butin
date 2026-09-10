@@ -38,7 +38,7 @@ const SETTINGS_USAGE_ROUTE = 'routes/_app.orgs.$orgID._org.settings.usage'
 
 // ── usage: raw loader shape + normalized report ─────────────────────────────────────────
 
-export interface RawDepotUsage {
+export type RawDepotUsage = {
   // Docker/container build minutes used this period.
   buildMinutes?: number
   // GitHub Actions job minutes used this period.
@@ -51,7 +51,7 @@ export interface RawDepotUsage {
   currentRemoteCacheSize?: number
 }
 
-export interface DepotUsageReport {
+export type DepotUsageReport = {
   buildMinutes: number
   jobMinutes: number
   ciMinutes: number
@@ -98,7 +98,7 @@ export const buildDepotUsageResult = (report: DepotUsageReport): CapabilityResul
 // Active members nest under `users` (flagged isOwner/isAdmin/role); pending invitations under `invites`. Both
 // normalize into one roster, deriving a coarse role from the owner/admin flags when no explicit `role` is present.
 
-export interface RawDepotMember {
+export type RawDepotMember = {
   userID?: string
   id?: string
   email?: string
@@ -108,7 +108,7 @@ export interface RawDepotMember {
   isAdmin?: boolean
 }
 
-export interface RawDepotSettings {
+export type RawDepotSettings = {
   users?: RawDepotMember[]
   invites?: RawDepotMember[]
 }
@@ -165,14 +165,14 @@ export const extractMembersFromLoader = (text: string): RawDepotSettings => {
 // ── billing: raw Stripe subscription shapes (only the fields we read) — money in CENTS, dates in unix seconds.
 // The invoice/line shapes (RawStripeInvoice / RawStripeLine / RawStripeInvoiceList) come from @butinapp/sdk. ──
 
-interface RawSubLine {
+type RawSubLine = {
   amount?: number
   // `period.end === current_period_end` flags a current-period (metered) line; the licensed base-plan line
   // carries the NEXT period's end.
   period?: { start?: number; end?: number }
 }
 
-interface RawSubItem {
+type RawSubItem = {
   price_details?: {
     unit_amount?: number
     recurring?: { usage_type?: string }
@@ -180,7 +180,7 @@ interface RawSubItem {
   }
 }
 
-interface RawUpcomingInvoice {
+type RawUpcomingInvoice = {
   // Unix seconds — when the next invoice is issued (= current_period_end).
   created?: number
   total?: number
@@ -188,26 +188,26 @@ interface RawUpcomingInvoice {
   lines?: { data?: RawSubLine[] }
 }
 
-interface RawStripeSubscription {
+type RawStripeSubscription = {
   // Unix seconds — the active period's end / next billing date.
   current_period_end?: number
   items?: RawSubItem[]
   upcoming_invoice?: RawUpcomingInvoice
 }
 
-export interface RawStripeSubscriptionsList {
+export type RawStripeSubscriptionsList = {
   data?: RawStripeSubscription[]
 }
 
 // ── billing: normalized report (dollars) ────────────────────────────────────────────────
 
-export interface DepotInvoiceLine {
+export type DepotInvoiceLine = {
   description: string
   // Dollars.
   amount: number
 }
 
-export interface DepotInvoice {
+export type DepotInvoice = {
   id: string
   number?: string
   // 'YYYY-MM-DD' (effective, else finalized, else created).
@@ -224,7 +224,7 @@ export interface DepotInvoice {
 }
 
 // The active subscription's plan summary (from /subscriptions).
-export interface DepotPlanSummary {
+export type DepotPlanSummary = {
   // Licensed plan/product name, e.g. "Startup plan".
   name: string
   // Recurring base fee, dollars per month.
@@ -232,7 +232,7 @@ export interface DepotPlanSummary {
 }
 
 // The upcoming (next) invoice — Depot's dashboard "Next Invoice" card.
-export interface DepotUpcomingInvoice {
+export type DepotUpcomingInvoice = {
   // 'YYYY-MM-DD' next billing date (current_period_end / upcoming.created).
   date?: string
   // Projected next-invoice total, dollars (grows with metered usage).
@@ -241,7 +241,7 @@ export interface DepotUpcomingInvoice {
   meteredSoFar: number
 }
 
-export interface DepotBillingReport {
+export type DepotBillingReport = {
   invoices: DepotInvoice[]
   // Sum of `amount` across the returned invoices, dollars.
   totalBilled: number
@@ -377,7 +377,7 @@ export const buildDepotSummaryResult = (report: DepotBillingReport): CapabilityR
 // Billing tab — the financial detail (not the Overview rollup; the headline + chart live on Summary): the
 // downloadable invoice history and the per-invoice line-item breakdown.
 
-interface BillingInvoiceRow {
+type BillingInvoiceRow = {
   // Hidden — the Stripe invoice id rides as the ledger key so invoices accumulate their status/amount history
   // past the fetch window (an open invoice's status flips to paid over time); `number` coerces to '—' when
   // absent, so it can't serve as a stable identity.
@@ -391,7 +391,7 @@ interface BillingInvoiceRow {
   name: string
 }
 
-interface BillingLineRow {
+type BillingLineRow = {
   invoice: string
   description: string
   amount: number
@@ -638,7 +638,7 @@ const fetchDepotMembers = async (ctx: CollectContext<DepotConfig>): Promise<RawD
 
 // The raw Stripe portal bundle Summary + Billing share: the invoice list + (best-effort) subscriptions, both
 // straight off the wire. buildBillingReport normalizes it; the two tabs draw different views of that report.
-export interface RawDepotBilling {
+export type RawDepotBilling = {
   invoices: RawStripeInvoiceList
   subscriptions: RawStripeSubscriptionsList | null
 }

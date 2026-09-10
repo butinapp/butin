@@ -2,7 +2,7 @@ import { join } from 'node:path'
 
 import type { KickstartInput, PlannedCapability } from './types.js'
 
-interface Paths {
+type Paths = {
   briefPath: string
   pluginPath: string
 }

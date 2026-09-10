@@ -24,15 +24,15 @@ const get =
     ctx.client.get<T>(url, { Referer: 'https://sentry.io/' })
 
 // --- types: all Raw* wire shapes + normalized domain types (the data dictionary) ---
-interface RawOrg {
+type RawOrg = {
   slug?: string
 }
 
-interface RawReceipt {
+type RawReceipt = {
   url?: string | null
 }
 
-export interface RawInvoice {
+export type RawInvoice = {
   id?: string
   amount?: number
   amountBilled?: number
@@ -42,31 +42,31 @@ export interface RawInvoice {
   receipt?: RawReceipt | null
 }
 
-export interface RawCustomer {
+export type RawCustomer = {
   plan?: string
   planDetails?: { name?: string }
   onDemandSpendUsed?: number
 }
 
-export interface SentryBillingData {
+export type SentryBillingData = {
   invoices: RawInvoice[]
   customer: RawCustomer
 }
 
-interface RawUsageTotal {
+type RawUsageTotal = {
   accepted?: number
 }
 
-export interface RawUsage {
+export type RawUsage = {
   totals?: Record<string, RawUsageTotal>
 }
-interface RawHistoryCategory {
+type RawHistoryCategory = {
   category?: string
   reserved?: number | null
   onDemandSpendUsed?: number
 }
 
-export interface RawHistory {
+export type RawHistory = {
   // /history/current/ may key categories by name (a dict) or as a list — both are accepted.
   categories?: RawHistoryCategory[] | Record<string, RawHistoryCategory>
   periodStart?: string
@@ -74,12 +74,12 @@ export interface RawHistory {
 }
 
 // Usage joins two endpoints (/usage/ accepted counts + /history/current/ reserved quota & on-demand spend).
-export interface SentryUsageData {
+export type SentryUsageData = {
   usage: RawUsage
   history: RawHistory
 }
 
-export interface RawMember {
+export type RawMember = {
   id?: string
   email?: string
   name?: string
@@ -148,7 +148,7 @@ export const buildSentrySummaryResult = (report: SentryBillingReport): Capabilit
 
 // --- Billing tab (renders via the generic renderer; emits no summary, so it's NOT the Overview rollup) ---
 // The invoice history. The headline (MTD / plan / monthly chart) lives on Summary; this is the detail.
-interface SentryInvoiceRow {
+type SentryInvoiceRow = {
   // The Sentry invoice id — hidden, the ledger key so an invoice accumulates its status/amount past the fetch window.
   id: string
   date: string | null

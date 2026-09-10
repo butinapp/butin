@@ -31,7 +31,7 @@ const SCREEN = {
 } as const
 
 // ── types: the parsed HTML shapes then the fetch bundle ────────────────────────────────
-export interface RawProperty {
+export type RawProperty = {
   matricule: string
   dossier: string
   address: string
@@ -40,14 +40,14 @@ export interface RawProperty {
   statementListUrl: string | null
 }
 
-export interface RawInvoice {
+export type RawInvoice = {
   idFact: string
   // The full invoice number; its first 4 digits are the tax year (e.g. 202601000000001 → 2026).
   noFactComplet: string
   produireUrl: string
 }
 
-export interface RawStatement {
+export type RawStatement = {
   idCr: string
   codeAcces: string
   produireUrl: string
@@ -55,7 +55,7 @@ export interface RawStatement {
 
 // What the shared fetch assembles: the roster, plus each property's invoices/statements tagged with their owner so
 // the pure builders can flatten and label rows without re-resolving anything.
-export interface RawTaxData {
+export type RawTaxData = {
   properties: RawProperty[]
   invoices: { property: RawProperty; invoice: RawInvoice }[]
   statements: { property: RawProperty; statement: RawStatement }[]
@@ -152,13 +152,13 @@ export const parseStatements = (html: string): RawStatement[] =>
   }))
 
 // The rendered row shapes: hidden url/name fields drive the file downloads (produireUrl replayed, referer = listUrl).
-interface PropertyRow {
+type PropertyRow = {
   address: string
   dossier: string
   matricule: string
 }
 
-interface StatementRow {
+type StatementRow = {
   property: string
   reference: string
   accessCode: string
@@ -167,7 +167,7 @@ interface StatementRow {
   name: string
 }
 
-interface InvoiceRow {
+type InvoiceRow = {
   property: string
   year: string
   invoice: string
@@ -176,7 +176,7 @@ interface InvoiceRow {
   name: string
 }
 
-interface OverviewRow {
+type OverviewRow = {
   properties: number
   invoices: number
   statements: number

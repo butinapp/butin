@@ -79,6 +79,8 @@ contextBridge.exposeInMainWorld('recorder', recorderApi)
 
 // Augment the global Window type so renderer code can call window.recorder with full type safety.
 declare global {
+  // Global augmentation: the preload bridge is added to the ambient `Window`, which only interface merging
+  // can extend — a type alias here collides with the DOM declaration instead of adding to it.
   interface Window {
     recorder: typeof recorderApi
   }

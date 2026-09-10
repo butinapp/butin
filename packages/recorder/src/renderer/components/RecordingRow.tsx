@@ -3,7 +3,7 @@ import { useState } from 'react'
 
 import { ConfirmDialog } from './ConfirmDialog.js'
 
-interface Props {
+type Props = {
   runId: string
   label: string
   startedAt: string

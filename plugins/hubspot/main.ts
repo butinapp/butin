@@ -69,7 +69,7 @@ const portalOf = (ctx: AuthContext | CollectContext): string => {
 
 // ── types: raw wire shapes (only the fields we use) ───────────────────────────────────
 
-export interface RawHubspotTransaction {
+export type RawHubspotTransaction = {
   type?: string
   issued?: string
   issuedTimestamp?: number
@@ -83,11 +83,11 @@ export interface RawHubspotTransaction {
   id?: string
 }
 
-export interface RawHubspotTransactionsResponse {
+export type RawHubspotTransactionsResponse = {
   transactions?: RawHubspotTransaction[]
 }
 
-export interface RawUpcomingPayment {
+export type RawUpcomingPayment = {
   issueDate?: number[] // [year, month, day]
   billingPeriodStart?: number[]
   billingPeriodEnd?: number[]
@@ -97,11 +97,11 @@ export interface RawUpcomingPayment {
   isProcessing?: boolean
 }
 
-export interface RawUpcomingPaymentsResponse {
+export type RawUpcomingPaymentsResponse = {
   upcomingPayments?: RawUpcomingPayment[]
 }
 
-export interface RawHubspotPaymentMethod {
+export type RawHubspotPaymentMethod = {
   paymentMethodType?: string
   lastFour?: string
   creditCardVariant?: string
@@ -111,11 +111,11 @@ export interface RawHubspotPaymentMethod {
   expired?: boolean
 }
 
-export interface RawHubspotPaymentMethodsResponse {
+export type RawHubspotPaymentMethodsResponse = {
   paymentMethods?: RawHubspotPaymentMethod[]
 }
 
-export interface RawPaidProduct {
+export type RawPaidProduct = {
   name?: string
   type?: string
   productTier?: string
@@ -124,42 +124,42 @@ export interface RawPaidProduct {
   quantityPacks?: RawPaidProduct[]
 }
 
-export interface RawPaidProductsResponse {
+export type RawPaidProductsResponse = {
   subscriptionId?: number
   paidProducts?: RawPaidProduct[]
 }
 
-export interface RawDelinquency {
+export type RawDelinquency = {
   customerDelinquencyStatus?: boolean
   customerDelinquentInvoiceIds?: Array<string | number>
 }
 
-interface RawProductLimit {
+type RawProductLimit = {
   name?: string
   limit?: number
   used?: number
 }
 
-export interface RawSeatInfo {
+export type RawSeatInfo = {
   maxAssignableSeats?: number
   currentAssignedSeats?: number
   seatName?: string
 }
 
-interface RawMarketableCount {
+type RawMarketableCount = {
   date?: string
   marketableContactsCount?: number
   marketableContactsLimit?: number
 }
 
-export interface RawMarketableContactsResponse {
+export type RawMarketableContactsResponse = {
   contactsTier?: number
   latestCountForBilling?: RawMarketableCount
   realTimeCount?: RawMarketableCount
   usageByResolution?: { resolution?: string; usage?: RawMarketableCount[] }
 }
 
-export interface RawCreditsResponse {
+export type RawCreditsResponse = {
   type?: string
   data?: {
     startDate?: string
@@ -196,27 +196,27 @@ const ymdToDate = (ymd?: number[]): string | undefined => {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
-export interface HubspotProductSummary {
+export type HubspotProductSummary = {
   name: string
   tier?: string
   quantity: number
 }
 
-export interface HubspotUpcomingPayment {
+export type HubspotUpcomingPayment = {
   amount: number
   date?: string
   periodStart?: string
   periodEnd?: string
 }
 
-export interface HubspotPaymentMethod {
+export type HubspotPaymentMethod = {
   brand?: string
   last4?: string
   expMonth?: number
   expYear?: number
 }
 
-export interface HubspotBilling {
+export type HubspotBilling = {
   invoices: BillingInvoiceInput[]
   currentMtd: number // current-calendar-month invoiced spend, dollars
   totalBilled: number
@@ -324,7 +324,7 @@ export const buildHubspotBillingResult = (
 }
 
 // The raw bundle the Billing tab fetches — one field per dashboard endpoint, fed verbatim to buildHubspotBillingResult.
-export interface RawHubspotBillingBundle {
+export type RawHubspotBillingBundle = {
   invoices: RawHubspotTransactionsResponse | null
   upcoming: RawUpcomingPaymentsResponse | null
   paymentMethods: RawHubspotPaymentMethodsResponse | null
@@ -357,7 +357,7 @@ const buildHubspotBillingBundle = (raw: RawHubspotBillingBundle): CapabilityResu
 // HubSpot Credits — all plain COUNTS, no money. Each metric carries its limit; a daily marketable-contacts
 // timeseries renders below the metric cards.
 
-export interface HubspotDailyPoint {
+export type HubspotDailyPoint = {
   date: string
   count: number
 }
@@ -461,7 +461,7 @@ const CREDITS_RPC =
   '/api/chirp-frontend-app/v1/gateway/com.hubspot.usagebasedbilling.experience.rpc.UsageBasedBillingExperienceRpc/getUsagePeriodUsage'
 
 // The raw bundle the Usage tab fetches — one field per dashboard endpoint, fed verbatim to buildHubspotUsageResult.
-export interface RawHubspotUsageBundle {
+export type RawHubspotUsageBundle = {
   paidProducts: RawPaidProductsResponse[] | null
   seatInfo: RawSeatInfo[] | null
   marketable: RawMarketableContactsResponse | null
@@ -498,7 +498,7 @@ const buildHubspotUsageBundle = (raw: RawHubspotUsageBundle): CapabilityResult =
 // carries id + email + first/last name; the role label is the primary role name when the response inlines
 // it, else the first roleId. No money, no counts — just who has access.
 
-export interface RawHubspotUser {
+export type RawHubspotUser = {
   id?: string | number
   email?: string
   firstName?: string
@@ -509,7 +509,7 @@ export interface RawHubspotUser {
   roleIds?: Array<string | number>
 }
 
-export interface RawHubspotUsersResponse {
+export type RawHubspotUsersResponse = {
   results?: RawHubspotUser[]
 }
 

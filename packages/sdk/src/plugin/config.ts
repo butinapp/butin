@@ -11,7 +11,7 @@ export type ConfigFieldKind = 'text' | 'secret' | 'select' | 'combobox'
 
 // One fetched choice for a `combobox` field (e.g. an org you belong to). `value` is what gets stored
 // (and read back via `ctx.config`); `label` is shown; `recommended` marks the plugin's best-guess default.
-export interface ConfigOption {
+export type ConfigOption = {
   value: string
   label: string
   description?: string
@@ -20,12 +20,12 @@ export interface ConfigOption {
 
 // Show a field only when another field currently equals a value — lets a plugin branch its settings on a
 // `select` (e.g. AWS: show the profile name when authMode='profile', the access keys when 'iam').
-export interface ConfigFieldCondition {
+export type ConfigFieldCondition = {
   field: string
   equals: string
 }
 
-export interface ConfigField {
+export type ConfigField = {
   key: string
   label: string
   kind: ConfigFieldKind
@@ -42,7 +42,7 @@ export interface ConfigField {
   loadOptions?: (ctx: CollectContext) => Promise<ConfigOption[]>
 }
 
-export interface PluginConfigSchema<TValues = Record<string, unknown>> {
+export type PluginConfigSchema<TValues = Record<string, unknown>> = {
   fields: ConfigField[]
   // Phantom carrier — never present at runtime. Lets `definePlugin` INFER its `TConfig` from a `config` built
   // with `defineConfig`, so `ctx.config` is typed with NO explicit generic on `definePlugin` and NO per-collect

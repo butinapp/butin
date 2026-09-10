@@ -16,7 +16,7 @@ export const resultValidator =
 // Every capability's demo sample, drawn through the same `build` the live collector uses and validated against
 // the contract. Returns one message per problem, `[]` when the plugin is clean — so a test is
 // `expect(validateSamples(plugin)).toEqual([])` and names the offending capability on failure. The currency comes
-// off the plugin itself, so a test can no longer disagree with the `reportingCurrency` core actually stamps.
+// off the plugin itself, so a test cannot disagree with the `reportingCurrency` core actually stamps.
 //
 // A missing sample IS a failure: an unsampled capability falls back to the seed's generic shape, so the demo
 // stops showing what the plugin really renders. `optional` names the capabilities allowed to have none — for an

@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react'
 
 import type { KickstartOutcome, PluginSuggestion } from '../../main/ipc.js'
 
-interface Props {
+type Props = {
   surface: string
   partition: string
 }

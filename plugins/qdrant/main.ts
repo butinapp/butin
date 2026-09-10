@@ -27,12 +27,12 @@ const AUTH0_CLIENT_ID = 'rI1wcOPHOMdeHuTx4x1kF0KFdQ7wnezg'
 const AUTH0_REDIRECT_URI = 'https://cloud.qdrant.io/auth/callback'
 
 // --- types: all Raw* wire shapes + normalized domain/input types (the data dictionary) ---
-interface TokenResponse {
+type TokenResponse = {
   access_token?: string
   refresh_token?: string
 }
 
-interface RawInvoice {
+type RawInvoice = {
   id?: string
   number?: string
   totalAmount?: string // millicents
@@ -41,13 +41,13 @@ interface RawInvoice {
   pdfUrl?: string
 }
 
-export interface QdrantInvoicesInput {
+export type QdrantInvoicesInput = {
   items: RawInvoice[]
 }
 
 // A raw metered line item (one billable entity over one period) from ListMeterings — gross usage, distinct
 // from the invoiced amount.
-interface RawMetering {
+type RawMetering = {
   clusterId?: string
   clusterName?: string
   billableEntityType?: string
@@ -57,35 +57,35 @@ interface RawMetering {
   currency?: string
 }
 
-export interface QdrantUsageInput {
+export type QdrantUsageInput = {
   items: RawMetering[]
 }
 
-interface RawRole {
+type RawRole = {
   name?: string
   subType?: string
 }
 
-interface RawUserWithRoles {
+type RawUserWithRoles = {
   user?: { id?: string; email?: string; status?: string }
   roles?: RawRole[]
 }
 
-export interface QdrantMembersInput {
+export type QdrantMembersInput = {
   items: RawUserWithRoles[]
 }
 
-interface RawManagementKey {
+type RawManagementKey = {
   id?: string
   prefix?: string
   createdAt?: string
 }
 
-interface RawAccessRule {
+type RawAccessRule = {
   globalAccess?: { accessType?: string }
 }
 
-interface RawDatabaseApiKey {
+type RawDatabaseApiKey = {
   id?: string
   name?: string
   createdAt?: string
@@ -93,18 +93,18 @@ interface RawDatabaseApiKey {
   accessRules?: RawAccessRule[]
 }
 
-interface RawCluster {
+type RawCluster = {
   id?: string
   name?: string
 }
 
-interface ClusterKeys {
+type ClusterKeys = {
   clusterId: string
   clusterName: string
   items: RawDatabaseApiKey[]
 }
 
-export interface QdrantKeysInput {
+export type QdrantKeysInput = {
   databaseKeys: ClusterKeys[]
   managementKeys: RawManagementKey[]
 }
@@ -180,13 +180,13 @@ export const retryOn5xx = async <T>(fn: () => Promise<T>, attempts = GATEWAY_MAX
 // returns every org you belong to; the Settings combobox lists them so you pick one instead of pasting a
 // UUID. The picked value is stored under `accountId` (the same key `accountIdOf` reads), so picking just
 // overrides the account auto-extracted from the dashboard URL at capture time.
-interface RawAccount {
+type RawAccount = {
   id?: string
   name?: string
   ownerEmail?: string
 }
 
-export interface QdrantAccountsInput {
+export type QdrantAccountsInput = {
   items: RawAccount[]
 }
 
@@ -253,7 +253,7 @@ export const buildQdrantSummary = (input: QdrantInvoicesInput): CapabilityResult
 
 // --- Billing tab (renders via the generic renderer; emits no summary, so it's NOT the Overview rollup) ---
 // The itemized invoice list (newest first) with a downloadable PDF per row. The headline + chart live on Summary.
-interface QdrantInvoiceRow {
+type QdrantInvoiceRow = {
   id: string
   number: string
   date: string | null
@@ -313,7 +313,7 @@ const fetchQdrantInvoices = async (ctx: CollectContext<QdrantConfig>): Promise<Q
 // ListMeterings for the open month returns one line item per (cluster, billable entity, period). This is
 // GROSS usage — what the account consumed — distinct from the flat invoiced amount on Billing. It emits no
 // spend summary, so it never doubles the Overview rollup (which is the invoice on Summary).
-interface UsageRow {
+type UsageRow = {
   item: string
   cluster: string
   period: string
@@ -406,7 +406,7 @@ const fetchQdrantMembers = async (ctx: CollectContext<QdrantConfig>): Promise<Qd
 export const humanizeAccess = (accessType?: string): string =>
   accessType ? startCase(accessType.replace(/^GLOBAL_ACCESS_RULE_ACCESS_TYPE_/, '')) : ''
 
-interface KeyRow {
+type KeyRow = {
   name: string
   type: string
   cluster: string | null

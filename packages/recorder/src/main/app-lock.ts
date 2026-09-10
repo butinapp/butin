@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { appLockFile } from './store.js'
 
 // What the renderer needs to know about the running app: is it holding a session open, and which profile.
-export interface AppLockStatus {
+export type AppLockStatus = {
   running: boolean
   /** The profile the app currently holds open — the one a recording must not target. */
   activeProfileId?: string

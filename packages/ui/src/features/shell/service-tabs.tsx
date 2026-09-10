@@ -4,7 +4,7 @@ import { useLabels } from '../../i18n/index.js'
 import { cn, Tabs, TabsList, TabsTrigger } from '../../primitives.js'
 import { type CapabilityView } from '../../types.js'
 
-export interface ServiceTab {
+export type ServiceTab = {
   capability: CapabilityView
   body: ReactNode
   // A trailing tab (e.g. Settings) floats to the right edge, set apart from the data tabs. The first

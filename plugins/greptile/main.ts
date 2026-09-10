@@ -27,7 +27,7 @@ const ORIGIN = 'https://app.greptile.com'
 // `[0].result.data.json`. `meta` marks non-JSON values (Dates / undefined) by path so the server's
 // superjson transformer revives them before zod validation.
 
-interface SuperjsonInput {
+type SuperjsonInput = {
   json: unknown
   meta?: { values: Record<string, unknown>; v: number }
 }
@@ -70,13 +70,13 @@ const tenantInput = (ctx: CollectContext<GreptileConfig>): SuperjsonInput => ({
 // through the authed client so you pick an org instead of pasting its UUID. We never silently choose:
 // the picked value is stored under `tenantExternalId` and read back by `tenantId()`.
 
-export interface RawSessionOrg {
+export type RawSessionOrg = {
   tenantExternalId?: string
   name?: string
   slug?: string
 }
 
-interface RawAuthSession {
+type RawAuthSession = {
   user?: { organizations?: RawSessionOrg[] } | null
 }
 
@@ -113,20 +113,20 @@ export const buildGreptileOrgOptions = (orgs: RawSessionOrg[]): ConfigOption[] =
 // The open period has no invoice yet, so its projected spend (from `getCurrentPeriodCosts`) is synthesized
 // into an `upcoming` row so the monthly chart includes the in-progress month. All money is cents.
 
-export interface RawBillingPeriod {
+export type RawBillingPeriod = {
   startTime?: string
   endTime?: string
   label?: string
   invoiceId?: string | null
 }
 
-export interface RawInvoiceLine {
+export type RawInvoiceLine = {
   description?: string
   amount?: number // cents
   currency?: string
 }
 
-export interface RawUpcomingInvoice {
+export type RawUpcomingInvoice = {
   periodStart?: string
   periodEnd?: string
   total?: number // cents
@@ -137,7 +137,7 @@ export interface RawUpcomingInvoice {
   lines?: RawInvoiceLine[]
 }
 
-export interface RawSubscriptionInfo {
+export type RawSubscriptionInfo = {
   codeReview?: {
     model?: string
     status?: string
@@ -149,7 +149,7 @@ export interface RawSubscriptionInfo {
   } | null
 }
 
-export interface RawCurrentPeriodCosts {
+export type RawCurrentPeriodCosts = {
   codeReview?: {
     totalCents?: number
     seatCostCents?: number
@@ -160,7 +160,7 @@ export interface RawCurrentPeriodCosts {
   api?: { totalCents?: number } | null
 }
 
-export interface RawFlexUsageStatus {
+export type RawFlexUsageStatus = {
   creditBalanceCents?: number
   currentPeriodStart?: string
   currentPeriodEnd?: string
@@ -168,7 +168,7 @@ export interface RawFlexUsageStatus {
   projectedNetFlexUsageChargeCents?: number
 }
 
-export interface GreptileSubscription {
+export type GreptileSubscription = {
   model: string
   status: string
   seatPriceUsd: number
@@ -184,14 +184,14 @@ export interface GreptileSubscription {
   creditBalanceUsd: number
 }
 
-export interface GreptileInvoice extends BillingInvoiceInput {
+export type GreptileInvoice = BillingInvoiceInput & {
   /** Human label for the billing period, e.g. '5th May – 5th Jun, 2026'. */
   label: string
   /** True for the in-progress period (a live projection, not a finalized invoice). */
   projected: boolean
 }
 
-export interface GreptileBilling {
+export type GreptileBilling = {
   subscription: GreptileSubscription
   /** Newest-first, including the projected current period. */
   invoices: GreptileInvoice[]
@@ -200,7 +200,7 @@ export interface GreptileBilling {
 }
 
 /** A period joined to the invoice fetched for it (null when no invoice / fetch failed). */
-export interface PeriodWithInvoice {
+export type PeriodWithInvoice = {
   // Stable union key for incremental fetch: the Stripe invoiceId, or the CONSTANT `'open'` for the invoice-less
   // current period. There is only ever one open period, so its id must stay constant across refreshes — at
   // month rollover it finalizes under its own `invoiceId` and the new current period reuses the `'open'` slot,
@@ -283,7 +283,7 @@ export const buildGreptileBilling = (
 // hosted-invoice fetch) is a live-account-only path not replayable from fixtures; `parseStripeHostedInvoice`
 // is the pure normalizer for the Stripe responses.
 
-export interface GreptilePaymentMethod {
+export type GreptilePaymentMethod = {
   brand: string
   last4: string
   expMonth: number
@@ -291,12 +291,12 @@ export interface GreptilePaymentMethod {
   funding: string
 }
 
-export interface GreptileBillingContact {
+export type GreptileBillingContact = {
   name: string
   email: string
 }
 
-interface RawStripeCard {
+type RawStripeCard = {
   brand?: string
   display_brand?: string
   last4?: string
@@ -305,13 +305,13 @@ interface RawStripeCard {
   funding?: string
 }
 
-interface RawStripePaymentMethod {
+type RawStripePaymentMethod = {
   type?: string
   card?: RawStripeCard | null
   billing_details?: { name?: string | null; email?: string | null } | null
 }
 
-export interface RawStripeHostedInvoice {
+export type RawStripeHostedInvoice = {
   customer_name?: string | null
   customer_email?: string | null
   payment_intent?: { payment_method?: RawStripePaymentMethod | null } | null
@@ -385,7 +385,7 @@ export const buildGreptileSummaryResult = (billingData: GreptileBilling): Capabi
 // payment-method + billing-contact records, and the downloadable invoice history. Greptile invoices carry a
 // `hostedInvoiceUrl` only (no PDF byte source), so the invoice list is a plain table with a `url` column.
 
-interface BillingAccountRow {
+type BillingAccountRow = {
   plan: string
   status: string
   period: string | null
@@ -396,19 +396,19 @@ interface BillingAccountRow {
   totalBilled: number
 }
 
-interface PaymentMethodRow {
+type PaymentMethodRow = {
   brand: string | null
   last4: string | null
   expiry: string | null
   funding: string | null
 }
 
-interface BillingContactRow {
+type BillingContactRow = {
   name: string | null
   email: string | null
 }
 
-interface BillingInvoiceRow {
+type BillingInvoiceRow = {
   // Hidden — the Stripe invoice id rides as the ledger key so a finalized invoice accumulates past the fetch
   // window. Present on every non-projected row (a finalized period always carries its invoiceId).
   id: string
@@ -520,7 +520,7 @@ export const buildGreptileBillingTab = (
 // The raw billing bundle Summary + Billing share: the period list joined to its per-month invoice, plus the
 // subscription / current-period-cost / flex-usage payloads. `buildGreptileBillingFromRaw` is the pure
 // raw→normalized step both tabs derive from.
-export interface GreptileBillingRaw {
+export type GreptileBillingRaw = {
   periods: PeriodWithInvoice[]
   sub: RawSubscriptionInfo | null
   costs: RawCurrentPeriodCosts | null
@@ -571,13 +571,13 @@ export const buildGreptileBillingFromRaw = (raw: GreptileBillingRaw): GreptileBi
 // overage/"flex", seats) for the current billing period; `billing.getFlexUsageStatus` adds the period
 // window + projected overage charge (cents). Counts, not money, except the projected flex charge.
 
-export interface RawDailyPoint {
+export type RawDailyPoint = {
   date?: string
   codeReview?: number
   cliReview?: number
 }
 
-export interface RawAuthor {
+export type RawAuthor = {
   authorId?: string
   authorLogin?: string
   webReviewCount?: number
@@ -587,18 +587,18 @@ export interface RawAuthor {
   seatPeriods?: number
 }
 
-export interface RawDailyReviewUsage {
+export type RawDailyReviewUsage = {
   daily?: RawDailyPoint[]
   authors?: RawAuthor[]
 }
 
-export interface GreptileDailyPoint {
+export type GreptileDailyPoint = {
   date: string
   codeReview: number
   cliReview: number
 }
 
-export interface GreptileAuthor {
+export type GreptileAuthor = {
   login: string
   webReviews: number
   cliReviews: number
@@ -607,7 +607,7 @@ export interface GreptileAuthor {
   seats: number
 }
 
-export interface GreptileUsage {
+export type GreptileUsage = {
   periodStart?: string
   periodEnd?: string
   daily: GreptileDailyPoint[]
@@ -731,7 +731,7 @@ const dailyUsageInput = (ctx: CollectContext<GreptileConfig>, startIso: string, 
 
 // The raw usage bundle: the daily web/CLI review counts (+ per-author breakdown) joined to the flex-usage
 // status that scopes the query window and carries the projected overage charge.
-export interface GreptileUsageRaw {
+export type GreptileUsageRaw = {
   daily: RawDailyReviewUsage | null
   flex: RawFlexUsageStatus | null
 }
@@ -754,13 +754,13 @@ const fetchGreptileUsage = async (ctx: CollectContext<GreptileConfig>): Promise<
 // `apikey.list` returns the org's API keys with name / id / createdAt — NO secret material (the token is
 // only shown once at creation), so this is a safe read-only inventory.
 
-export interface RawApiKey {
+export type RawApiKey = {
   id?: string
   name?: string
   createdAt?: string
 }
 
-export interface RawApiKeyList {
+export type RawApiKeyList = {
   items?: RawApiKey[]
   total?: number
 }
@@ -797,17 +797,17 @@ const fetchGreptileKeys = (ctx: CollectContext<GreptileConfig>): Promise<RawApiK
 // dashboard surfaces no name (the avatar is the email's initial), so the roster is email + role + status.
 // No secret material. An invite surfaces with a 'pending' status.
 
-export interface RawPerson {
+export type RawPerson = {
   type?: string
   email?: string
   role?: string | null
 }
 
-export interface RawSearchPeople {
+export type RawSearchPeople = {
   items?: RawPerson[]
 }
 
-export interface GreptileMember {
+export type GreptileMember = {
   email: string
   role: string | null
   status: 'active' | 'pending'

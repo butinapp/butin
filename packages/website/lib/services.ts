@@ -4,7 +4,7 @@
 
 export type ServiceGroup = 'dev' | 'beyond' | 'ai'
 
-export interface Service {
+export type Service = {
   id: string
   name: string
   vendor: string

@@ -2,7 +2,7 @@ import type { DomainProfile, EndpointCategory, RunData } from '../../detect/type
 
 // A recorded request file that hits a planned capability's endpoint — the concrete evidence the brief points
 // the implementer at to read the real response shape.
-export interface EvidenceRef {
+export type EvidenceRef = {
   /** Absolute path to the requests/*.json file under the run dir. */
   path: string
   method: string
@@ -12,7 +12,7 @@ export interface EvidenceRef {
 
 // One capability the scaffold will stub, derived from an endpoint hint (or the `status` fallback when a
 // recording surfaced no recognizable data endpoints).
-export interface PlannedCapability {
+export type PlannedCapability = {
   /** Stable capability id + function-name base, e.g. 'billing' | 'usage' | 'keys' | 'members' | 'status'. */
   capId: string
   label: string
@@ -26,7 +26,7 @@ export interface PlannedCapability {
   evidence: EvidenceRef[]
 }
 
-export interface KickstartInput {
+export type KickstartInput = {
   surface: string
   id: string
   name: string
@@ -40,7 +40,7 @@ export interface KickstartInput {
   runsRoot: string
 }
 
-export interface KickstartResult {
+export type KickstartResult = {
   mainTs: string
   testTs: string
   brief: string

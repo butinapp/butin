@@ -22,7 +22,7 @@ const BILLING_URL = 'https://app.fireworks.ai/account/billing'
 
 // ── types ─────────────────────────────────────────────────────────────────────────
 // The raw invoiceRows wire shape (only the fields we use) + the normalized invoice (USD dollars).
-interface RawInvoiceRow {
+type RawInvoiceRow = {
   id?: string
   // Pre-formatted, RSC-escaped, e.g. "$$13.04".
   amount?: string
@@ -35,7 +35,7 @@ interface RawInvoiceRow {
   type?: number
 }
 
-export interface FireworksInvoice {
+export type FireworksInvoice = {
   id: string
   date?: string // 'YYYY-MM-DD' from targetTimeMs
   amount: number // parsed USD dollars
@@ -43,7 +43,7 @@ export interface FireworksInvoice {
   hostedUrl: string | null // Orb-hosted invoice link
 }
 
-export interface FireworksInvoicesReport {
+export type FireworksInvoicesReport = {
   invoices: FireworksInvoice[]
   // Sum of successful (non-upcoming) invoice amounts, USD dollars.
   totalBilled: number
@@ -170,7 +170,7 @@ export const buildFireworksSummaryResult = (rows: RawInvoiceRow[] | undefined | 
 // The invoice history as a table: date / amount / status (badged) + an external `url` column to the Orb-hosted
 // invoice. Each row's invoiceUrl carries its own token, so it's a downloadable file (the host adds selection +
 // Download all/selected + per-row Open). The headline (MTD / monthly chart) lives on Summary.
-interface FireworksBillingRow {
+type FireworksBillingRow = {
   // Hidden — the invoice id rides as the ledger key so an upcoming invoice's status/amount accumulates as it
   // finalizes (several invoices can share a month, so date isn't a stable identity).
   id: string

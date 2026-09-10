@@ -107,7 +107,7 @@ import { type CapabilityResult, capabilityResult, record } from '@butinapp/sdk/d
 
 // ── types ─────────────────────────────────────────────────────────────────────────
 // ALL types together (the data dictionary): the Raw* wire shapes the service returns AND the normalized
-// domain types, e.g. interface RawThing { ... }. Keeping them here lets the code below read declaration-free.
+// domain types, e.g. type RawThing = { ... }. Keeping them here lets the code below read declaration-free.
 
 // ── domain logic (grouped by capability, in capabilities[] order) ───────────────────
 // Per capability: an exported build*() (the fixture test target — raw → CapabilityResult) then its collect()

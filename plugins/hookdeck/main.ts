@@ -57,7 +57,7 @@ const teamGet = <T>(ctx: CollectContext<HookdeckConfig>, path: string, params?: 
 // ── types (the data dictionary) ─────────────────────────────────────────────────────────
 
 // billing
-export interface RawHookdeckInvoice {
+export type RawHookdeckInvoice = {
   id?: string
   is_paid?: boolean
   // Cents (Orb), e.g. 6990 → $69.90. Can carry float noise (6990.0000001).
@@ -68,7 +68,7 @@ export interface RawHookdeckInvoice {
   pdf_url?: string
 }
 
-interface RawPriceInterval {
+type RawPriceInterval = {
   end_date?: string | null
   price?: {
     name?: string
@@ -78,7 +78,7 @@ interface RawPriceInterval {
   } | null
 }
 
-export interface RawHookdeckSubscription {
+export type RawHookdeckSubscription = {
   status?: string
   name?: string
   current_billing_period_start_date?: string
@@ -97,7 +97,7 @@ export interface RawHookdeckSubscription {
   price_intervals?: RawPriceInterval[]
 }
 
-export interface RawHookdeckCard {
+export type RawHookdeckCard = {
   brand?: string
   display_brand?: string
   last4?: string
@@ -107,16 +107,16 @@ export interface RawHookdeckCard {
   country?: string
 }
 
-export interface RawHookdeckEmail {
+export type RawHookdeckEmail = {
   email?: string
 }
 
-export interface RawHookdeckAddress {
+export type RawHookdeckAddress = {
   billing_address?: { name?: string } | null
   tax_id?: string | null
 }
 
-export interface HookdeckInvoice {
+export type HookdeckInvoice = {
   id: string
   // 'YYYY-MM-DD' from issue_date.
   date?: string
@@ -127,7 +127,7 @@ export interface HookdeckInvoice {
   pdfUrl?: string
 }
 
-export interface HookdeckPaymentMethod {
+export type HookdeckPaymentMethod = {
   brand?: string
   last4?: string
   expMonth?: number
@@ -136,7 +136,7 @@ export interface HookdeckPaymentMethod {
   country?: string
 }
 
-export interface HookdeckBillingReport {
+export type HookdeckBillingReport = {
   invoices: HookdeckInvoice[]
   // Sum of `amount` across all invoices, dollars.
   totalBilled: number
@@ -266,7 +266,7 @@ export const buildHookdeckSummaryResult = (report: HookdeckBillingReport): Capab
 // record (plan, period, base fee, status, total billed), the payment-method + billing-contact records, and
 // the downloadable Orb invoice history. A record with nothing to show is dropped.
 
-interface AccountRow {
+type AccountRow = {
   plan: string
   planExternalId: string | null
   status: string | null
@@ -277,7 +277,7 @@ interface AccountRow {
   portalUrl: string | null
 }
 
-interface PaymentRow {
+type PaymentRow = {
   brand: string | null
   last4: string | null
   expiry: string | null
@@ -285,13 +285,13 @@ interface PaymentRow {
   country: string | null
 }
 
-interface ContactRow {
+type ContactRow = {
   name: string | null
   email: string | null
   taxId: string | null
 }
 
-interface InvoiceRow {
+type InvoiceRow = {
   // Hidden — the Orb invoice id rides as the ledger key so an invoice accumulates past the fetch window. Two
   // invoices can share an issue date (a plan charge + a usage charge on the same day), so date/name aren't unique.
   id: string
@@ -412,7 +412,7 @@ export const buildHookdeckBillingTab = (report: HookdeckBillingReport): Capabili
 
 // The raw bundle the five billing endpoints return — the wire shape Summary + Billing both transform. card /
 // email / address can be 200-with-null when nothing is on file, so each field is nullable.
-export interface RawHookdeckBilling {
+export type RawHookdeckBilling = {
   invoices: RawHookdeckInvoice[] | null
   subscription: RawHookdeckSubscription | null
   card: RawHookdeckCard | null
@@ -439,28 +439,28 @@ const reportOf = (raw: RawHookdeckBilling): HookdeckBillingReport =>
 
 // ── usage ────────────────────────────────────────────────────────────────────────────────
 
-interface RawUsagePoint {
+type RawUsagePoint = {
   quantity?: number
   timeframe_start?: string
   timeframe_end?: string
 }
 
-interface RawUsageMetric {
+type RawUsageMetric = {
   billable_metric?: { id?: string; name?: string }
   usage?: RawUsagePoint[]
   view_mode?: string
 }
 
-export interface RawHookdeckUsageResponse {
+export type RawHookdeckUsageResponse = {
   data?: RawUsageMetric[]
 }
 
-export interface HookdeckUsageDaily {
+export type HookdeckUsageDaily = {
   date: string
   quantity: number
 }
 
-export interface HookdeckUsageMetric {
+export type HookdeckUsageMetric = {
   id: string
   name: string
   // Sum of `quantity` across the period.
@@ -468,7 +468,7 @@ export interface HookdeckUsageMetric {
   daily: HookdeckUsageDaily[]
 }
 
-export interface HookdeckUsageReport {
+export type HookdeckUsageReport = {
   metrics: HookdeckUsageMetric[]
   // Sorted unique day labels ('YYYY-MM-DD') spanning all metrics — chart x-axis.
   days: string[]
@@ -535,7 +535,7 @@ export const buildHookdeckUsageResult = (report: HookdeckUsageReport): Capabilit
 
 // The raw usage payload plus the billing-period bounds it was scoped to (ISO 'YYYY-MM-DD'), carried so build
 // can stamp the period without re-reading the subscription.
-export interface RawHookdeckUsage {
+export type RawHookdeckUsage = {
   usage: RawHookdeckUsageResponse | null
   periodStart?: string
   periodEnd?: string
@@ -570,7 +570,7 @@ export const buildHookdeckUsage = (raw: RawHookdeckUsage): CapabilityResult =>
 
 // One row from GET /organizations/current/members — a bare array. The dashboard nests the person's name
 // and email under user_* keys; `current` resolves the org from the session, so no org id is needed.
-export interface RawHookdeckMember {
+export type RawHookdeckMember = {
   // omem_… membership id.
   id?: string
   user_id?: string
@@ -579,7 +579,7 @@ export interface RawHookdeckMember {
   user_email?: string
 }
 
-export interface RawHookdeckMembersResponse {
+export type RawHookdeckMembersResponse = {
   data?: RawHookdeckMember[]
 }
 

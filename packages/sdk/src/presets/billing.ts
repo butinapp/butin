@@ -18,7 +18,7 @@ import { isAccrualBasis, type MtdBasis } from './mtd-basis.js'
 
 // One already-normalized USD invoice — the canonical invoice shape the billing preset + plugins map their raw
 // payload into (via money.ts), one definition so the two can't drift.
-export interface BillingInvoiceInput {
+export type BillingInvoiceInput = {
   // Stable provider id, when the service exposes one — the accumulation key so an invoice survives the rolling
   // window. Absent → the billing preset derives one from date+amount.
   id?: string
@@ -32,7 +32,7 @@ export interface BillingInvoiceInput {
   pdfUrl?: string | null
 }
 
-export interface BillingInput {
+export type BillingInput = {
   currentMtd: number | null // USD MTD spend; null when the provider exposes no running figure
   baseFee?: number | null // fixed plan floor this period (USD); renders a 'Base' cell when defined
   meteredMtd?: number | null // variable spend above the base this period (USD) = overage; renders an 'Overage' cell
@@ -108,7 +108,7 @@ const monthOverMonthDelta = (months: MonthPoint[], currentMtd: number | null, ba
 // `value` is whatever the role expects (a number for money/count, a string for label/identifier/timestamp…).
 // The rich-stat fields (max/unit/caption/tone) ride onto the stat view so the card can show a progress bar
 // (value/max), a unit suffix, a caption/breakdown line, or a tinted value.
-export interface BillingStat {
+export type BillingStat = {
   key: string
   label: string
   role: SemanticRole
@@ -121,7 +121,7 @@ export interface BillingStat {
   tone?: 'positive' | 'negative' | 'muted' // value tint
 }
 
-export interface BillingSummaryInput {
+export type BillingSummaryInput = {
   currentMtd: number | null // USD (or the input.currency) MTD spend; null → no headline value + no summary
   currentMtdLabel?: string // the currentMtd field + summary label (default 'This month')
   currentMtdCaption?: string // caption under the headline (e.g. 'invoiced · CAD' to disambiguate the currency)

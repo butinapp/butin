@@ -102,17 +102,17 @@ export const categoricalTone = (value: unknown): CategoricalHue => {
   return CATEGORICAL_HUES[Math.abs(hash) % CATEGORICAL_HUES.length]
 }
 
-export interface LabelledValue {
+export type LabelledValue = {
   label: string
   value: string
 }
 
-export interface TableCell {
+export type TableCell = {
   text: string
   href?: string
 }
 
-export interface TableModel {
+export type TableModel = {
   columns: Array<{ key: string; label: string }>
   rows: TableCell[][]
 }
@@ -208,7 +208,7 @@ export const findCumulativeColumn = (
 
 // A stat card resolved for rendering: the headline value plus the optional rich layers (denominator +
 // progress, unit suffix, caption, tone) the stat-view field declared. `progress` is a 0..1 fraction.
-export interface StatCardModel {
+export type StatCardModel = {
   key: string
   label: string
   value: string
@@ -261,12 +261,12 @@ export const statCards = (
   })
 }
 
-export interface SeriesData {
+export type SeriesData = {
   labels: string[]
   values: number[]
 }
 
-export interface StackedSeries {
+export type StackedSeries = {
   labels: string[] // distinct x values, sorted (the shared axis)
   series: { name: string; values: number[] }[] // one per distinct category, aligned to labels
 }
@@ -339,7 +339,7 @@ const monthFullLabel = (month: string): string => {
   return `${MONTHS_FULL[Number(m) - 1] ?? m} ${y ?? ''}`.trim()
 }
 
-export interface DailyMonthGroup {
+export type DailyMonthGroup = {
   month: string // 'YYYY-MM'
   label: string // 'June 2026'
   subtotal: number

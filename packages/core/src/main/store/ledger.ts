@@ -12,7 +12,7 @@ import {
 import { readJson, writeJson } from './secure-fs.js'
 import { dataRootDir, ledgerPath } from './store.js'
 
-export interface Observation {
+export type Observation = {
   capturedAt: string
   datasets: StoredDataset[]
   summaries: StoredSummary[]

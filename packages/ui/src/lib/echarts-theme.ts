@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 // ECharts keeps charts correct in light OR dark, in the app and an embedded viewer, with no theme state
 // threaded through. `useEchartsTheme()` re-reads whenever the `.dark` class flips.
 
-export interface EchartsTheme {
+export type EchartsTheme = {
   LABEL: { color: string; fontSize: number }
   AXIS_LINE: {
     axisLine: { lineStyle: { color: string } }
