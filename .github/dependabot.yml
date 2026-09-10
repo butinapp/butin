@@ -1,10 +1,10 @@
 version: 2
 
-# Third-party actions are pinned to a commit SHA rather than a tag, because a tag (and, for some publishers, a
-# major-version branch) is mutable — a compromised publisher can repoint it at new code that runs with whatever
-# the workflow's token and secrets allow. A SHA can't move, so the cost of pinning is staleness: Dependabot pays
-# it by opening the bump PR and rewriting both the SHA and its trailing version comment.
 updates:
+  # Third-party actions are pinned to a commit SHA rather than a tag, because a tag (and, for some publishers, a
+  # major-version branch) is mutable — a compromised publisher can repoint it at new code that runs with whatever
+  # the workflow's token and secrets allow. A SHA can't move, so the cost of pinning is staleness: Dependabot pays
+  # it by opening the bump PR and rewriting both the SHA and its trailing version comment.
   - package-ecosystem: github-actions
     # The github-actions ecosystem reads `.github/workflows/` plus an `action.yml` sitting AT the directory it is
     # given. A composite action nested under `.github/actions/` is invisible to the repo-root entry, so it needs a
@@ -18,3 +18,24 @@ updates:
       actions:
         patterns:
           - '*'
+
+  # One entry covers the whole workspace: the npm ecosystem walks every package.json pnpm-workspace.yaml declares,
+  # and resolves the `catalog:` protocol back to the version it names there.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # Routine bumps arrive batched, but a major is left OUT of both groups so it lands as its own PR — a breaking
+    # change read on its own, never buried in a batch that otherwise merges on a glance.
+    groups:
+      prod:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      dev:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
