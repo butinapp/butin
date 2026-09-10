@@ -7,7 +7,7 @@ import {
 } from '@butinapp/sdk'
 import { type CapabilityResult, capabilityResult, table } from '@butinapp/sdk/data'
 import { billing, type BillingStat } from '@butinapp/sdk/presets'
-import { byDayDesc, isoDay, parseFrAmount, round2, startCase } from '@butinapp/sdk/util'
+import { byDayDesc, isoDay, parseFrAmount, round2, squish, startCase } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 import { randomUUID } from 'node:crypto'
 
@@ -157,8 +157,6 @@ export interface RawPortfolio {
 }
 
 // ── shared helpers ─────────────────────────────────────────────────────────────────────
-const cleanAddr = (s?: string): string => (s ?? '').replace(/\s+/g, ' ').trim()
-
 const relationName = (r: RawRelation): string =>
   [r.nom1Titulaire, r.nom2Titulaire]
     .map((s) => (s ?? '').trim())
@@ -508,7 +506,7 @@ export const buildHydroBilling = (p: RawPortfolio): CapabilityResult => {
   const contractByNo = new Map(p.contracts.map(({ contrat }) => [contrat.noContrat, contrat]))
 
   const invoiceRows: InvoiceRow[] = p.invoiceDocs.flatMap(({ noCompteContrat, docs }) => {
-    const address = cleanAddr(contractByAccount.get(noCompteContrat)?.adresseConsommation) || noCompteContrat
+    const address = squish(contractByAccount.get(noCompteContrat)?.adresseConsommation) || noCompteContrat
 
     return docs.map((doc) => ({
       noFacture: doc.noFacture,
@@ -529,7 +527,7 @@ export const buildHydroBilling = (p: RawPortfolio): CapabilityResult => {
   const periodRows: PeriodRow[] = p.billingPeriods.flatMap(({ noContrat, periods }) => {
     const contrat = contractByNo.get(noContrat)
     const account = contrat?.noCompteContrat ?? '—'
-    const address = cleanAddr(contrat?.adresseConsommation) || noContrat
+    const address = squish(contrat?.adresseConsommation) || noContrat
 
     return periods.map((per) => ({
       contract: noContrat,
@@ -613,7 +611,7 @@ export const buildHydroAccounts = (p: RawPortfolio): CapabilityResult => {
   const rows: AccountRow[] = p.accounts.map(({ relationName: holder, compte: c }) => ({
     account: c.noCompteContrat,
     holder,
-    address: cleanAddr(c.adresseFacturation ?? c.adresse),
+    address: squish(c.adresseFacturation ?? c.adresse),
     amount: round2(c.montant ?? 0),
     balance: round2(c.solde ?? 0),
     overdue: round2(c.soldeEnSouffrance ?? 0),
@@ -661,7 +659,7 @@ export const buildHydroProperties = (p: RawPortfolio): CapabilityResult => {
 
   const rows: PropertyRow[] = p.contracts.map(({ contrat: c }) => ({
     contract: c.noContrat,
-    address: cleanAddr(c.adresseConsommation),
+    address: squish(c.adresseConsommation),
     account: c.noCompteContrat ?? '—',
     meter: c.noCompteur ?? '—',
     tariff: c.tarifActuel ?? '—',
@@ -708,7 +706,7 @@ interface MonthlyKwhRow {
   kwh: number
 }
 
-const shortAddr = (portrait: RawPortrait): string => cleanAddr(portrait.adresseLieuConsoPartie1) || portrait.noContrat
+const shortAddr = (portrait: RawPortrait): string => squish(portrait.adresseLieuConsoPartie1) || portrait.noContrat
 
 export const buildHydroConsumption = (p: RawPortfolio): CapabilityResult => {
   const rows: ConsumptionRow[] = p.portraits.map(({ portrait }) => {

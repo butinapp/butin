@@ -1,7 +1,7 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, type MemberInput, type MembersInput } from '@butinapp/sdk/presets'
-import { byDayDesc, currentMonthKey, dayMinus, isoDay, parseDollarAmount, round2, utcDaysAgo } from '@butinapp/sdk/util'
+import { byDayDesc, dayMinus, isoDay, parseDollarAmount, round2, squish, utcDaysAgo } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import {
@@ -104,8 +104,6 @@ export interface DnsimpleAccountRaw {
 
 // ── shared parsers ───────────────────────────────────────────────────────────────────
 
-export { parseDollarAmount }
-
 /** Scrape the invoice rows out of one invoices-page HTML. Cell order: [number, date, items, summary, total, status, actions]. */
 export const parseInvoices = (html: string): DnsimpleInvoice[] => {
   const $ = cheerio.load(html)
@@ -121,7 +119,7 @@ export const parseInvoices = (html: string): DnsimpleInvoice[] => {
 
     const date = cells.eq(1).find('time').attr('datetime')?.trim() || undefined
     const items = parseInt(cells.eq(2).text().trim(), 10) || 0
-    const summary = cells.eq(3).text().replace(/\s+/g, ' ').trim()
+    const summary = squish(cells.eq(3).text())
     const amount = parseDollarAmount(cells.eq(4).text().trim())
     const status = cells.eq(5).text().trim().toLowerCase() || 'unknown'
 
@@ -188,7 +186,7 @@ export const parsePlan = (
       return
     }
 
-    const label = tds.eq(0).text().replace(/\s+/g, ' ').trim()
+    const label = squish(tds.eq(0).text())
     const amount = parseDollarAmount(tds.eq(1).text().trim())
 
     if (!label) {
@@ -284,11 +282,10 @@ export const buildBillingReport = (billingHtml: string, invoicePagesHtml: string
 // The current calendar month's invoiced total is the closest thing to month-to-date spend (the Overview rolls
 // it up); a quiet month with no invoice reads as null so the Overview skips DNSimple rather than charting 0.
 export const buildDnsimpleSummaryResult = (report: DnsimpleBillingReport): CapabilityResult => {
-  const ym = currentMonthKey()
-  const mtd = report.invoices.filter((i) => i.date?.startsWith(ym)).reduce((sum, i) => sum + i.amount, 0)
+  const mtd = billing.invoicedMtd(report.invoices)
 
   return billing.summary({
-    currentMtd: mtd > 0 ? round2(mtd) : null,
+    currentMtd: mtd > 0 ? mtd : null,
     // Sum of the current calendar month's issued invoices.
     mtdBasis: 'invoiced',
     currency: CURRENCY,
@@ -421,9 +418,9 @@ export const buildDnsimpleMembers = (html: string): MembersInput => {
 
   $('table.members-table tbody tr').each((index, row) => {
     const $row = $(row)
-    const name = $row.find('.member-name').first().text().replace(/\s+/g, ' ').trim()
+    const name = squish($row.find('.member-name').first().text())
     const email = $row.find('.member-email').first().text().trim()
-    const role = $row.find('.member-role').first().text().replace(/\s+/g, ' ').trim()
+    const role = squish($row.find('.member-role').first().text())
 
     // A row with nothing identifying is a layout artefact (spacer/empty state) — skip it.
     if (!name && !email) {
@@ -474,7 +471,7 @@ export const parseDomains = (html: string): DnsimpleDomain[] => {
 
     const row = $(a).closest('tr, li, .domain, .card, .model-row')
     const expiresOn = isoDay(row.find('time[datetime]').first().attr('datetime'))
-    const status = row.find('.status, .badge, [class*="status"]').first().text().replace(/\s+/g, ' ').trim()
+    const status = squish(row.find('.status, .badge, [class*="status"]').first().text())
 
     domains.push({
       name,
@@ -517,8 +514,8 @@ export const parseAccountProfile = (html: string): DnsimpleAccountProfile => {
       return
     }
 
-    const label = tds.eq(0).text().replace(/\s+/g, ' ').trim().toLowerCase()
-    const value = tds.eq(1).text().replace(/\s+/g, ' ').trim()
+    const label = squish(tds.eq(0).text()).toLowerCase()
+    const value = squish(tds.eq(1).text())
 
     if (label && value && !rows.has(label)) {
       rows.set(label, value)
@@ -532,7 +529,7 @@ export const parseAccountProfile = (html: string): DnsimpleAccountProfile => {
     const ps = $(card)
       .find('p')
       .toArray()
-      .map((p) => $(p).text().replace(/\s+/g, ' ').trim())
+      .map((p) => squish($(p).text()))
     const i = ps.findIndex((t) => /billing notifications will be sent to/i.test(t))
 
     if (i >= 0 && ps[i + 1]) {
@@ -653,7 +650,7 @@ export const parseApiLimits = (html: string): DnsimpleApiLimits | null => {
   const limits: DnsimpleApiLimits = {}
 
   card.find('.col-third').each((_, col) => {
-    const text = $(col).text().replace(/\s+/g, ' ').trim()
+    const text = squish($(col).text())
     const strong = $(col).find('strong').first()
 
     if (/requests\/hour limit/i.test(text)) {
@@ -675,7 +672,7 @@ export const parseAccessTokens = (html: string): DnsimpleAccessToken[] => {
   cardByHeading($, /access tokens/i)
     .find('table tbody tr')
     .each((_, tr) => {
-      const name = $(tr).find('td').eq(0).text().replace(/\s+/g, ' ').trim()
+      const name = squish($(tr).find('td').eq(0).text())
 
       if (!name) {
         return

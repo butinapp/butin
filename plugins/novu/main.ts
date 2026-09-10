@@ -20,7 +20,16 @@ import {
   type RawStripeInvoiceList
 } from '@butinapp/sdk/integrations'
 import { billing, members, type BillingInvoiceInput, type MembersInput } from '@butinapp/sdk/presets'
-import { byDayDesc, centsToMajor, dayOf, epochSecDay, isoDaysAgo, round2, startCase } from '@butinapp/sdk/util'
+import {
+  byDayDesc,
+  centsToMajor,
+  dayOf,
+  epochSecDay,
+  fullName,
+  isoDaysAgo,
+  round2,
+  startCase
+} from '@butinapp/sdk/util'
 
 import { sampleNovuBilling, sampleNovuMemberships, sampleNovuUsage } from './sample.js'
 
@@ -621,7 +630,7 @@ export const buildNovuMembers = (raw: RawClerkMembershipList): MembersInput => {
   return {
     members: memberships.map((m, i) => {
       const u = m.public_user_data ?? {}
-      const name = [u.first_name, u.last_name].filter(Boolean).join(' ').trim()
+      const name = fullName(u.first_name, u.last_name)
 
       return {
         id: u.user_id ?? m.id ?? String(i),

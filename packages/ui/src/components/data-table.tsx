@@ -131,18 +131,7 @@ export const DataTable = <Row,>({
     ? {
         detail: expandable,
         isOpen: (id) => expandedRows.has(id),
-        toggle: (id) =>
-          setExpandedRows((prev) => {
-            const next = new Set(prev)
-
-            if (next.has(id)) {
-              next.delete(id)
-            } else {
-              next.add(id)
-            }
-
-            return next
-          })
+        toggle: (id) => setExpandedRows((prev) => sel.toggle(prev, id))
       }
     : undefined
 
@@ -730,19 +719,7 @@ const Groups = <Row,>({
             isOpen={isOpen}
             allOn={allOn}
             selectable={selectable}
-            onToggleOpen={() =>
-              setCollapsed((prev) => {
-                const next = new Set(prev)
-
-                if (next.has(key)) {
-                  next.delete(key)
-                } else {
-                  next.add(key)
-                }
-
-                return next
-              })
-            }
+            onToggleOpen={() => setCollapsed((prev) => sel.toggle(prev, key))}
             onToggleAll={() => onSelectionChange?.(sel.setGroup(selection!, ids, !allOn))}
             action={grouped.groupAction?.(key, ids, selectedIds)}
           >

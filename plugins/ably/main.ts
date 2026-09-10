@@ -2,7 +2,7 @@ import { defineCapability, defineConfigSchema, definePlugin, type CollectContext
 import { addSections, capabilityResult, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { upperFirst } from '@butinapp/sdk/libs'
 import { billing, usage, type UsageMetricInput } from '@butinapp/sdk/presets'
-import { byDayDesc, currentMonthKey, parseDollarAmount, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, parseDollarAmount, round2, squish } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import { sampleAblyBilling, sampleAblyUsage } from './sample.js'
@@ -87,8 +87,6 @@ export interface AblyUsageMetric {
 
 // ── shared parsers ───────────────────────────────────────────────────────────────────
 
-export { parseDollarAmount }
-
 // "June 1, 2026" → "2026-06-01" (UTC, no Date tz drift). undefined if unparseable.
 export const parseInvoiceDate = (text?: string): string | undefined => {
   const m = text?.trim().match(/^(\w+)\s+(\d{1,2}),\s+(\d{4})$/)
@@ -115,8 +113,6 @@ const unitOf = (text?: string): string | undefined => {
 
   return m ? m[1] : undefined
 }
-
-const clean = (text: string): string => text.replace(/\s+/g, ' ').trim()
 
 // ── billing: scraped invoice history + current plan name ───────────────────────────────
 
@@ -196,12 +192,9 @@ export const buildAblyBilling = (invoicesHtml: string, packageHtml: string): Abl
 // calendar month, so the current month's invoiced total stands in for month-to-date spend; a month with no
 // invoice yet stays 0 (the Overview reads Ably's current-month bar) rather than nulling out and dropping the
 // service from the Overview at the month rollover.
-export const buildAblySummaryResult = (billingData: AblyBilling): CapabilityResult => {
-  const ym = currentMonthKey()
-  const mtd = billingData.invoices.filter((i) => i.date?.startsWith(ym)).reduce((sum, i) => sum + i.amount, 0)
-
-  return billing.summary({
-    currentMtd: round2(mtd),
+export const buildAblySummaryResult = (billingData: AblyBilling): CapabilityResult =>
+  billing.summary({
+    currentMtd: billing.invoicedMtd(billingData.invoices),
     // Sum of the current calendar month's issued invoices.
     mtdBasis: 'invoiced',
     currency: CURRENCY,
@@ -213,7 +206,6 @@ export const buildAblySummaryResult = (billingData: AblyBilling): CapabilityResu
       { key: 'invoiceCount', label: 'Invoices', role: 'count', value: billingData.invoices.length }
     ]
   })
-}
 
 // Billing tab — the invoice history; each row links to its Stripe-hosted invoice. `id` rides hidden as the
 // ledger key so invoices accumulate their status/amount history past the fetch window (the status of an open
@@ -271,15 +263,15 @@ export const buildAblyUsageMetrics = (html: string): AblyUsageMetric[] => {
     }
 
     const cells = $row.find('td')
-    const limit = clean(cells.eq(1).text())
-    const lastMonth = clean(cells.eq(2).text())
-    const thisMonth = clean(cells.eq(3).text())
-    const projected = clean(cells.eq(4).text())
-    const note = clean(cells.eq(5).text())
+    const limit = squish(cells.eq(1).text())
+    const lastMonth = squish(cells.eq(2).text())
+    const thisMonth = squish(cells.eq(3).text())
+    const projected = squish(cells.eq(4).text())
+    const note = squish(cells.eq(5).text())
 
     metrics.push({
       key,
-      label: clean($label.text()),
+      label: squish($label.text()),
       isBillable: limit.length > 0,
       limit: limit || undefined,
       lastMonth: lastMonth || undefined,

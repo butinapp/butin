@@ -28,6 +28,7 @@ import {
   epochSecDay,
   getReportingZone,
   monthMinus,
+  normalizeCurrency,
   round2
 } from '@butinapp/sdk/util'
 
@@ -249,7 +250,7 @@ export const buildGroqBilling = (rawInvoices: RawGroqInvoiceList, rawCurrent: Ra
 
   return {
     currentMtd: centsToMajor(rawCurrent?.total_amount_cents ?? rawCurrent?.amount_cents),
-    currency: (rawCurrent?.currency ?? 'USD').toUpperCase(),
+    currency: normalizeCurrency(rawCurrent?.currency),
     invoices
   }
 }

@@ -16,7 +16,6 @@ import {
   parseAccountId,
   parseAccountProfile,
   parseApiLimits,
-  parseDollarAmount,
   parseDomains,
   parseInvoiceCount,
   parseInvoices,
@@ -91,19 +90,6 @@ const PAGE_1 = invoicesPage(
     invoiceRow('3627804-00000', '2026-05-06', 4, 'Teams Plan Renewal (2026-05-06 t...)', '$120.10'),
   true
 )
-
-describe('parseDollarAmount', () => {
-  it('parses dollar strings with commas', () => {
-    expect(parseDollarAmount('$120.10')).toBe(120.1)
-    expect(parseDollarAmount('$1,234.56')).toBe(1234.56)
-    expect(parseDollarAmount('$0.10')).toBe(0.1)
-  })
-
-  it('returns 0 for empty/unparseable', () => {
-    expect(parseDollarAmount(undefined)).toBe(0)
-    expect(parseDollarAmount('—')).toBe(0)
-  })
-})
 
 describe('parseInvoices', () => {
   it('extracts rows with ISO dates and dollar totals', () => {

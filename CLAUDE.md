@@ -150,7 +150,8 @@ export const myPlugin = definePlugin({
   so a `fetch` can paginate newest-first and stop once it crosses it — `undefined` means fetch everything (first run / forced full refetch / non-incremental). The
   optional sibling **`fetchFile(ctx, row)`** is the per-row byte source for a `files` table without
   a `urlKey`. Money is normalized to **major units of the plugin's `reportingCurrency`** at the edge via `money.ts`
-  (`centsToMajor`/`centsStringToMajor`/`millicentsToMajor`/`parseDecimalAmount`) — unit conversion, not currency conversion. Every plugin declares a required
+  (`centsToMajor`/`centsStringToMajor`/`millicentsToMajor`/`parseDecimalAmount`) — unit conversion, not currency conversion; a currency code is
+  cased once via `normalizeCurrency`. Every plugin declares a required
   `reportingCurrency` (ISO-4217); core resolves + stamps it onto each money value before persisting, and a Column/Summary may override it per-value.
 
 ### The data-view contract — plugins emit data, not React
@@ -244,7 +245,7 @@ Pure types + `define*` helpers + money utils. No Electron. `src/` is grouped by 
 - **`data/`** (→ `/data`) — the data-view contract `collect()` returns: dataset · view · summary · result · series · roles · builders · currency
 - **`presets/`** (→ `/presets`) — billing · usage · apikeys · members · blocks
 - **`integrations/`** (→ `/integrations`) — shared third-party mechanics (stripe)
-- **`util/`** (→ `/util`) — money · date · text · fx · object
+- **`util/`** (→ `/util`) — money · date · text · bytes · fx · object
 - **`testing/`** (→ `/testing`) — synthetic sample toolkit + `validateSamples`/`resultValidator`, the contract checks a plugin's tests assert with
 - **`schema.ts`** (→ `/schema`) — the runtime zod `*Schema` objects. HOST-ONLY, not author-facing.
 
@@ -477,7 +478,10 @@ fabricates the time-series so Overview trends, "what changed" movers, and per-da
   `utcMonthStart`) or, for anything those don't cover, **luxon** (`DateTime`/`Duration` via `@butinapp/sdk/libs`). The classic re-rolls — **STOP and reach for the
   helper**: `x.slice(0, 10)` to grab a day (→ `isoDay`), a hand-written `minusDays`/`addDays`/`new Date(Date.parse(d) - n * 86_400_000)` (→ `dayMinus` or luxon), an
   inline `new Date(x).toISOString().slice(0, 10)` (→ `epochMsDay`). Money goes through `@butinapp/sdk/util` money helpers (`centsToMajor` · `millicentsToMajor` ·
-  `parseDecimalAmount`), never an ad-hoc `/ 100`. And a load-bearing literal is **defined once and imported** — `MS_PER_DAY` (= `86_400_000`) lives in `sdk/util/date.ts`;
+  `parseDecimalAmount`), never an ad-hoc `/ 100`, and a currency code is cased once via `normalizeCurrency`.
+  Scraped text goes through `squish` (never a hand-rolled `replace(/\s+/g, ' ').trim()`), a person's name through `fullName`, the
+  current month's invoiced total through `billing.invoicedMtd`, and a downloaded document is checked with `isPdfBytes` before it is
+  saved. And a load-bearing literal is **defined once and imported** — `MS_PER_DAY` (= `86_400_000`) lives in `sdk/util/date.ts`;
   a local `const DAY_MS = 86_400_000` is a duplication, not a convenience. If a genuinely reusable date/money primitive is missing, **add it to `@butinapp/sdk/util`**
   (next to its siblings) so the next caller reuses it too — don't inline a private copy.
 - **Linter `oxlint`, formatter `oxfmt`** — no ESLint/Prettier. 120-col, no semicolons, single quotes, no trailing commas, LF, import-sort. `pnpm fix` after any

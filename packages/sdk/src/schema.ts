@@ -3,4 +3,4 @@
 // @butinapp/sdk/data (`Summary`, `MonthPoint`, …) and never imports these schema objects. Kept off /data
 // precisely so the author's autocomplete there carries only what a plugin declares.
 export { MonthPointSchema } from './data/series.js'
-export { SummarySchema, SectionSchema } from './data/summary.js'
+export { SummarySchema } from './data/summary.js'

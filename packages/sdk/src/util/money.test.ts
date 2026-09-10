@@ -3,6 +3,7 @@ import { expect, test } from 'vitest'
 import {
   centsStringToMajor,
   centsToMajor,
+  normalizeCurrency,
   parseDecimalAmount,
   parseFrAmount,
   millicentsToMajor,
@@ -46,4 +47,16 @@ test('parseFrAmount reads fr-CA money strings (space thousands sep, comma decima
   expect(parseFrAmount('0,00 $')).toBe(0)
   expect(parseFrAmount(undefined)).toBe(0)
   expect(parseFrAmount(null)).toBe(0)
+})
+
+test('normalizeCurrency upper-cases whatever casing the service reported', () => {
+  expect(normalizeCurrency('usd')).toBe('USD')
+  expect(normalizeCurrency('CAD')).toBe('CAD')
+})
+
+test('normalizeCurrency falls back when the service sent nothing usable', () => {
+  expect(normalizeCurrency(undefined)).toBe('USD')
+  expect(normalizeCurrency(null)).toBe('USD')
+  expect(normalizeCurrency('   ')).toBe('USD')
+  expect(normalizeCurrency('', 'cad')).toBe('CAD')
 })

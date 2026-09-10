@@ -22,7 +22,7 @@ import {
   type MemberInput,
   type MembersInput
 } from '@butinapp/sdk/presets'
-import { byDayDesc, centsToMajor, epochSecDay, monthMinus, utcDaysAgo } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, epochSecDay, fullName, monthMinus, utcDaysAgo } from '@butinapp/sdk/util'
 
 import { samplePosthogBilling, samplePosthogMembers, samplePosthogUsage } from './sample.js'
 
@@ -558,7 +558,7 @@ export interface RawMembersList {
 // Pure transform — fixture-tested. Map each member's nested user → id/name/email and `level` → role.
 export const buildPosthogMembers = (raw: RawMembersList): MembersInput => ({
   members: (raw.results ?? []).map((m, i) => {
-    const name = [m.user?.first_name, m.user?.last_name].filter(Boolean).join(' ').trim()
+    const name = fullName(m.user?.first_name, m.user?.last_name)
 
     return {
       id: m.user?.uuid ?? String(i),

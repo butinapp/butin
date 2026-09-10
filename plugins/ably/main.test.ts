@@ -8,7 +8,6 @@ import {
   buildAblySummaryResult,
   buildAblyUsageMetrics,
   buildAblyUsageResult,
-  parseDollarAmount,
   parseInvoiceDate,
   parseInvoices,
   parsePlanName
@@ -71,15 +70,6 @@ const validateCapabilityResult = resultValidator('USD')
 
 test('every capability declares a sample that is contract-valid', () => {
   expect(validateSamples(ablyPlugin)).toEqual([])
-})
-
-describe('parseDollarAmount', () => {
-  it('strips $ and commas', () => {
-    expect(parseDollarAmount('$233.30')).toBe(233.3)
-    expect(parseDollarAmount('$1,204.55')).toBe(1204.55)
-    expect(parseDollarAmount(undefined)).toBe(0)
-    expect(parseDollarAmount('—')).toBe(0)
-  })
 })
 
 describe('parseInvoiceDate', () => {

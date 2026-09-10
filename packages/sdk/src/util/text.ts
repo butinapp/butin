@@ -8,6 +8,18 @@ export const startCase = (value: string): string =>
     .map((w) => upperFirst(w.toLowerCase()))
     .join(' ')
 
+// Collapse every run of whitespace to one space and trim — the normalizer an HTML scrape needs on any text it
+// pulls out of a cell, where markup indentation and newlines ride along with the value.
+export const squish = (value?: string | null): string => (value ?? '').replace(/\s+/g, ' ').trim()
+
+// A person's display name from its parts, skipping the ones the service didn't send. Empty when it sent neither
+// — a caller that wants `null` for "no name" writes `fullName(a, b) || null`.
+export const fullName = (first?: string | null, last?: string | null): string =>
+  [first, last]
+    .map((p) => squish(p))
+    .filter(Boolean)
+    .join(' ')
+
 // Pull the first signed decimal out of a formatted currency string (`$1,204.55` → 1204.55, `—` → 0). Commas
 // are stripped before matching. Empty/missing/unparseable → 0.
 export const parseDollarAmount = (formatted?: string): number => {

@@ -8,7 +8,16 @@ import {
 } from '@butinapp/sdk'
 import { type CapabilityResult, capabilityResult, record, table } from '@butinapp/sdk/data'
 import { DateTime } from '@butinapp/sdk/libs'
-import { epochMsDay, isoDay, parseDecimalAmount, round2, startCase, utcDaysAgo } from '@butinapp/sdk/util'
+import {
+  epochMsDay,
+  isoDay,
+  isPdfBytes,
+  parseDecimalAmount,
+  round2,
+  squish,
+  startCase,
+  utcDaysAgo
+} from '@butinapp/sdk/util'
 
 import { sampleCibcAccounts, sampleCibcMortgages, sampleCibcStatements, sampleCibcTransactions } from './sample.js'
 
@@ -420,7 +429,7 @@ const fetchAccountTransactions = async (
       const debit = t.debit == null ? null : round2(t.debit)
       const credit = t.credit == null ? null : round2(t.credit)
       const balance = t.runningBalance == null ? null : round2(t.runningBalance)
-      const description = (t.transactionDescription ?? '').replace(/\s+/g, ' ').trim()
+      const description = squish(t.transactionDescription)
 
       out.push({
         key: [account.id, day, debit ?? '', credit ?? '', balance ?? '', description].join('|'),
@@ -538,9 +547,6 @@ const fetchCibcStatements = async (ctx: CollectContext): Promise<RawStatement[]>
   return out
 }
 
-const isPdf = (bytes: Uint8Array): boolean =>
-  bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 // %PDF
-
 // The PDF is a form POST that carries the session token in its BODY as well as its header, and takes the service's
 // own document handle. A generated statement is re-minted per session, so a retained row's handle can be stale —
 // re-list the account and match on the stable `statementId` before asking for the bytes.
@@ -577,7 +583,7 @@ const fetchStatementPdf = async (ctx: CollectContext, row: Record<string, unknow
 
   // An expired session answers this endpoint with an HTML error page, so a non-PDF body fails loudly rather than
   // being saved as a statement.
-  if (!isPdf(bytes)) {
+  if (!isPdfBytes(bytes)) {
     throw new Error(`CIBC: statement ${statementId} did not download as a PDF`)
   }
 

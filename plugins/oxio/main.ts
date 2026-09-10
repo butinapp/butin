@@ -8,7 +8,7 @@ import {
 } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing } from '@butinapp/sdk/presets'
-import { centsToMajor, isoDay, round2, startCase } from '@butinapp/sdk/util'
+import { centsToMajor, fullName, isPdfBytes, isoDay, round2, startCase } from '@butinapp/sdk/util'
 
 import { sampleOxioAccount, sampleOxioBilling, sampleOxioPlan, sampleOxioSummary } from './sample.js'
 
@@ -541,9 +541,6 @@ const fetchOxioBilling = async (ctx: CollectContext): Promise<OxioBillingRaw> =>
   }
 }
 
-const isPdf = (bytes: Uint8Array): boolean =>
-  bytes.length > 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46
-
 const fetchOxioInvoicePdf = async (ctx: CollectContext, row: Record<string, unknown>): Promise<Uint8Array> => {
   const key = typeof row.s3Key === 'string' ? row.s3Key : ''
 
@@ -580,7 +577,7 @@ const fetchOxioInvoicePdf = async (ctx: CollectContext, row: Record<string, unkn
   ctx.log(`oxio: downloaded invoice ${key} (${bytes.length}b)`)
 
   // A non-PDF body is an expired-URL error document — fail loudly rather than save it as a bill.
-  if (!isPdf(bytes)) {
+  if (!isPdfBytes(bytes)) {
     throw new Error(`oxio: invoice ${key} download wasn't a PDF (${bytes.length}b)`)
   }
 
@@ -731,9 +728,6 @@ const notificationChannels = (prefs: RawOxioAccount['communicationPreferences'])
   return enabled.length ? enabled.join(' · ') : 'None'
 }
 
-const fullName = (first?: string | null, last?: string | null): string | null =>
-  [first?.trim(), last?.trim()].filter(Boolean).join(' ') || null
-
 export const buildOxioAccount = (raw: OxioAccountRaw): CapabilityResult => {
   const account = raw.account
   const contact = account?.primaryContact
@@ -753,7 +747,7 @@ export const buildOxioAccount = (raw: OxioAccountRaw): CapabilityResult => {
       { key: 'referralCode', label: 'Referral code', role: 'identifier' }
     ],
     value: {
-      name: fullName(contact?.firstName, contact?.lastName),
+      name: fullName(contact?.firstName, contact?.lastName) || null,
       email: contact?.email ?? null,
       mobilePhone: contact?.mobilePhone ?? null,
       homePhone: contact?.homePhone ?? null,
@@ -788,7 +782,7 @@ export const buildOxioAccount = (raw: OxioAccountRaw): CapabilityResult => {
     ],
     rows: raw.referrals.map((r) => ({
       id: r.id ?? '',
-      name: fullName(r.firstName, r.lastName),
+      name: fullName(r.firstName, r.lastName) || null,
       contact: r.refereeEmail ?? r.refereeSms ?? null,
       status: r.status ?? null,
       sentOn: isoDay(r.sentOn) ?? null,

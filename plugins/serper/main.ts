@@ -1,15 +1,7 @@
 import { defineCapability, definePlugin, type CollectContext } from '@butinapp/sdk'
 import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, keys, usage, type ApiKeysInput, type BillingInput } from '@butinapp/sdk/presets'
-import {
-  byDayAsc,
-  byDayDesc,
-  currentMonthKey,
-  isoDay,
-  parseDecimalAmount,
-  round2,
-  utcDaysAgo
-} from '@butinapp/sdk/util'
+import { byDayAsc, byDayDesc, isoDay, normalizeCurrency, parseDecimalAmount, utcDaysAgo } from '@butinapp/sdk/util'
 
 import { sampleSerperBilling, sampleSerperKeys, sampleSerperUsage } from './sample.js'
 
@@ -44,12 +36,9 @@ export const buildSerperBilling = (rawPayments: RawSerperPayment[] | undefined |
     }))
     .sort(byDayDesc)
 
-  const ym = currentMonthKey()
-  const currentMtd = invoices.filter((i) => i.date.startsWith(ym)).reduce((sum, i) => sum + i.amount, 0)
-
   return {
-    currentMtd: round2(currentMtd),
-    currency: (list[0]?.currency ?? 'usd').toUpperCase(),
+    currentMtd: billing.invoicedMtd(invoices),
+    currency: normalizeCurrency(list[0]?.currency),
     invoices
   }
 }

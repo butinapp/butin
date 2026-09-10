@@ -3,8 +3,9 @@ import { expect, test } from 'vitest'
 import { resolveCurrencies } from '../data/currency.js'
 import { validateCapabilityResult } from '../data/result.js'
 import { SummarySchema } from '../data/summary.js'
+import { currentMonthKey } from '../util/date.js'
 
-import { billingResult, billingSummaryResult, monthlySpend } from './billing.js'
+import { billingResult, billingSummaryResult, invoicedMtd, monthlySpend } from './billing.js'
 
 const sample = billingResult({
   currentMtd: 42.1,
@@ -486,4 +487,24 @@ test('billingResult also renders the delta cell', () => {
   const account = r.datasets.find((d) => d.id === 'account')!
 
   expect(account.shape === 'record' && account.value.momDelta).toBe(17.1)
+})
+
+test('invoicedMtd sums only the named month and rounds the total once', () => {
+  const invoices = [
+    { date: '2026-06-01', amount: 0.1, status: 'paid' },
+    { date: '2026-06-20', amount: 0.2, status: 'paid' },
+    { date: '2026-05-31', amount: 99, status: 'paid' },
+    { amount: 50, status: 'paid' }
+  ]
+
+  // 0.1 + 0.2 is 0.30000000000000004 unrounded — the float noise the hand-rolled copies let through.
+  expect(invoicedMtd(invoices, '2026-06')).toBe(0.3)
+  expect(invoicedMtd(invoices, '2026-05')).toBe(99)
+  expect(invoicedMtd([], '2026-06')).toBe(0)
+})
+
+test('invoicedMtd defaults to the current month', () => {
+  const month = currentMonthKey()
+
+  expect(invoicedMtd([{ date: `${month}-15`, amount: 12, status: 'paid' }])).toBe(12)
 })

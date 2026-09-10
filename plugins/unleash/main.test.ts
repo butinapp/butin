@@ -9,7 +9,6 @@ import {
   buildUnleashSummaryResult,
   computeRecurringFee,
   maskSecret,
-  parseDollarAmount,
   unleashPlugin
 } from './main.js'
 
@@ -41,19 +40,6 @@ test('unleash auto-captures the instance slug from the dashboard URL and exposes
   expect(cap).toBeDefined()
   expect(new RegExp(cap!.pattern).exec('https://us.app.unleash-hosted.com/acme/personal')?.[1]).toBe('acme')
   expect(unleashPlugin.config?.fields.some((f) => f.key === 'instance')).toBe(true)
-})
-
-// ── billing: parseDollarAmount ────────────────────────────────────────────────────
-
-test('parseDollarAmount reads the dollar value out of the pre-formatted string', () => {
-  expect(parseDollarAmount('US $464.00')).toBe(464)
-  expect(parseDollarAmount('US $3,232.00')).toBe(3232)
-  expect(parseDollarAmount('US $1,234,567.89')).toBeCloseTo(1234567.89, 2)
-})
-
-test('parseDollarAmount returns 0 for missing/unparseable input', () => {
-  expect(parseDollarAmount(undefined)).toBe(0)
-  expect(parseDollarAmount('n/a')).toBe(0)
 })
 
 // ── billing: computeRecurringFee ─────────────────────────────────────────────────────

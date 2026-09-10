@@ -1,7 +1,7 @@
 import { defineCapability, definePlugin, type CollectContext } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing } from '@butinapp/sdk/presets'
-import { byDayDesc, parseFrAmount } from '@butinapp/sdk/util'
+import { byDayDesc, parseFrAmount, squish } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import { sampleHydroBilling, sampleHydroEquipment } from './sample.js'
@@ -309,8 +309,6 @@ export const extractDetailUrl = (landingHtml: string): string | undefined => {
   return m ? (m[1].startsWith('http') ? m[1] : `${ORIGIN}${m[1]}`) : undefined
 }
 
-const cleanText = (s: string): string => s.replace(/\s+/g, ' ').trim()
-
 // Parse the detail page: the installation address box + the equipment/services box (model, serial,
 // install date, monthly rental, and the remaining warranties).
 export const parseHydroDetail = (html: string): HydroEquipmentDetail => {
@@ -320,7 +318,7 @@ export const parseHydroDetail = (html: string): HydroEquipmentDetail => {
   const addressP = inst.find('p').first().clone()
 
   addressP.find('span').remove()
-  const address = cleanText(addressP.text()) || undefined
+  const address = squish(addressP.text()) || undefined
 
   let housingType: string | undefined
 
@@ -331,19 +329,19 @@ export const parseHydroDetail = (html: string): HydroEquipmentDetail => {
       const c = $p.clone()
 
       c.find('span').remove()
-      housingType = cleanText(c.text()) || undefined
+      housingType = squish(c.text()) || undefined
     }
   })
 
   const eq = $('#esEquipementsServicesDetails')
-  const eqText = cleanText(eq.text())
-  const name = cleanText(eq.find('.esLabel').first().text()) || undefined
+  const eqText = squish(eq.text())
+  const name = squish(eq.find('.esLabel').first().text()) || undefined
   const serial = eqText.match(/s.rie\s*:\s*([0-9]+)/i)?.[1]
   const installDate = frDateToIso(eq.find('.smallText').first().text())
   const rental = eqText.match(/Location.{0,4}?([0-9.,]+\s*\$\s*\/\s*mois)/i)?.[1]?.replace(/\s+/g, '')
   const warranties: HydroWarranty[] = [
     ...eqText.matchAll(/Garantie restante sur ([^:]+?)\s*:\s*([A-Za-zÀ-ÿ0-9 ]+?)(?=Garantie|Cet|$)/g)
-  ].map((m) => ({ part: cleanText(m[1]), remaining: cleanText(m[2]) }))
+  ].map((m) => ({ part: squish(m[1]), remaining: squish(m[2]) }))
 
   return {
     installation: { address, housingType },

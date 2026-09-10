@@ -10,7 +10,7 @@ import {
 import { capabilityResult, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { DateTime } from '@butinapp/sdk/libs'
 import { billing, type BillingStat } from '@butinapp/sdk/presets'
-import { getReportingZone, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
+import { getReportingZone, normalizeCurrency, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
 
 import { sampleStripeFees, sampleStripeSummary } from './sample.js'
 
@@ -165,7 +165,7 @@ export const buildFeeRows = (results: RawSigmaResults | undefined | null): Strip
       product: at(row, 'product'),
       feature: at(row, 'feature_name'),
       amount: round2(parseDecimalAmount(at(row, 'amount'))),
-      currency: (at(row, 'currency') || 'usd').toUpperCase()
+      currency: normalizeCurrency(at(row, 'currency'))
     }))
 }
 

@@ -24,6 +24,11 @@ export const parseDecimalAmount = (value?: string): number => {
   return Number.isFinite(n) ? n : 0
 }
 
+// An ISO-4217 code in the casing everything downstream compares against. Services report the same currency
+// either way ('usd' / 'USD'), so normalize at the edge rather than at each comparison.
+export const normalizeCurrency = (value?: string | null, fallback = 'USD'): string =>
+  (value?.trim() || fallback).toUpperCase()
+
 // Round to 2 decimals — sheds the float noise a vendor's already-major-unit amount carries (69.90000001 → 69.9).
 export const round2 = (n: number): number => Math.round(n * 100) / 100
 

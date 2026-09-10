@@ -10,7 +10,6 @@ import {
   extractGheLicensing,
   fetchAllPayments,
   parseContacts,
-  parseDollarAmount,
   parsePaymentHistory,
   parseTotalPages,
   sumIncludedUsage
@@ -107,15 +106,6 @@ const tableById = (result: CapabilityResult, id: string) => {
 }
 
 // --- parsers ---
-
-describe('parseDollarAmount', () => {
-  it('parses plain, comma-grouped, and negative dollar strings', () => {
-    expect(parseDollarAmount('$3,199.32')).toBeCloseTo(3199.32, 2)
-    expect(parseDollarAmount('$1,365.00')).toBeCloseTo(1365, 2)
-    expect(parseDollarAmount(undefined)).toBe(0)
-    expect(parseDollarAmount('-')).toBe(0)
-  })
-})
 
 describe('parseTotalPages', () => {
   it('reads data-total-pages, defaulting to 1', () => {

@@ -1,10 +1,11 @@
-import { rawRecord, rawTable } from '@butinapp/sdk/data'
 import { expect, test } from 'vitest'
+
+import { recordFixture, tableFixture } from '../../test/datasets.js'
 
 import { defaultViews, planViews } from './plan-views.js'
 
-const account = rawRecord('account', [{ key: 'plan', label: 'Plan', role: 'label' }], { plan: 'Pro' })
-const monthly = rawTable(
+const account = recordFixture('account', [{ key: 'plan', label: 'Plan', role: 'label' }], { plan: 'Pro' })
+const monthly = tableFixture(
   'monthly',
   [
     { key: 'month', label: 'Month', role: 'timestamp' },
@@ -25,7 +26,7 @@ test('defaultViews makes a timeseries (timestamp x, money|count y) plus a table 
 })
 
 test('defaultViews makes only a table for a table without a timestamp+numeric pair', () => {
-  const members = rawTable('members', [{ key: 'email', label: 'Email', role: 'identifier' }], [{ email: 'a@b.c' }])
+  const members = tableFixture('members', [{ key: 'email', label: 'Email', role: 'identifier' }], [{ email: 'a@b.c' }])
 
   expect(defaultViews([members])).toEqual([{ type: 'table', dataset: 'members' }])
 })

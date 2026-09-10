@@ -1,6 +1,7 @@
-import { rawRecord, rawTable } from '@butinapp/sdk/data'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
+
+import { recordFixture, tableFixture } from '../../test/datasets.js'
 
 // echarts needs a real layout box + ResizeObserver, neither of which jsdom provides; the chart canvas is not
 // what these tests assert, so stub it to a marker div and let the surrounding view chrome render.
@@ -8,8 +9,8 @@ vi.mock('../../components/echart.js', () => ({ EChart: () => <div data-testid="c
 
 import { type TableFilesBridge, DashboardRenderer } from './dashboard-renderer.js'
 
-const account = rawRecord('account', [{ key: 'plan', label: 'Plan', role: 'label' }], { plan: 'Pro' })
-const invoices = rawTable('invoices', [{ key: 'email', label: 'Email', role: 'identifier' }], [{ email: 'a@b.c' }])
+const account = recordFixture('account', [{ key: 'plan', label: 'Plan', role: 'label' }], { plan: 'Pro' })
+const invoices = tableFixture('invoices', [{ key: 'email', label: 'Email', role: 'identifier' }], [{ email: 'a@b.c' }])
 
 test('renders a stat view from a record dataset', () => {
   render(<DashboardRenderer result={{ datasets: [account], views: [{ type: 'stat', dataset: 'account' }] }} />)
@@ -26,7 +27,7 @@ test('renders a table view with its column header and rows', () => {
 })
 
 test('expands a row into its joined child rows via a table detail binding', () => {
-  const members = rawTable(
+  const members = tableFixture(
     'members',
     [{ key: 'who', label: 'Member', role: 'label' }],
     [
@@ -35,7 +36,7 @@ test('expands a row into its joined child rows via a table detail binding', () =
     ],
     'creatorId'
   )
-  const keys = rawTable(
+  const keys = tableFixture(
     'keys',
     [
       { key: 'name', label: 'Key name', role: 'label' },
@@ -80,7 +81,7 @@ test('renders nothing for an empty result without crashing', () => {
 
 test('widens the container for a dense table (>= 6 columns); keeps the narrow cap otherwise', () => {
   const cols = Array.from({ length: 6 }, (_, i) => ({ key: `c${i}`, label: `C${i}`, role: 'text' as const }))
-  const big = rawTable('big', cols, [Object.fromEntries(cols.map((c) => [c.key, 'x']))])
+  const big = tableFixture('big', cols, [Object.fromEntries(cols.map((c) => [c.key, 'x']))])
 
   const { container, rerender } = render(
     <DashboardRenderer result={{ datasets: [big], views: [{ type: 'table', dataset: 'big' }] }} />
@@ -101,7 +102,7 @@ test('width prop pins the container tier, overriding the content-derived one', (
   expect(container.firstChild).toHaveClass('max-w-[110rem]')
 
   const cols = Array.from({ length: 6 }, (_, i) => ({ key: `c${i}`, label: `C${i}`, role: 'text' as const }))
-  const big = rawTable('big', cols, [Object.fromEntries(cols.map((c) => [c.key, 'x']))])
+  const big = tableFixture('big', cols, [Object.fromEntries(cols.map((c) => [c.key, 'x']))])
 
   // And a dense table forced narrow stays capped.
   rerender(
@@ -111,7 +112,7 @@ test('width prop pins the container tier, overriding the content-derived one', (
 })
 
 test('short scalar columns get noWrap; free-text columns wrap', () => {
-  const svc = rawTable(
+  const svc = tableFixture(
     'svc',
     [
       { key: 'date', label: 'Date', role: 'timestamp' },
@@ -128,7 +129,7 @@ test('short scalar columns get noWrap; free-text columns wrap', () => {
 })
 
 test('name (label) and enum (category) columns stay on one line, not wrapped to min-content', () => {
-  const svc = rawTable(
+  const svc = tableFixture(
     'svc',
     [
       { key: 'holder', label: 'Holder', role: 'label' },
@@ -146,7 +147,7 @@ test('name (label) and enum (category) columns stay on one line, not wrapped to 
 })
 
 test('a status column auto-tones from the lexicon, with a badges entry overriding', () => {
-  const invoices = rawTable(
+  const invoices = tableFixture(
     'invoices',
     [{ key: 'status', label: 'Status', role: 'status', badges: { trialing: 'warning' } }],
     [{ status: 'paid' }, { status: 'failed' }, { status: 'trialing' }]
@@ -161,7 +162,7 @@ test('a status column auto-tones from the lexicon, with a badges entry overridin
 })
 
 test('a category column renders a distinct-hue badge with no plugin-declared tone', () => {
-  const members = rawTable('members', [{ key: 'role', label: 'Role', role: 'category' }], [{ role: 'owner' }])
+  const members = tableFixture('members', [{ key: 'role', label: 'Role', role: 'category' }], [{ role: 'owner' }])
 
   render(<DashboardRenderer result={{ datasets: [members], views: [{ type: 'table', dataset: 'members' }] }} />)
 
@@ -174,7 +175,7 @@ const Y = new Date().getFullYear()
 
 // A money series spanning two calendar years. The rich TimeseriesChart renders a year picker (labelled
 // 'Years') in monthly mode, so that control is the DOM marker the tests assert on (the echarts canvas is mocked).
-const monthlyMoney = rawTable(
+const monthlyMoney = tableFixture(
   'spend',
   [
     { key: 'month', label: 'Month', role: 'timestamp' },
@@ -200,7 +201,7 @@ test('a monthly-granularity money series renders the rich chart with a year pick
 })
 
 test('a daily money series opens Monthly with a Monthly|Daily drill-down toggle', () => {
-  const dailySpend = rawTable(
+  const dailySpend = tableFixture(
     'spend',
     [
       { key: 'date', label: 'Date', role: 'timestamp' },
@@ -228,7 +229,7 @@ test('a daily money series opens Monthly with a Monthly|Daily drill-down toggle'
 })
 
 test('a stat field with max renders a progress bar + denominator; caption + unit show', () => {
-  const acct = rawRecord('account', [{ key: 'used', label: 'Usage limit', role: 'money', currency: 'USD' }], {
+  const acct = recordFixture('account', [{ key: 'used', label: 'Usage limit', role: 'money', currency: 'USD' }], {
     used: 10350
   })
 
@@ -256,7 +257,7 @@ test('a stat field with max renders a progress bar + denominator; caption + unit
 })
 
 test('a keyed cumulative column gets a Trend sparkline column when per-row daily series are provided', () => {
-  const members = rawTable(
+  const members = tableFixture(
     'members',
     [
       { key: 'email', label: 'Member', role: 'label' },
@@ -299,7 +300,7 @@ test('a keyed cumulative column gets a Trend sparkline column when per-row daily
 })
 
 test('a cumulative-column row expands to its per-day detail, grouped into month sections', () => {
-  const members = rawTable(
+  const members = tableFixture(
     'members',
     [
       { key: 'email', label: 'Member', role: 'label' },
@@ -353,7 +354,7 @@ test('a cumulative-column row expands to its per-day detail, grouped into month 
 test('a stacked multi-year monthly money series renders the rich chart with a year picker', () => {
   // Long-format seats/usage rows across two calendar years. A stacked series now routes to the rich
   // TimeseriesChart too, so its monthly-mode 'Years' picker appears (the year-spanning marker).
-  const ds = rawTable(
+  const ds = tableFixture(
     'byCat',
     [
       { key: 'month', label: 'Month', role: 'timestamp' },
@@ -399,7 +400,7 @@ test('hidden columns are filtered out and new-shape files source.url drives the 
   //     — this one genuinely exercises .filter((c) => !c.hidden); the url column would also be
   //     removed by the downloadable url-hiding path regardless of c.hidden, so it alone is not
   //     a sufficient guard.
-  const docs = rawTable(
+  const docs = tableFixture(
     'docs',
     [
       { key: 'title', label: 'Title', role: 'text' as const },

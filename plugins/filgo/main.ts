@@ -1,7 +1,7 @@
 import { type CollectContext, defineCapability, definePlugin } from '@butinapp/sdk'
 import { type CapabilityResult, capabilityResult, table } from '@butinapp/sdk/data'
 import { billing } from '@butinapp/sdk/presets'
-import { byDayDesc, isoDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, isoDay, parseDecimalAmount, round2, squish } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import { sampleFilgoActifs, sampleFilgoDeliveries, sampleFilgoStatements } from './sample.js'
@@ -88,8 +88,6 @@ export interface FilgoDeliveriesRaw {
 }
 
 // ── shared helpers ────────────────────────────────────────────────────────────────
-
-const cleanText = (s: string): string => s.replace(/\s+/g, ' ').trim()
 
 // A page GET must look like a navigation, not an XHR — the Power Pages endpoints content-negotiate, so ask
 // for HTML explicitly rather than axios's JSON-first default.
@@ -182,7 +180,7 @@ export const parseFilgoActifs = (html: string): FilgoActifs => {
       return {
         guid: $o.attr('data-accountguid') ?? $o.attr('value') ?? '',
         number: $o.attr('data-accountnumber') ?? '',
-        name: cleanText($o.text())
+        name: squish($o.text())
       }
     })
     .filter((a) => a.guid || a.number)
@@ -194,20 +192,20 @@ export const parseFilgoActifs = (html: string): FilgoActifs => {
       const labels: Record<string, string> = {}
 
       $c.find('.card-subtitle').each((_, h) => {
-        const key = cleanText($(h).text())
+        const key = squish($(h).text())
 
         if (key) {
-          labels[key] = cleanText($(h).nextAll('.card-text').first().text())
+          labels[key] = squish($(h).nextAll('.card-text').first().text())
         }
       })
 
       return {
-        assetId: $c.attr('id') ?? cleanText($c.find('h5.d-none').first().text()),
-        name: cleanText($c.find('.card-title').first().text()) || null,
-        product: cleanText($c.find('.card-product').first().text()) || null,
+        assetId: $c.attr('id') ?? squish($c.find('h5.d-none').first().text()),
+        name: squish($c.find('.card-title').first().text()) || null,
+        product: squish($c.find('.card-product').first().text()) || null,
         capacity: findLabel(labels, 'capacit'),
         serviceState: findLabel(labels, 'tat de service'),
-        address: cleanText($c.find('.card-address').first().text()) || null
+        address: squish($c.find('.card-address').first().text()) || null
       }
     })
 

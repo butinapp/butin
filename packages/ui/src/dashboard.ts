@@ -15,5 +15,5 @@ export type { RollupTile, RollupBand } from './features/dashboard/rollup.js'
 export { formatSize } from './features/documents/doc-models.js'
 
 // Chart/format utilities (for hosts composing their own dashboards).
-export { formatUsd, formatUsdCompact, formatMoney } from './lib/format.js'
-export { useEchartsTheme, asCanvasColor, grid } from './lib/echarts-theme.js'
+export { formatMoney } from './lib/format.js'
+export { useEchartsTheme, grid } from './lib/echarts-theme.js'

@@ -8,9 +8,11 @@ export {
   centsStringToMajor,
   millicentsToMajor,
   parseDecimalAmount,
+  normalizeCurrency,
   round2,
   parseFrAmount
 } from './money.js'
+export { isPdfBytes } from './bytes.js'
 export {
   isoDay,
   dayOf,
@@ -30,7 +32,7 @@ export {
   MS_PER_DAY,
   MONTH_ABBR
 } from './date.js'
-export { startCase, parseDollarAmount } from './text.js'
+export { startCase, squish, fullName, parseDollarAmount } from './text.js'
 export { convert } from './fx.js'
 export type { FxRates } from './fx.js'
 export { omitUndef, asArray } from './object.js'

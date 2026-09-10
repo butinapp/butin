@@ -5,12 +5,12 @@
 // here. The pure raw→CapabilityResult normalizers underneath stay fixture-tested in their own modules.
 
 import { apiKeysResult } from './apikeys.js'
-import { billingResult, billingSummaryResult, monthlySpend } from './billing.js'
+import { billingResult, billingSummaryResult, invoicedMtd, monthlySpend } from './billing.js'
 import { creditsRecord, dailySeries, overageOf, paymentMethodRecord, subscriptionRecord } from './blocks.js'
 import { membersResult } from './members.js'
 import { usageResult } from './usage.js'
 
-export const billing = { result: billingResult, summary: billingSummaryResult, monthlySpend }
+export const billing = { result: billingResult, summary: billingSummaryResult, monthlySpend, invoicedMtd }
 export const usage = { result: usageResult }
 export const keys = { result: apiKeysResult }
 export const members = { result: membersResult }
@@ -29,4 +29,4 @@ export type { ApiKeyInput, ApiKeysInput } from './apikeys.js'
 export type { MemberInput, MembersInput } from './members.js'
 export type { CreditsInput, PaymentMethodInput, SubscriptionInput, TrendPoint } from './blocks.js'
 export type { MtdBasis } from './mtd-basis.js'
-export { MtdBasisSchema, MTD_BASIS_LABELS, isAccrualBasis } from './mtd-basis.js'
+export { isAccrualBasis } from './mtd-basis.js'

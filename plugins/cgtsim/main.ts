@@ -1,5 +1,6 @@
 import { type CollectContext, defineCapability, definePlugin } from '@butinapp/sdk'
 import { type CapabilityResult, capabilityResult, record, table } from '@butinapp/sdk/data'
+import { isPdfBytes, squish } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import { sampleTaxData } from './sample.js'
@@ -61,8 +62,6 @@ export interface RawTaxData {
 }
 
 // ── shared helpers ─────────────────────────────────────────────────────────────────────
-const cleanText = (s?: string | null): string => (s ?? '').replace(/\s+/g, ' ').trim()
-
 const asUrl = (href: string): URL | null => {
   try {
     return new URL(href, PAGE)
@@ -118,7 +117,7 @@ export const parseProperties = (html: string): RawProperty[] => {
     const property = byMatricule.get(matricule) ?? {
       matricule,
       dossier: u.searchParams.get('Doss') ?? '',
-      address: cleanText(u.searchParams.get('Adr')),
+      address: squish(u.searchParams.get('Adr')),
       invoiceListUrl: null,
       statementListUrl: null
     }
@@ -298,9 +297,6 @@ const fetchTaxData = async (ctx: CollectContext): Promise<RawTaxData> => {
   return { properties, invoices, statements }
 }
 
-const isPdf = (bytes: Uint8Array): boolean =>
-  bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 // %PDF
-
 // A page's `<meta http-equiv="refresh" content="5; URL=…">` target (the portal drives its async generation flow
 // entirely by these), resolved absolute. `&amp;` entities are decoded so the URL's own params survive.
 const META_REFRESH = /http-equiv=["']?refresh["']?[^>]*content=["'][^"']*?url=([^"'>]+)/i
@@ -347,9 +343,9 @@ const fetchInvoicePdf = async (ctx: CollectContext, row: Record<string, unknown>
   return ctx.browser.open(listUrl, async (page) => {
     const bytes = await page.download(produireUrl, { referer: listUrl })
 
-    ctx.log('cgtsim: invoice download', { produireUrl, bytes: bytes.length, isPdf: isPdf(bytes) })
+    ctx.log('cgtsim: invoice download', { produireUrl, bytes: bytes.length, isPdf: isPdfBytes(bytes) })
 
-    if (!isPdf(bytes)) {
+    if (!isPdfBytes(bytes)) {
       throw new Error('cgtsim: invoice download did not return a PDF')
     }
 
@@ -398,9 +394,9 @@ const fetchStatementPdf = async (ctx: CollectContext, row: Record<string, unknow
 
     const bytes = await page.download(viewer, { referer: produireUrl })
 
-    ctx.log('cgtsim: statement download', { viewer, bytes: bytes.length, isPdf: isPdf(bytes) })
+    ctx.log('cgtsim: statement download', { viewer, bytes: bytes.length, isPdf: isPdfBytes(bytes) })
 
-    if (!isPdf(bytes)) {
+    if (!isPdfBytes(bytes)) {
       throw new Error('cgtsim: statement download did not return a PDF')
     }
 
