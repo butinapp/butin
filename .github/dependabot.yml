@@ -6,7 +6,12 @@ version: 2
 # it by opening the bump PR and rewriting both the SHA and its trailing version comment.
 updates:
   - package-ecosystem: github-actions
-    directory: /
+    # The github-actions ecosystem reads `.github/workflows/` plus an `action.yml` sitting AT the directory it is
+    # given. A composite action nested under `.github/actions/` is invisible to the repo-root entry, so it needs a
+    # directory of its own or its pins silently rot.
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: weekly
     groups:
