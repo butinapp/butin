@@ -499,6 +499,16 @@ fabricates the time-series so Overview trends, "what changed" movers, and per-da
 
 Comments describe the present state of the code, as if it had always been this way.
 
+**SACROSANCT: every comment must be useful to the next person who opens the file. A comment is never addressed to the person who asked for the
+change.** Do not justify the code, argue for it, or explain the reasoning that led to it — that belongs in the chat or in a document that gets
+thrown away. The reader has no idea a change was ever discussed, so a comment that answers "why did you do it this way?" answers a question
+nobody in the file is asking. Two tests before a comment stays: does it still make sense to someone who has never seen the request or any earlier
+version, and does it tell them something the code does not already say? If either fails, delete it.
+
+The tells, all of which mean cut it: selling the design ("which is also what keeps X tidy", "so the page answers Y at a glance"), naming the
+problem it solved, contrasting with what the code could have been, or restating a requirement. What survives is the contract, the invariant, and
+the trap — never the argument.
+
 - Present tense. Describe what the code does and the contract it upholds — not its history.
 - NO historical or comparative references: "first", "now", "still", "originally", "previously", "used to", "Mirrors X", "like Y", "based on Z", "ported from". A
   reader has never seen any earlier version and cannot see the file you'd point at.
