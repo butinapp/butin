@@ -1,6 +1,6 @@
 {
   "name": "@butinapp/sdk",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "The Butin plugin-authoring contract: descriptor types, the data-view result contract, presets, and edge utilities.",
   "homepage": "https://butin.app",
   "bugs": "https://github.com/butinapp/butin/issues",
