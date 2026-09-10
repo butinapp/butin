@@ -1,7 +1,7 @@
 import { defineCapability, definePlugin, type CollectContext } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing } from '@butinapp/sdk/presets'
-import { parseFrAmount } from '@butinapp/sdk/util'
+import { byDayDesc, parseFrAmount } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import { sampleHydroBilling, sampleHydroEquipment } from './sample.js'
@@ -153,7 +153,7 @@ export const buildHydroSummaryResult = (
   account?: string,
   summary?: HydroAccountSummary
 ): CapabilityResult => {
-  const sorted = [...bills].sort((a, b) => b.date.localeCompare(a.date))
+  const sorted = [...bills].sort(byDayDesc)
   const currentMtd = summary?.amountDue ?? summary?.currentCharges ?? sorted[0]?.amount ?? null
 
   return billing.summary({
@@ -194,7 +194,7 @@ interface HydroStatementRow {
 }
 
 export const buildHydroBilling = (bills: HydroBill[], summary?: HydroAccountSummary): CapabilityResult => {
-  const sorted = [...bills].sort((a, b) => b.date.localeCompare(a.date))
+  const sorted = [...bills].sort(byDayDesc)
   const invoices = table<HydroInvoiceRow>({
     id: 'invoices',
     columns: [

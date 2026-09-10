@@ -2,7 +2,7 @@ import { defineCapability, definePlugin, type BrowserPage, type CollectContext }
 import { capabilityResult, record, table, type CapabilityResult, type MonthPoint } from '@butinapp/sdk/data'
 import { capitalize } from '@butinapp/sdk/libs'
 import { billing } from '@butinapp/sdk/presets'
-import { epochMsDay, parseFrAmount, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, epochMsDay, parseFrAmount, round2 } from '@butinapp/sdk/util'
 
 import { sampleVidetronAccounts, sampleVidetronBillingDetail, sampleVidetronMobile } from './sample.js'
 
@@ -609,7 +609,7 @@ export const parseLegacyInvoiceLinks = (html: string): LegacyInvoiceLink[] => {
     })
   }
 
-  return [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date)) // newest first
+  return [...byDate.values()].sort(byDayDesc)
 }
 
 // Drive the live browser to the invoice list and hand the caller the SETTLED page. The list load resolves at

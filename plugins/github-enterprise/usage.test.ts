@@ -1,9 +1,9 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR, type CapabilityResult } from '@butinapp/sdk/data'
+import { resultValidator } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import { buildGithubUsage, type ProductNetUsage, type RawUsageTotal } from './usage.js'
 
-const validateCapabilityResult = (r: CapabilityResult): string[] => rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateCapabilityResult = resultValidator('USD')
 
 // Net-usage shapes (amounts already in dollars). Actions has the biggest gross but runs ~100% enterprise
 // discount (net 0); Copilot is billed in full (net = gross).

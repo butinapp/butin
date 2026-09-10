@@ -1,8 +1,8 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
-import { capabilityResult, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { upperFirst } from '@butinapp/sdk/libs'
 import { billing, usage, type UsageMetricInput } from '@butinapp/sdk/presets'
-import { currentMonthKey, parseDollarAmount, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, currentMonthKey, parseDollarAmount, round2 } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import { sampleAblyBilling, sampleAblyUsage } from './sample.js'
@@ -172,7 +172,7 @@ const monthsBefore = (yearMonth: string, count: number): string => {
 }
 
 export const buildAblyBilling = (invoicesHtml: string, packageHtml: string): AblyBilling => {
-  const invoices = parseInvoices(invoicesHtml).sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  const invoices = parseInvoices(invoicesHtml).sort(byDayDesc)
   const latest = invoices[0]
   let trailing12moTotal = 0
 
@@ -310,10 +310,9 @@ export const buildAblyUsageResult = (metrics: AblyUsageMetric[]): CapabilityResu
     unit: unitOf(m.thisMonth ?? m.limit),
     limit: m.limit ? toNumber(m.limit) : null
   }))
-  const result = usage.result({ metrics: metricInputs })
-
-  if (metrics.length) {
-    const detail = table<AblyUsageDetailRow>({
+  const detail =
+    metrics.length > 0 &&
+    table<AblyUsageDetailRow>({
       id: 'usageDetail',
       columns: [
         { key: 'label', label: 'Metric', role: 'label' },
@@ -331,13 +330,9 @@ export const buildAblyUsageResult = (metrics: AblyUsageMetric[]): CapabilityResu
       })),
       // Keyed by the stable metric label so each metric's month-over-month figures accumulate in the ledger.
       key: 'label'
-    })
+    }).table({ title: 'Usage detail' })
 
-    result.datasets.push(detail.dataset)
-    result.views = [...(result.views ?? []), detail.table({ title: 'Usage detail' }).view]
-  }
-
-  return result
+  return addSections(usage.result({ metrics: metricInputs }), detail)
 }
 
 // ── collectors ─────────────────────────────────────────────────────────────────────────

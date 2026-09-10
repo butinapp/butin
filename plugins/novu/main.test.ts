@@ -1,8 +1,5 @@
-import {
-  resolveCurrencies,
-  validateCapabilityResult,
-  validateCapabilityResult as rawValidateCR
-} from '@butinapp/sdk/data'
+import { validateCapabilityResult } from '@butinapp/sdk/data'
+import { validateSamples } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import {
@@ -18,14 +15,8 @@ import {
   parseClerkJwt
 } from './main.js'
 
-const validateSampleResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
-
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of novuPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateSampleResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(novuPlugin)).toEqual([])
 })
 
 // Synthetic billing fixture (Stripe amounts in CENTS); ids/values invented.

@@ -1,5 +1,6 @@
-import { resolveCurrencies, validateCapabilityResult } from '@butinapp/sdk/data'
+import { validateCapabilityResult } from '@butinapp/sdk/data'
 import type { RawStripeInvoiceList } from '@butinapp/sdk/integrations'
+import { validateSamples } from '@butinapp/sdk/testing'
 import { describe, expect, it, test } from 'vitest'
 
 import {
@@ -15,16 +16,8 @@ import {
   type RawStripeSubscriptionsList
 } from './main.js'
 
-// Every capability's sample, drawn through its build, must satisfy the data-view contract once the plugin's
-// USD reporting currency is stamped onto each money value (the demo seed's contract test).
-const sampleIsValid = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  validateCapabilityResult(resolveCurrencies(r, 'USD'))
-
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of depotPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(sampleIsValid(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(depotPlugin)).toEqual([])
 })
 
 // ── descriptor ──────────────────────────────────────────────────────────────────────────

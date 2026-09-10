@@ -109,7 +109,8 @@ The author surface is layered across subpaths so an import line reads as tiers: 
 root, data-shaping on `/data`; the **high-altitude presets** (namespaced) on `@butinapp/sdk/presets` (`billing.summary` · `usage.result` · `keys.result` ·
 `members.result` · `blocks.*`); shared **third-party integration** mechanics on `@butinapp/sdk/integrations` (the Stripe hosted-portal + hosted-invoice walk, used
 only by services that proxy billing to Stripe); Butin's **edge normalizers** (flat) on `@butinapp/sdk/util` (`round2` · `isoDay` · `startCase` · `convert` · …); the
-**synthetic sample toolkit** on `@butinapp/sdk/testing` (`createSampleGen` · `SampleGen`/`SampleConfig` — what a plugin's `sample.ts` imports); and the vendored
+**synthetic sample toolkit + the contract checks a plugin's tests assert with** on `@butinapp/sdk/testing` (`createSampleGen` · `SampleGen`/`SampleConfig` — what a
+plugin's `sample.ts` imports — plus `validateSamples` · `resultValidator`); and the vendored
 **base toolkit** on `@butinapp/sdk/libs` (lodash-es + luxon, so a plugin never installs/pins them itself). The author barrels are an **explicit allowlist** (no
 `export *`); the internal zod `*Schema` objects are NOT on them — they sit on a host-only `@butinapp/sdk/schema` subpath that `@butinapp/shapes` composes into the
 export-bundle wire schema, never imported by a plugin.
@@ -166,7 +167,9 @@ identifier · url · text`), so the renderer formats every value correctly with 
 - **Summary** (`summary.ts`) is a headline metric + a controlled `section` (`spend · balance · other`) that feeds the cross-service Overview rollup — only `spend`
   sums across services; `balance` and `other` show per-service.
 - **Preset builders** (`presets/`) map a standard port's data onto a result: `billing.result · usage.result · keys.result · members.result`. A billing plugin's
-  whole `collect()` is `return billing.result({...})`. The fixture-tested pure `build*()` normalizers are where the real coverage still lives.
+  whole `collect()` is `return billing.result({...})`. The fixture-tested pure `build*()` normalizers are where the real coverage still lives. To bolt an extra
+  panel onto a preset-built result, `addSections(result, ...specs)` (`@butinapp/sdk/data`) — it drops falsy sections and de-dupes datasets by id the way
+  `capabilityResult` does, so never hand-push onto `result.datasets`/`result.views`.
 
 ### Adding a plugin (the short version)
 
@@ -242,7 +245,7 @@ Pure types + `define*` helpers + money utils. No Electron. `src/` is grouped by 
 - **`presets/`** (→ `/presets`) — billing · usage · apikeys · members · blocks
 - **`integrations/`** (→ `/integrations`) — shared third-party mechanics (stripe)
 - **`util/`** (→ `/util`) — money · date · text · fx · object
-- **`testing/`** (→ `/testing`) — synthetic sample toolkit
+- **`testing/`** (→ `/testing`) — synthetic sample toolkit + `validateSamples`/`resultValidator`, the contract checks a plugin's tests assert with
 - **`schema.ts`** (→ `/schema`) — the runtime zod `*Schema` objects. HOST-ONLY, not author-facing.
 
 ### `packages/shapes` → `@butinapp/shapes` — THE HOST/WIRE SHAPES
@@ -469,7 +472,8 @@ fabricates the time-series so Overview trends, "what changed" movers, and per-da
   three+ genuine repetitions. When a change is done, re-read the surrounding scope and tighten — drop throwaway one-use locals and one-call wrappers. The
   `tidy-code` skill is the cleanup pass; this keeps the bloat from accruing in the first place.
 - **Never re-roll date or money logic — and never re-define a shared literal.** Date/time math goes through `@butinapp/sdk/util` (`isoDay` to trim an ISO datetime
-  to a `'YYYY-MM-DD'` day; `epochMsDay`/`epochSecDay` for epoch→day; `dayMinus(day, n)`/`utcDaysAgo`/`isoDaysAgo` for day arithmetic; `monthKey`/`currentMonthKey`/
+  to a `'YYYY-MM-DD'` day; `epochMsDay`/`epochSecDay` for epoch→day; `dayMinus(day, n)`/`utcDaysAgo`/`isoDaysAgo` for day arithmetic; `byDayDesc`/`byDayAsc` to
+  order rows by their `date` (newest-first is the invoice/document ordering contract, so don't restate the comparator); `monthKey`/`currentMonthKey`/
   `utcMonthStart`) or, for anything those don't cover, **luxon** (`DateTime`/`Duration` via `@butinapp/sdk/libs`). The classic re-rolls — **STOP and reach for the
   helper**: `x.slice(0, 10)` to grab a day (→ `isoDay`), a hand-written `minusDays`/`addDays`/`new Date(Date.parse(d) - n * 86_400_000)` (→ `dayMinus` or luxon), an
   inline `new Date(x).toISOString().slice(0, 10)` (→ `epochMsDay`). Money goes through `@butinapp/sdk/util` money helpers (`centsToMajor` · `millicentsToMajor` ·
@@ -518,6 +522,9 @@ Comments describe the present state of the code, as if it had always been this w
   **jsdom** environment + a `src/test/setup.ts` (registers `@testing-library/jest-dom` matchers + `afterEach(cleanup)`), so React components can be rendered and
   asserted with `@testing-library/react`. core's renderer route shells and Electron-bound code (`electron-client.ts`, Magic Login) stay typecheck-only + manual
   smoke test.
+- **A plugin's sample check is one line:** `expect(validateSamples(<plugin>)).toEqual([])` (`@butinapp/sdk/testing`) draws every capability's `sample` through its
+  own `build` and validates the result, reading the currency off the plugin's `reportingCurrency` so a test can't disagree with what core stamps. For a result the
+  test built itself, `const validate = resultValidator('CAD')`. Neither replaces the real-shape fixture tests below.
 - The **primary coverage target is still the pure functions**: each plugin's `build*()` normalizers (fed a redacted bundle fixture → assert normalized shape + money
   units), the SDK presets + `validateCapabilityResult`, the UI view-models (`formatByRole`, `rollup`, `plan-views`), and core's `pickPrimarySummary`. **`@butinapp/ui`
   component tests** live alongside the component as `*.test.tsx` (see `components/button.test.tsx`, `components/badge.test.tsx`) — render the prop-driven component,

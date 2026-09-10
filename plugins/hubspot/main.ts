@@ -7,7 +7,7 @@ import {
   type CollectContext,
   type ConfigOf
 } from '@butinapp/sdk'
-import { table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, table, type CapabilityResult } from '@butinapp/sdk/data'
 import {
   billing,
   members,
@@ -17,7 +17,7 @@ import {
   type MembersInput,
   type UsageMetricInput
 } from '@butinapp/sdk/presets'
-import { currentMonthKey, epochMsDay, isoDay, round2 } from '@butinapp/sdk/util'
+import { byDayAsc, byDayDesc, currentMonthKey, epochMsDay, isoDay, round2 } from '@butinapp/sdk/util'
 
 import { sampleHubspotBilling, sampleHubspotMembers, sampleHubspotUsage } from './sample.js'
 
@@ -243,7 +243,7 @@ export const buildHubspotBilling = (
       status: (tx.status ?? 'unknown').toLowerCase(),
       pdfUrl: tx.pdfUrl || null
     }))
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   const currency = (invoiceList?.transactions?.[0]?.currencyCode ?? 'USD').toUpperCase()
 
@@ -369,7 +369,7 @@ export const buildHubspotDaily = (marketable: RawMarketableContactsResponse | nu
   (marketable?.usageByResolution?.usage ?? [])
     .map((u) => ({ date: isoDay(u.date) ?? '', count: u.marketableContactsCount ?? 0 }))
     .filter((p) => p.date !== '')
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .sort(byDayAsc)
 
 // Flattens product limits (incl. nested quantity packs) + seats + marketable contacts + credits into a flat
 // metric list (label · value · limit), all counts.
@@ -443,24 +443,20 @@ export const buildHubspotUsageResult = (
     metrics: buildHubspotUsageMetrics(paidProducts, seatInfo, marketable, credits)
   })
   const points = buildHubspotDaily(marketable)
+  const series = points.length
+    ? table<HubspotDailyPoint>({
+        id: 'daily',
+        columns: [
+          { key: 'date', label: 'Date', role: 'timestamp' },
+          { key: 'count', label: 'Marketable contacts', role: 'count' }
+        ],
+        rows: points,
+        // One point per day → keyed by date so the marketable-contacts trend accumulates past the fetch window.
+        key: 'date'
+      }).timeseries({ x: 'date', y: 'count', granularity: 'daily', title: 'Marketable contacts' })
+    : null
 
-  if (points.length) {
-    const series = table<HubspotDailyPoint>({
-      id: 'daily',
-      columns: [
-        { key: 'date', label: 'Date', role: 'timestamp' },
-        { key: 'count', label: 'Marketable contacts', role: 'count' }
-      ],
-      rows: points,
-      // One point per day → keyed by date so the marketable-contacts trend accumulates past the fetch window.
-      key: 'date'
-    }).timeseries({ x: 'date', y: 'count', granularity: 'daily', title: 'Marketable contacts' })
-
-    result.datasets.push(series.dataset)
-    result.views = [...(result.views ?? []), series.view]
-  }
-
-  return result
+  return addSections(result, series)
 }
 
 const CREDITS_RPC =

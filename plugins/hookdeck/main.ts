@@ -1,5 +1,5 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
-import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import {
   billing,
   members,
@@ -8,7 +8,7 @@ import {
   type MembersInput,
   type UsageMetricInput
 } from '@butinapp/sdk/presets'
-import { centsToMajor, currentMonthKey, isoDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, currentMonthKey, isoDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
 
 import { sampleHookdeckBilling, sampleHookdeckMembers, sampleHookdeckUsage } from './sample.js'
 
@@ -201,7 +201,7 @@ export const buildBillingReport = (
   email: RawHookdeckEmail | null | undefined,
   address: RawHookdeckAddress | null | undefined
 ): HookdeckBillingReport => {
-  const invoices = (invoiceList ?? []).map(normalizeInvoice).sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  const invoices = (invoiceList ?? []).map(normalizeInvoice).sort(byDayDesc)
 
   const s = sub ?? {}
 
@@ -517,30 +517,23 @@ export const buildHookdeckUsageResult = (report: HookdeckUsageReport): Capabilit
     unit: m.name.toLowerCase() === 'events' ? 'events' : 'requests'
   }))
 
-  const result = usage.result({ periodStart: report.periodStart, periodEnd: report.periodEnd, metrics })
+  // Each metric's daily consumption points are a per-day series (the API uses granularity:'day').
+  const series = report.metrics
+    .filter((m) => m.daily.length)
+    .map((m) =>
+      table<HookdeckUsageDaily>({
+        id: `daily-${m.id}`,
+        columns: [
+          { key: 'date', label: 'Date', role: 'timestamp' },
+          { key: 'quantity', label: m.name, role: 'count' }
+        ],
+        rows: m.daily,
+        // One point per day → keyed by date so each metric's daily consumption accumulates past the fetch window.
+        key: 'date'
+      }).timeseries({ x: 'date', y: 'quantity', granularity: 'daily', title: `Daily ${m.name}` })
+    )
 
-  for (const m of report.metrics) {
-    if (!m.daily.length) {
-      continue
-    }
-
-    // Each metric's daily consumption points are a per-day series (the API uses granularity:'day').
-    const series = table<HookdeckUsageDaily>({
-      id: `daily-${m.id}`,
-      columns: [
-        { key: 'date', label: 'Date', role: 'timestamp' },
-        { key: 'quantity', label: m.name, role: 'count' }
-      ],
-      rows: m.daily,
-      // One point per day → keyed by date so each metric's daily consumption accumulates past the fetch window.
-      key: 'date'
-    }).timeseries({ x: 'date', y: 'quantity', granularity: 'daily', title: `Daily ${m.name}` })
-
-    result.datasets.push(series.dataset)
-    result.views = [...(result.views ?? []), series.view]
-  }
-
-  return result
+  return addSections(usage.result({ periodStart: report.periodStart, periodEnd: report.periodEnd, metrics }), ...series)
 }
 
 // The raw usage payload plus the billing-period bounds it was scoped to (ISO 'YYYY-MM-DD'), carried so build

@@ -1,7 +1,7 @@
 import { type CollectContext } from '@butinapp/sdk'
-import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing } from '@butinapp/sdk/presets'
-import { currentMonthKey, isoDay, parseDollarAmount, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, currentMonthKey, isoDay, parseDollarAmount, round2 } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import { type Dashboard, GITHUB_ORIGIN, makeDashboard } from './dashboard.js'
@@ -353,23 +353,6 @@ export interface BuildBillingArgs {
   contacts: GitHubBillingContact[]
 }
 
-// Sort dated transactions newest-first; undated rows fall to the bottom.
-const byDateDesc = (a: GitHubPayment, b: GitHubPayment): number => {
-  if (!a.date && !b.date) {
-    return 0
-  }
-
-  if (!a.date) {
-    return 1
-  }
-
-  if (!b.date) {
-    return -1
-  }
-
-  return b.date.localeCompare(a.date)
-}
-
 // "MasterCard •••• 5587", or '—' when no card is on file.
 const formatCard = (pm: GitHubPaymentMethod): string =>
   [pm.cardType, pm.last4 ? `•••• ${pm.last4}` : null].filter(Boolean).join(' ') || '—'
@@ -439,7 +422,7 @@ const computeGithubBilling = (args: BuildBillingArgs): GithubComputed => {
   const hasSignal = gross > 0 || included > 0 || license != null
 
   return {
-    paymentsSorted: [...payments].sort(byDateDesc),
+    paymentsSorted: [...payments].sort(byDayDesc),
     successfulInvoices,
     gross,
     included,
@@ -488,10 +471,7 @@ export const buildGithubSummary = (args: BuildBillingArgs): CapabilityResult => 
   })
   const meteredStat = metered.stat({ title: 'Metered usage' })
 
-  result.datasets.push(meteredStat.dataset)
-  result.views = [...(result.views ?? []), meteredStat.view]
-
-  return result
+  return addSections(result, meteredStat)
 }
 
 // --- Billing tab (renders via the generic renderer but is NOT the Overview rollup) ---

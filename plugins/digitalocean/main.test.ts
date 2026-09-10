@@ -1,5 +1,4 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
-import { createSampleGen, resolveSampleConfig } from '@butinapp/sdk/testing'
+import { createSampleGen, resolveSampleConfig, resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import {
@@ -16,8 +15,7 @@ import {
 import * as queries from './queries.js'
 import { SAMPLE_FACETS, sampleDigitalOceanBilling } from './sample.js'
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateCapabilityResult = resultValidator('USD')
 
 // Invented throughout — the shape is DigitalOcean's, every value is fabricated.
 const TEAM = {
@@ -169,10 +167,7 @@ test('every safelisted document names the operation and the panel bundle it is r
 })
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of digitaloceanPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(digitaloceanPlugin)).toEqual([])
 })
 
 test('the sample meters facets the plugin actually requests, and scales with the documents knob', () => {

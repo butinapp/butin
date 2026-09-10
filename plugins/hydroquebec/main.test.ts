@@ -1,5 +1,4 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
-import { createSampleGen, resolveSampleConfig } from '@butinapp/sdk/testing'
+import { createSampleGen, resolveSampleConfig, resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
@@ -17,7 +16,7 @@ import {
 import { sampleHydroPortfolio } from './sample.js'
 
 const CCY = 'CAD'
-const validate = (r: Parameters<typeof resolveCurrencies>[0]): string[] => rawValidateCR(resolveCurrencies(r, CCY))
+const validate = resultValidator(CCY)
 
 const fixture = (): RawPortfolio =>
   JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/portfolio-bundle.json', import.meta.url)), 'utf-8'))
@@ -199,10 +198,7 @@ describe('buildHydroConsumption', () => {
 })
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of hydroquebecPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validate(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(hydroquebecPlugin)).toEqual([])
 })
 
 test('sample scales properties with the users knob and spans two relationships', () => {

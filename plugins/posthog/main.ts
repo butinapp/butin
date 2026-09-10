@@ -6,7 +6,7 @@ import {
   type ConfigOf,
   type DocumentBytes
 } from '@butinapp/sdk'
-import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import {
   fetchStripeHostedInvoicePdf,
   fetchStripePortalResource,
@@ -22,7 +22,7 @@ import {
   type MemberInput,
   type MembersInput
 } from '@butinapp/sdk/presets'
-import { centsToMajor, epochSecDay, monthMinus, utcDaysAgo } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, epochSecDay, monthMinus, utcDaysAgo } from '@butinapp/sdk/util'
 
 import { samplePosthogBilling, samplePosthogMembers, samplePosthogUsage } from './sample.js'
 
@@ -222,7 +222,7 @@ export const buildBillingReport = (
       amount: centsToMajor(inv.amount_due),
       hostedUrl: inv.hosted_invoice_url
     }))
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   const products: PosthogProductSpend[] = (billing.products ?? [])
     .map((p) => ({
@@ -269,6 +269,12 @@ export const buildBillingReport = (
 // cross-service spend.mtd summary) feeding off the Stripe-portal invoices, plus extra headline stats (plan,
 // subscription, projected period spend) and a per-product current/projected-spend table.
 export const buildPosthogSummaryResult = (report: PosthogBillingReport): CapabilityResult => {
+  interface ProductRow {
+    name: string
+    currentAmount: number
+    projectedAmount: number
+  }
+
   const result = billing.summary({
     currentMtd: report.currentMtd,
     currentMtdLabel: 'This period',
@@ -285,34 +291,25 @@ export const buildPosthogSummaryResult = (report: PosthogBillingReport): Capabil
     ]
   })
 
-  if (report.products.length) {
-    interface ProductRow {
-      name: string
-      currentAmount: number
-      projectedAmount: number
-    }
+  const products = report.products.length
+    ? table<ProductRow>({
+        id: 'products',
+        columns: [
+          { key: 'name', label: 'Product', role: 'label' },
+          { key: 'currentAmount', label: 'Current', role: 'money' },
+          { key: 'projectedAmount', label: 'Projected', role: 'money' }
+        ],
+        rows: report.products.map((p) => ({
+          name: p.name,
+          currentAmount: p.currentAmount,
+          projectedAmount: p.projectedAmount
+        })),
+        // One row per product, uniquely named → keyed so per-product spend accumulates.
+        key: 'name'
+      }).table({ title: 'Spend by product' })
+    : null
 
-    const products = table<ProductRow>({
-      id: 'products',
-      columns: [
-        { key: 'name', label: 'Product', role: 'label' },
-        { key: 'currentAmount', label: 'Current', role: 'money' },
-        { key: 'projectedAmount', label: 'Projected', role: 'money' }
-      ],
-      rows: report.products.map((p) => ({
-        name: p.name,
-        currentAmount: p.currentAmount,
-        projectedAmount: p.projectedAmount
-      })),
-      // One row per product, uniquely named → keyed so per-product spend accumulates.
-      key: 'name'
-    })
-
-    result.datasets.push(products.dataset)
-    result.views = [...(result.views ?? []), products.table({ title: 'Spend by product' }).view]
-  }
-
-  return result
+  return addSections(result, products)
 }
 
 // ── billing tab (the detail: subscription record + downloadable invoice history) ──
@@ -488,39 +485,38 @@ export const buildPosthogUsageResult = (report: PosthogUsageReport): CapabilityR
   })
 
   // One date axis, one numeric column per product series → a stacked daily-usage chart.
-  if (report.usage.series.length && report.usage.dates.length) {
-    // Dynamic columns keyed by series label — cast via `never` because Row is open-ended.
-    interface DailyRow {
-      date: string
-      [series: string]: string | number
-    }
-
-    const seriesColumns = report.usage.series.map((s) => ({ key: s.label, label: s.label, role: 'count' as const }))
-    const rows: DailyRow[] = report.usage.dates.map((date, i) => {
-      const row: DailyRow = { date }
-
-      for (const s of report.usage.series) {
-        row[s.label] = s.data[i] ?? 0
-      }
-
-      return row
-    })
-
-    // Chart the first (largest) product series; the table dataset still carries every product column.
-    const firstSeries = report.usage.series[0]!
-    const daily = table<DailyRow>({
-      id: 'daily',
-      columns: [{ key: 'date', label: 'Date', role: 'timestamp' }, ...seriesColumns] as never,
-      rows: rows as never,
-      // One row per day → keyed by date so the usage trend accumulates past the trailing window.
-      key: 'date'
-    }).timeseries({ x: 'date', y: firstSeries.label as never, granularity: 'daily', title: 'Daily usage' })
-
-    result.datasets.push(daily.dataset)
-    result.views = [...(result.views ?? []), daily.view]
+  if (!report.usage.series.length || !report.usage.dates.length) {
+    return result
   }
 
-  return result
+  // Dynamic columns keyed by series label — cast via `never` because Row is open-ended.
+  interface DailyRow {
+    date: string
+    [series: string]: string | number
+  }
+
+  const seriesColumns = report.usage.series.map((s) => ({ key: s.label, label: s.label, role: 'count' as const }))
+  const rows: DailyRow[] = report.usage.dates.map((date, i) => {
+    const row: DailyRow = { date }
+
+    for (const s of report.usage.series) {
+      row[s.label] = s.data[i] ?? 0
+    }
+
+    return row
+  })
+
+  // Chart the first (largest) product series; the table dataset still carries every product column.
+  const firstSeries = report.usage.series[0]!
+  const daily = table<DailyRow>({
+    id: 'daily',
+    columns: [{ key: 'date', label: 'Date', role: 'timestamp' }, ...seriesColumns] as never,
+    rows: rows as never,
+    // One row per day → keyed by date so the usage trend accumulates past the trailing window.
+    key: 'date'
+  }).timeseries({ x: 'date', y: firstSeries.label as never, granularity: 'daily', title: 'Daily usage' })
+
+  return addSections(result, daily)
 }
 
 const fetchPosthogUsage = async (ctx: CollectContext<PosthogConfig>): Promise<PosthogUsageRaw> => {

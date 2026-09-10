@@ -1,5 +1,4 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
-import { createSampleGen, resolveSampleConfig } from '@butinapp/sdk/testing'
+import { createSampleGen, resolveSampleConfig, resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { currentMonthKey } from '@butinapp/sdk/util'
 import { expect, test } from 'vitest'
 
@@ -16,8 +15,7 @@ import {
 } from './main.js'
 import { sampleAmazonBilling } from './sample.js'
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'CAD'))
+const validateCapabilityResult = resultValidator('CAD')
 
 // Synthetic, redacted — faithful to the real Your-Orders card + invoice-popover shapes (no real ids / uuids).
 // Each item renders as a `.yohtmlc-product-title` linking to its `/dp/<ASIN>` page, as the live cards do.
@@ -251,10 +249,7 @@ interface OrderRow {
 // --- sample ---
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of amazonPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(amazonPlugin)).toEqual([])
 })
 
 test('amazon sample is synthetic, scales with the documents knob, and carries a popover URL per order', () => {

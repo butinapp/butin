@@ -1,5 +1,4 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
-import { createSampleGen, resolveSampleConfig } from '@butinapp/sdk/testing'
+import { createSampleGen, resolveSampleConfig, resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import {
@@ -15,7 +14,7 @@ import {
 } from './main.js'
 import { sampleTaxData } from './sample.js'
 
-const validate = (r: Parameters<typeof resolveCurrencies>[0]): string[] => rawValidateCR(resolveCurrencies(r, 'CAD'))
+const validate = resultValidator('CAD')
 
 const firstRows = <T>(r: { datasets: unknown[] }): T[] => (r.datasets[0] as { rows: T[] }).rows
 const firstView = (r: { views?: unknown[] }): Record<string, unknown> => r.views![0] as Record<string, unknown>
@@ -138,10 +137,7 @@ test('pdfViewerUrl finds the binary viewer link whether in a meta-refresh or an 
 })
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of cgtsimPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validate(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(cgtsimPlugin)).toEqual([])
 })
 
 test('sampleTaxData is synthetic and scales with the users/documents knobs', () => {

@@ -1,4 +1,4 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -11,16 +11,10 @@ import {
   stripePlugin
 } from './main.js'
 
-// Core stamps the plugin's reportingCurrency onto money values at the edge; resolve it before validating so the
-// build's currency-less money columns match what ships.
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateCapabilityResult = resultValidator('USD')
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of stripePlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(stripePlugin)).toEqual([])
 })
 
 // SYNTHETIC fixture mirroring the all_fees Sigma results page: a named column list + positional rows. The

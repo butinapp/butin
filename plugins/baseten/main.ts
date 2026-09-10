@@ -9,7 +9,15 @@ import {
   type BillingInvoiceInput,
   type MembersInput
 } from '@butinapp/sdk/presets'
-import { centsToMajor, currentMonthKey, isoDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
+import {
+  byDayAsc,
+  byDayDesc,
+  centsToMajor,
+  currentMonthKey,
+  isoDay,
+  parseDecimalAmount,
+  round2
+} from '@butinapp/sdk/util'
 
 import { sampleBasetenBilling, sampleBasetenKeys, sampleBasetenMembers, sampleBasetenUsage } from './sample.js'
 
@@ -428,7 +436,7 @@ export const buildBasetenBillingReport = (
   }))
 
   // Newest-first so latestAmount and the table default agree.
-  invoices.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  invoices.sort(byDayDesc)
 
   const netSpend = orgBudget.organization?.currentNetSpend
   const org = credits.organization
@@ -658,7 +666,7 @@ export const buildBasetenUsageReport = (
 
   const daily: BasetenDailyCost[] = [...dailyByDate.entries()]
     .map(([date, v]) => ({ date, cost: round2(v.cost), requests: v.requests }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .sort(byDayAsc)
 
   return {
     periodStart: isoDay(dedicated?.startDate ?? period.start) ?? '',

@@ -1,10 +1,5 @@
-import {
-  resolveCurrencies,
-  validateCapabilityResult,
-  validateCapabilityResult as rawValidateCR,
-  type Dataset
-} from '@butinapp/sdk/data'
-import { createSampleGen, resolveSampleConfig } from '@butinapp/sdk/testing'
+import { validateCapabilityResult, type Dataset } from '@butinapp/sdk/data'
+import { createSampleGen, resolveSampleConfig, validateSamples } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import {
@@ -45,13 +40,8 @@ const billingFixture: BillingBundle = {
   ]
 }
 
-const validateSample = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'CAD'))
-
 test('every defined sample is contract-valid', () => {
-  for (const cap of videotronPlugin.capabilities.filter((c) => c.sample)) {
-    expect(validateSample(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(videotronPlugin)).toEqual([])
 })
 
 test('videotron sample is synthetic and scales statement count with documents', () => {

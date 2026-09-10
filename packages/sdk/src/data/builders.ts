@@ -234,6 +234,14 @@ export const record = Object.assign(
   }
 )
 
+// The datasets a set of sections draws, de-duped by id (first wins). `extraDatasets` carries a dataset a view
+// references without rendering it as its own section (a table's row-detail child) so it still ships.
+const datasetsOf = (sections: ViewSpec[]): Dataset[] =>
+  uniqBy(
+    sections.flatMap((s) => [s.dataset, ...(s.extraDatasets ?? [])]),
+    (d) => d.id
+  )
+
 // Assemble a CapabilityResult from view-specs: collect each section's dataset (de-duped by id, first wins),
 // drop falsy sections (conditional panels), and attach optional summaries. Section order is literal array order.
 export const capabilityResult = (spec: {
@@ -243,11 +251,29 @@ export const capabilityResult = (spec: {
   const sections = spec.sections.filter((s): s is ViewSpec => Boolean(s))
 
   return {
-    datasets: uniqBy(
-      sections.flatMap((s) => [s.dataset, ...(s.extraDatasets ?? [])]),
-      (d) => d.id
-    ),
+    datasets: datasetsOf(sections),
     views: sections.map((s) => s.view),
     ...(spec.summaries?.length ? { summaries: spec.summaries } : {})
+  }
+}
+
+// Append sections onto an already-built result — the preset builders return a finished result, and a plugin with
+// an extra panel (a breakdown chart, a payment-method record) bolts it on afterwards. Falsy sections drop, and the
+// appended datasets go through the same id de-dupe as `capabilityResult`, so a section sharing a dataset with the
+// preset can't add a duplicate. Returns a new result; the input is not mutated.
+export const addSections = (
+  result: CapabilityResult,
+  ...sections: (ViewSpec | null | undefined | false)[]
+): CapabilityResult => {
+  const added = sections.filter((s): s is ViewSpec => Boolean(s))
+
+  if (added.length === 0) {
+    return result
+  }
+
+  return {
+    ...result,
+    datasets: uniqBy([...result.datasets, ...datasetsOf(added)], (d) => d.id),
+    views: [...(result.views ?? []), ...added.map((s) => s.view)]
   }
 }

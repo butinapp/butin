@@ -5,9 +5,9 @@ import {
   type AuthContext,
   type CollectContext
 } from '@butinapp/sdk'
-import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, usage } from '@butinapp/sdk/presets'
-import { centsToMajor, currentMonthKey, epochSecDay, isoDay, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, currentMonthKey, epochSecDay, isoDay, round2 } from '@butinapp/sdk/util'
 
 import { sampleChatgptBilling, sampleChatgptMembers, sampleChatgptUsage } from './sample.js'
 
@@ -363,7 +363,7 @@ export const buildWorkspaceBilling = (
         hostedUrl: inv.hosted_invoice_url ?? null,
         pdfUrl: inv.invoice_pdf ?? null
       }))
-      .sort((a, b2) => b2.date.localeCompare(a.date))
+      .sort(byDayDesc)
 
     return {
       accountId: b.accountId,
@@ -488,7 +488,7 @@ export const buildChatgptBillingTab = (report: WorkspaceBillingReport): Capabili
     value: accountValue
   })
 
-  const sorted = [...allInvoices].sort((a, b) => b.date.localeCompare(a.date))
+  const sorted = [...allInvoices].sort(byDayDesc)
   const invoices = table<InvoiceTableRow>({
     id: 'invoices',
     columns: [
@@ -579,29 +579,22 @@ export const buildCodexReport = (
 // Compose the usage result: an org-total metric carrying the Codex $ (so the cross-service Overview reads a
 // usage.primary spend), plus a per-member leaderboard table (Codex $, credits, tokens, lines of code),
 // costliest first.
+interface LeaderboardRow {
+  userId: string
+  name: string
+  email: string | null
+  seatType: string | null
+  codexUsd: number
+  credits: number
+  tokens: number
+  linesOfCode: number
+}
+
 export const buildChatgptUsageResult = (report: CodexReport): CapabilityResult => {
-  const result = usage.result({
-    metrics: [
-      { label: 'Codex usage', value: report.totalTokens, unit: 'tokens', cost: report.totalCodexUsd },
-      { label: 'Active members', value: report.activeMembers, unit: 'members' },
-      { label: 'Lines of code', value: report.totalLinesOfCode, unit: 'lines' }
-    ]
-  })
-
-  if (report.members.length) {
-    const rows = [...report.members].sort((a, b) => b.codexUsd - a.codexUsd || b.tokens - a.tokens)
-
-    interface LeaderboardRow {
-      userId: string
-      name: string
-      email: string | null
-      seatType: string | null
-      codexUsd: number
-      credits: number
-      tokens: number
-      linesOfCode: number
-    }
-    const leaderboard = table<LeaderboardRow>({
+  const rows = [...report.members].sort((a, b) => b.codexUsd - a.codexUsd || b.tokens - a.tokens)
+  const leaderboard =
+    rows.length > 0 &&
+    table<LeaderboardRow>({
       id: 'leaderboard',
       columns: [
         { key: 'name', label: 'Member', role: 'label' },
@@ -628,13 +621,18 @@ export const buildChatgptUsageResult = (report: CodexReport): CapabilityResult =
         linesOfCode: m.linesOfCode
       })),
       key: 'userId'
-    })
+    }).table({ title: 'Codex leaderboard' })
 
-    result.datasets.push(leaderboard.dataset)
-    result.views = [...(result.views ?? []), leaderboard.table({ title: 'Codex leaderboard' }).view]
-  }
-
-  return result
+  return addSections(
+    usage.result({
+      metrics: [
+        { label: 'Codex usage', value: report.totalTokens, unit: 'tokens', cost: report.totalCodexUsd },
+        { label: 'Active members', value: report.activeMembers, unit: 'members' },
+        { label: 'Lines of code', value: report.totalLinesOfCode, unit: 'lines' }
+      ]
+    }),
+    leaderboard
+  )
 }
 
 // ── members (the full workspace seat roster) ─────────────────────────────────────────────

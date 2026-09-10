@@ -14,6 +14,8 @@ export {
 export {
   isoDay,
   dayOf,
+  byDayDesc,
+  byDayAsc,
   epochMsDay,
   epochSecDay,
   monthKey,

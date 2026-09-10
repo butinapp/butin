@@ -322,15 +322,16 @@ Run from the repo root:
 - `pnpm fix` (oxfmt + oxlint — REQUIRED after any codegen)
 - `pnpm typecheck`
 - `pnpm --filter @butinapp/plugins exec vitest run <id>` (then `pnpm test` for the full suite). Include a
-  **samples test** asserting every capability's `sample` is contract-valid (copy from serper/claude):
+  **samples test** asserting every capability's `sample` is contract-valid — one line, and it reads the currency
+  off the plugin's own `reportingCurrency` (so the test can't disagree with what core stamps):
   ```ts
+  import { validateSamples } from '@butinapp/sdk/testing'
+
   test('every capability declares a sample that is contract-valid', () => {
-    for (const cap of <id>Plugin.capabilities) {
-      expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-      expect(validateCapabilityResult(resolveCurrencies(cap.sample!(), '<REPORTING_CCY>')), cap.id).toEqual([])
-    }
+    expect(validateSamples(<id>Plugin)).toEqual([])
   })
   ```
+  For a result the test builds itself, bind a validator once: `const validate = resultValidator('<REPORTING_CCY>')`.
   The samples test is ADDITIVE — it does NOT replace the real-shape fixture or the edge-case
   `build*()` unit tests (see §4c). All three must be present and green.
 - `pnpm seed-demo --home ./.demo-home` — confirm there are **no** `[seed] <id>:… generic fallback` lines (every

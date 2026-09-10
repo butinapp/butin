@@ -7,7 +7,7 @@ import {
 } from '@butinapp/sdk'
 import { type CapabilityResult, capabilityResult, table } from '@butinapp/sdk/data'
 import { billing, type BillingStat } from '@butinapp/sdk/presets'
-import { isoDay, parseFrAmount, round2, startCase } from '@butinapp/sdk/util'
+import { byDayDesc, isoDay, parseFrAmount, round2, startCase } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 import { randomUUID } from 'node:crypto'
 
@@ -524,7 +524,7 @@ export const buildHydroBilling = (p: RawPortfolio): CapabilityResult => {
     }))
   })
 
-  invoiceRows.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  invoiceRows.sort(byDayDesc)
 
   const periodRows: PeriodRow[] = p.billingPeriods.flatMap(({ noContrat, periods }) => {
     const contrat = contractByNo.get(noContrat)

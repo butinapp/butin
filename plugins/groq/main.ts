@@ -19,7 +19,17 @@ import {
   type MembersInput,
   type TrendPoint
 } from '@butinapp/sdk/presets'
-import { centsToMajor, dayOf, epochMsDay, epochSecDay, getReportingZone, monthMinus, round2 } from '@butinapp/sdk/util'
+import {
+  byDayAsc,
+  byDayDesc,
+  centsToMajor,
+  dayOf,
+  epochMsDay,
+  epochSecDay,
+  getReportingZone,
+  monthMinus,
+  round2
+} from '@butinapp/sdk/util'
 
 import { sampleGroqActivity, sampleGroqBilling, sampleGroqKeys, sampleGroqUsers } from './sample.js'
 
@@ -235,7 +245,7 @@ export const buildGroqBilling = (rawInvoices: RawGroqInvoiceList, rawCurrent: Ra
       status: inv.payment_status ?? inv.status ?? 'unknown',
       pdfUrl: inv.file_url || null
     }))
-    .sort((a, b) => b.date.localeCompare(a.date))
+    .sort(byDayDesc)
 
   return {
     currentMtd: centsToMajor(rawCurrent?.total_amount_cents ?? rawCurrent?.amount_cents),
@@ -401,9 +411,7 @@ export const buildGroqUsage = (rawActivity: RawActivityList, rawCurrent: RawCurr
     totalOutputTokens: totals.outputTokens,
     totalCost: round2(totals.cost),
     models: [...byModel.values()].sort((a, b) => b.cost - a.cost).map((m) => ({ ...m, cost: round2(m.cost) })),
-    daily: [...byDay.entries()]
-      .map(([date, cost]) => ({ date, cost: round2(cost) }))
-      .sort((a, b) => a.date.localeCompare(b.date))
+    daily: [...byDay.entries()].map(([date, cost]) => ({ date, cost: round2(cost) })).sort(byDayAsc)
   }
 }
 

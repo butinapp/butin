@@ -10,7 +10,7 @@ import {
 } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, type BillingInvoiceInput, type MemberInput } from '@butinapp/sdk/presets'
-import { currentMonthKey, isoDay, millicentsToMajor, round2, startCase } from '@butinapp/sdk/util'
+import { byDayDesc, currentMonthKey, isoDay, millicentsToMajor, round2, startCase } from '@butinapp/sdk/util'
 
 import { sampleQdrantInvoices, sampleQdrantKeys, sampleQdrantMembers, sampleQdrantUsage } from './sample.js'
 
@@ -239,7 +239,7 @@ export const toBillingInvoices = (items: RawInvoice[]): BillingInvoiceInput[] =>
 // posts, else the latest invoice — the recurring charge you're on.
 export const buildQdrantSummary = (input: QdrantInvoicesInput): CapabilityResult => {
   const invoices = toBillingInvoices(input.items)
-  const newestFirst = [...invoices].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  const newestFirst = [...invoices].sort(byDayDesc)
   const thisMonth = currentMonthKey()
   const current = newestFirst.find((i) => i.date?.startsWith(thisMonth)) ?? newestFirst[0]
 

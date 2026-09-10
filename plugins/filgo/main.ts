@@ -1,7 +1,7 @@
 import { type CollectContext, defineCapability, definePlugin } from '@butinapp/sdk'
 import { type CapabilityResult, capabilityResult, table } from '@butinapp/sdk/data'
 import { billing } from '@butinapp/sdk/presets'
-import { isoDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, isoDay, parseDecimalAmount, round2 } from '@butinapp/sdk/util'
 import * as cheerio from 'cheerio'
 
 import { sampleFilgoActifs, sampleFilgoDeliveries, sampleFilgoStatements } from './sample.js'
@@ -299,7 +299,7 @@ interface StatementRow {
 }
 
 const sortedStatements = (raw: FilgoStatementsRaw): FilgoStatement[] =>
-  raw.statements.map(normalizeStatement).sort((a, b) => b.date.localeCompare(a.date))
+  raw.statements.map(normalizeStatement).sort(byDayDesc)
 
 // Pure transform — fixture-tested. The Summary tab: the newest statement total as the headline stat, the
 // monthly-statements chart, and the spend summary that feeds the cross-service Overview. No receipts table —
@@ -393,7 +393,7 @@ export const buildFilgoDeliveries = (raw: FilgoDeliveriesRaw): CapabilityResult 
       total: d.grand_total ?? null,
       ticket: d.tickref?.trim() ?? ''
     }))
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   const deliveries = table<DeliveryRow>({
     id: 'deliveries',

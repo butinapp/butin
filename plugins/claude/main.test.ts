@@ -1,5 +1,6 @@
-import { resolveCurrencies, validateCapabilityResult } from '@butinapp/sdk/data'
+import { validateCapabilityResult } from '@butinapp/sdk/data'
 import { members } from '@butinapp/sdk/presets'
+import { validateSamples } from '@butinapp/sdk/testing'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
@@ -369,8 +370,5 @@ test('buildClaudeMembers handles a bare-array, flattened-identity roster and fal
 })
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of claudePlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(resolveCurrencies(cap.sample!(), 'USD')), cap.id).toEqual([])
-  }
+  expect(validateSamples(claudePlugin)).toEqual([])
 })

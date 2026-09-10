@@ -1,5 +1,6 @@
-import { resolveCurrencies, validateCapabilityResult } from '@butinapp/sdk/data'
+import { validateCapabilityResult } from '@butinapp/sdk/data'
 import { members } from '@butinapp/sdk/presets'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { expect, test } from 'vitest'
 
 import {
@@ -15,16 +16,10 @@ import {
   vercelPlugin
 } from './main.js'
 
-// Money values carry no currency until core stamps the plugin's reportingCurrency at the edge; resolve it
-// (USD for Vercel) before validating a raw build* result so the money-column/summary currency checks pass.
-const sampleValidate = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  validateCapabilityResult(resolveCurrencies(r, 'USD'))
+const sampleValidate = resultValidator('USD')
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of vercelPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(sampleValidate(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(vercelPlugin)).toEqual([])
 })
 
 // --- synthetic fixtures (no real slugs/emails/cards) ---

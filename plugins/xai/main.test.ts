@@ -1,4 +1,4 @@
-import { resolveCurrencies, validateCapabilityResult } from '@butinapp/sdk/data'
+import { resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { describe, expect, it, test } from 'vitest'
 
 import {
@@ -39,11 +39,11 @@ test('xai plugin is well-formed', () => {
   expect(xaiPlugin.capabilities.length).toBeGreaterThan(0)
 })
 
+// Bound once: core stamps the plugin's reportingCurrency onto a result before it is validated.
+const validate = resultValidator('USD')
+
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of xaiPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(resolveCurrencies(cap.sample!(), 'USD')), cap.id).toEqual([])
-  }
+  expect(validateSamples(xaiPlugin)).toEqual([])
 })
 
 test('team id is auto-captured from the dashboard URL, so the config field is an optional override', () => {
@@ -335,7 +335,7 @@ describe('buildXaiBillingResult', () => {
       buildBillingReport(invoicesResp(), amountToPayResp(), spendingLimitsResp(), 'team-123')
     )
 
-    expect(validateCapabilityResult(resolveCurrencies(result, 'USD'))).toEqual([])
+    expect(validate(result)).toEqual([])
 
     // spend.mtd summary = current-period accrued.
     expect(result.summaries?.[0]?.section).toBe('spend')
@@ -365,7 +365,7 @@ describe('buildXaiBillingResult', () => {
     const empty = decodeMessage(Buffer.alloc(0))
     const result = buildXaiBillingResult(buildBillingReport(empty, empty, empty, 'team-123'))
 
-    expect(validateCapabilityResult(resolveCurrencies(result, 'USD'))).toEqual([])
+    expect(validate(result)).toEqual([])
     expect(result.datasets.find((d) => d.id === 'topModels')).toBeUndefined()
     const account = result.datasets.find((d) => d.id === 'account')
 
@@ -474,7 +474,7 @@ describe('buildXaiKeysResult', () => {
   it('produces a valid CapabilityResult with masked hints and a key-details table', () => {
     const result = buildXaiKeysResult(buildKeysReport(keysRaw()))
 
-    expect(validateCapabilityResult(result)).toEqual([])
+    expect(validate(result)).toEqual([])
 
     const keys = result.datasets.find((d) => d.id === 'keys')
 
@@ -501,7 +501,7 @@ describe('buildXaiKeysResult', () => {
   it('produces a valid (empty) result for no keys', () => {
     const result = buildXaiKeysResult(buildKeysReport({ keys: [], members: [] }))
 
-    expect(validateCapabilityResult(result)).toEqual([])
+    expect(validate(result)).toEqual([])
   })
 })
 
@@ -547,15 +547,13 @@ describe('buildUsageReport', () => {
   it('produces a valid result, with the daily trend as the summary spark', () => {
     const result = buildXaiUsageResult(buildUsageReport(usageResp([{ seconds: 1782950400, values: [0.5, 10, 100] }])))
 
-    expect(validateCapabilityResult(resolveCurrencies(result, 'USD'))).toEqual([])
+    expect(validate(result)).toEqual([])
     // Usage spend is per-service context, never summed into the cross-service spend total.
     expect(result.summaries?.[0]?.section).toBe('other')
   })
 
   it('produces a valid (empty) result for a team with no usage', () => {
-    expect(
-      validateCapabilityResult(resolveCurrencies(buildXaiUsageResult(buildUsageReport(usageResp([]))), 'USD'))
-    ).toEqual([])
+    expect(validate(buildXaiUsageResult(buildUsageReport(usageResp([]))))).toEqual([])
   })
 })
 
@@ -600,7 +598,7 @@ describe('buildMembersReport', () => {
   it('produces a valid result carrying the email column the cross-service roster joins on', () => {
     const result = buildXaiMembersResult(buildMembersReport([assignmentsResp([ada, grace])]))
 
-    expect(validateCapabilityResult(result)).toEqual([])
+    expect(validate(result)).toEqual([])
 
     const members = result.datasets.find((d) => d.id === 'members')
 
@@ -609,7 +607,7 @@ describe('buildMembersReport', () => {
   })
 
   it('produces a valid (empty) result for a team with no seats', () => {
-    expect(validateCapabilityResult(buildXaiMembersResult(buildMembersReport([])))).toEqual([])
+    expect(validate(buildXaiMembersResult(buildMembersReport([])))).toEqual([])
   })
 })
 

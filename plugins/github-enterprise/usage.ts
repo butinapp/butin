@@ -1,6 +1,6 @@
 import { type CollectContext } from '@butinapp/sdk'
 import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
-import { isoDay, round2 } from '@butinapp/sdk/util'
+import { byDayAsc, isoDay, round2 } from '@butinapp/sdk/util'
 
 import { makeDashboard } from './dashboard.js'
 
@@ -166,7 +166,7 @@ export const buildGithubUsage = (total: RawUsageTotal, perProduct: ProductNetUsa
 
   const dailyRows: DailyRow[] = Array.from(dailyMap.entries())
     .map(([date, v]) => ({ date, gross: round2(v.gross), net: round2(v.net), discount: round2(v.discount) }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .sort(byDayAsc)
 
   const totalGross = total?.usage?.totalGrossAmount ?? summedGross
 

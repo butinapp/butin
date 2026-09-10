@@ -1,6 +1,5 @@
 import type { CollectContext } from '@butinapp/sdk'
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
-import { createSampleGen, resolveSampleConfig } from '@butinapp/sdk/testing'
+import { createSampleGen, resolveSampleConfig, resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { describe, expect, it, test } from 'vitest'
 
 import {
@@ -28,17 +27,10 @@ import { sampleCarnetAccess, sampleCarnetProfile } from './sample.js'
 
 // --- samples -------------------------------------------------------------------------------------
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'CAD'))
+const validateCapabilityResult = resultValidator('CAD')
 
 test('every defined sample is contract-valid', () => {
-  for (const cap of carnetSantePlugin.capabilities) {
-    if (!cap.sample) {
-      continue
-    }
-
-    expect(validateCapabilityResult(cap.sample()), cap.id).toEqual([])
-  }
+  expect(validateSamples(carnetSantePlugin)).toEqual([])
 })
 
 test('carnet sample is fully synthetic and scales with documents', () => {

@@ -1,5 +1,5 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
-import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import {
   billing,
   members,
@@ -9,7 +9,7 @@ import {
   type MembersInput,
   type UsageMetricInput
 } from '@butinapp/sdk/presets'
-import { centsToMajor, epochSecDay, isoDay, round2 } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, epochSecDay, isoDay, round2 } from '@butinapp/sdk/util'
 
 import { sampleSupabaseBilling, sampleSupabaseMembers, sampleSupabaseUsage } from './sample.js'
 
@@ -173,7 +173,7 @@ export const buildSupabaseBilling = (
     pdfUrl: inv.invoice_pdf
   }))
 
-  invoices.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  invoices.sort(byDayDesc)
 
   let upcoming: SupabaseUpcoming | undefined
 
@@ -543,14 +543,7 @@ export const buildSupabaseUsageResult = (report: SupabaseUsageReport): Capabilit
       })
     : null
 
-  if (projectsHandle) {
-    const projects = projectsHandle.table({ title: 'Projects' })
-
-    result.datasets.push(projects.dataset)
-    result.views = [...(result.views ?? []), projects.view]
-  }
-
-  return result
+  return addSections(result, projectsHandle?.table({ title: 'Projects' }))
 }
 
 // The raw wire bundle for the usage tab; buildSupabaseUsage is the pure raw→report transform.

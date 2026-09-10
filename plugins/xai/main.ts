@@ -1,8 +1,8 @@
 import { defineCapability, defineConfigSchema, definePlugin, type CollectContext, type ConfigOf } from '@butinapp/sdk'
-import { table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { DateTime } from '@butinapp/sdk/libs'
 import { billing, keys, members, usage, type ApiKeysInput } from '@butinapp/sdk/presets'
-import { centsToMajor, epochSecDay, getReportingZone, monthKey, round2 } from '@butinapp/sdk/util'
+import { byDayAsc, byDayDesc, centsToMajor, epochSecDay, getReportingZone, monthKey, round2 } from '@butinapp/sdk/util'
 
 import {
   decodeMessage,
@@ -139,7 +139,7 @@ export const buildBillingReport = (
   // ListInvoices response: repeated #1 = invoices.
   const invoices = getRepeatedMessages(invoicesResp, 1)
     .map((inv) => parseInvoice(inv, teamId))
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   // GetAmountToPay wraps the current period's line items in an outer #1 message, items repeated under #1 inside.
   const currentWrapper = getMessage(amountToPayResp, 1)
@@ -214,21 +214,18 @@ export const buildXaiBillingResult = (report: XaiBillingReport, email?: string):
   }
 
   // Current-period top models — a breakdown table of where the unbilled spend is going.
-  if (report.topCurrentModels.length) {
-    const topModels = table<TopModelRow>({
-      id: 'topModels',
-      columns: [
-        { key: 'label', label: 'Model · usage', role: 'label' },
-        { key: 'cost', label: 'Accrued', role: 'money' }
-      ],
-      rows: report.topCurrentModels.map((m) => ({ label: m.label, cost: m.cost }))
-    }).table({ title: 'Current period — top models' })
+  const topModels = report.topCurrentModels.length
+    ? table<TopModelRow>({
+        id: 'topModels',
+        columns: [
+          { key: 'label', label: 'Model · usage', role: 'label' },
+          { key: 'cost', label: 'Accrued', role: 'money' }
+        ],
+        rows: report.topCurrentModels.map((m) => ({ label: m.label, cost: m.cost }))
+      }).table({ title: 'Current period — top models' })
+    : null
 
-    result.datasets.push(topModels.dataset)
-    result.views = [...(result.views ?? []), topModels.view]
-  }
-
-  return result
+  return addSections(result, topModels)
 }
 
 // ── usage (AnalyzeBillingItems) ─────────────────────────────────────────────────────────
@@ -270,7 +267,7 @@ export const buildUsageReport = (resp: ProtoMessage): XaiUsageReport => {
     }
   }
 
-  days.sort((a, b) => a.date.localeCompare(b.date))
+  days.sort(byDayAsc)
 
   return {
     days,
@@ -568,10 +565,7 @@ export const buildXaiKeysResult = (report: XaiKeysReport): CapabilityResult => {
     key: 'id'
   }).table({ title: 'Key details' })
 
-  result.datasets.push(keyDetails.dataset)
-  result.views = [...(result.views ?? []), keyDetails.view]
-
-  return result
+  return addSections(result, keyDetails)
 }
 
 // ── transport (gRPC-web replay — best-effort; needs live verification) ──────────────────

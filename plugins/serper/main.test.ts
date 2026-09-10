@@ -1,6 +1,5 @@
-import { resolveCurrencies, validateCapabilityResult as rawValidateCR } from '@butinapp/sdk/data'
 import { billing, keys, usage } from '@butinapp/sdk/presets'
-import { createSampleGen, resolveSampleConfig } from '@butinapp/sdk/testing'
+import { createSampleGen, resolveSampleConfig, resultValidator, validateSamples } from '@butinapp/sdk/testing'
 import { currentMonthKey } from '@butinapp/sdk/util'
 import { expect, test } from 'vitest'
 
@@ -18,14 +17,10 @@ import {
 } from './main.js'
 import { sampleSerperBilling, sampleSerperKeys } from './sample.js'
 
-const validateCapabilityResult = (r: Parameters<typeof resolveCurrencies>[0]): string[] =>
-  rawValidateCR(resolveCurrencies(r, 'USD'))
+const validateCapabilityResult = resultValidator('USD')
 
 test('every capability declares a sample that is contract-valid', () => {
-  for (const cap of serperPlugin.capabilities) {
-    expect(cap.sample, `${cap.id} has a sample`).toBeDefined()
-    expect(validateCapabilityResult(cap.sample!()), cap.id).toEqual([])
-  }
+  expect(validateSamples(serperPlugin)).toEqual([])
 })
 
 test('serper sample generators are synthetic and scale with the documents/users knobs', () => {

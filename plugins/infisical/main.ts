@@ -7,9 +7,9 @@ import {
   type CollectContext,
   type ConfigOf
 } from '@butinapp/sdk'
-import { capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
+import { addSections, capabilityResult, record, table, type CapabilityResult } from '@butinapp/sdk/data'
 import { billing, members, usage, type BillingInvoiceInput, type MembersInput } from '@butinapp/sdk/presets'
-import { centsToMajor, currentMonthKey, epochSecDay, round2, startCase } from '@butinapp/sdk/util'
+import { byDayDesc, centsToMajor, currentMonthKey, epochSecDay, round2, startCase } from '@butinapp/sdk/util'
 
 import { sampleInfisicalBilling, sampleInfisicalMembers, sampleInfisicalUsage } from './sample.js'
 
@@ -258,7 +258,7 @@ export const buildInfisicalBilling = (input: InfisicalBillingInput): InfisicalBi
         hostedUrl: inv.invoice_pdf ?? null
       }
     })
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   const ym = currentMonthKey()
   const currentMtd = round2(invoices.filter((i) => i.date?.startsWith(ym)).reduce((sum, i) => sum + i.amount, 0))
@@ -510,22 +510,19 @@ export const buildInfisicalUsage = (input: InfisicalUsageInput): CapabilityResul
     }
   }
 
-  if (productRows.length) {
-    const products = table<InfisicalProductRow>({
-      id: 'products',
-      columns: [
-        { key: 'product', label: 'Product', role: 'label' },
-        { key: 'metric', label: 'Resource', role: 'label' },
-        { key: 'count', label: 'Count', role: 'count' }
-      ],
-      rows: productRows,
-      // (product, metric) is unique per row (one entry per product-group × resource field) → the ledger key.
-      key: ['product', 'metric']
-    })
-
-    result.datasets.push(products.dataset)
-    result.views = [...(result.views ?? []), products.table({ title: 'Resources' }).view]
-  }
+  const products = productRows.length
+    ? table<InfisicalProductRow>({
+        id: 'products',
+        columns: [
+          { key: 'product', label: 'Product', role: 'label' },
+          { key: 'metric', label: 'Resource', role: 'label' },
+          { key: 'count', label: 'Count', role: 'count' }
+        ],
+        rows: productRows,
+        // (product, metric) is unique per row (one entry per product-group × resource field) → the ledger key.
+        key: ['product', 'metric']
+      }).table({ title: 'Resources' })
+    : null
 
   const featureRows: InfisicalFeatureRow[] = (input.planTable?.rows ?? []).map((row) => ({
     name: row.name ?? 'unknown',
@@ -533,24 +530,21 @@ export const buildInfisicalUsage = (input: InfisicalUsageInput): CapabilityResul
     used: row.used && row.used !== '-' ? row.used : '—'
   }))
 
-  if (featureRows.length) {
-    const features = table<InfisicalFeatureRow>({
-      id: 'features',
-      columns: [
-        { key: 'name', label: 'Feature', role: 'label' },
-        { key: 'allowed', label: 'Allowed', role: 'label' },
-        { key: 'used', label: 'Used', role: 'label' }
-      ],
-      rows: featureRows,
-      // The feature name is unique in the plan matrix → the ledger key.
-      key: 'name'
-    })
+  const features = featureRows.length
+    ? table<InfisicalFeatureRow>({
+        id: 'features',
+        columns: [
+          { key: 'name', label: 'Feature', role: 'label' },
+          { key: 'allowed', label: 'Allowed', role: 'label' },
+          { key: 'used', label: 'Used', role: 'label' }
+        ],
+        rows: featureRows,
+        // The feature name is unique in the plan matrix → the ledger key.
+        key: 'name'
+      }).table({ title: 'Plan limits' })
+    : null
 
-    result.datasets.push(features.dataset)
-    result.views = [...(result.views ?? []), features.table({ title: 'Plan limits' }).view]
-  }
-
-  return result
+  return addSections(result, products, features)
 }
 
 const fetchInfisicalUsage = async (ctx: CollectContext<InfisicalConfig>): Promise<InfisicalUsageInput> => {

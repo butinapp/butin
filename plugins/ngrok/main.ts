@@ -9,7 +9,7 @@ import {
   type MemberInput,
   type MembersInput
 } from '@butinapp/sdk/presets'
-import { centsStringToMajor, centsToMajor, epochSecDay } from '@butinapp/sdk/util'
+import { byDayDesc, centsStringToMajor, centsToMajor, epochSecDay } from '@butinapp/sdk/util'
 
 import {
   sampleNgrokApiKeys,
@@ -162,7 +162,7 @@ export const buildNgrokBilling = (
       status: inv.status ?? 'Unknown',
       hostedUrl: inv.invoiceUrl ?? null
     }))
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort(byDayDesc)
 
   return {
     plan: sub.plan?.description ?? 'Unknown plan',
