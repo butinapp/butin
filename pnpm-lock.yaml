@@ -244,8 +244,8 @@ importers:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
       tldts:
-        specifier: ^6.1.85
-        version: 6.1.86
+        specifier: ^7.4.12
+        version: 7.4.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.3.3
@@ -447,16 +447,16 @@ importers:
     dependencies:
       '@aws-sdk/client-cost-explorer':
         specifier: ^3.1127.0
-        version: 3.1128.0
+        version: 3.1127.0
       '@aws-sdk/client-identitystore':
         specifier: ^3.1127.0
-        version: 3.1128.0
+        version: 3.1127.0
       '@aws-sdk/client-invoicing':
         specifier: ^3.1127.0
-        version: 3.1128.0
+        version: 3.1127.0
       '@aws-sdk/client-sts':
         specifier: ^3.1127.0
-        version: 3.1128.0
+        version: 3.1127.0
       '@butinapp/sdk':
         specifier: workspace:*
         version: link:../packages/sdk
@@ -498,20 +498,20 @@ packages:
   '@asamuzakjp/nwsapi@2.3.9':
     resolution: {integrity: sha512-n8GuYSrI9bF7FFZ/SjhwevlHc8xaVlb/7HmHelnc/PZXBD2ZR49NnN9sMMuDdEGPeeRQ5d0hqlSlEpgCX3Wl0Q==}
 
-  '@aws-sdk/client-cost-explorer@3.1128.0':
-    resolution: {integrity: sha512-KD9pce69HtTt44o598W21Pi84mvjTrvOQIldj909v/rPrtvVJFcLtrZr0rLbIUjCI7H5lLzk/Uyqr1Ojcu3ImA==}
+  '@aws-sdk/client-cost-explorer@3.1127.0':
+    resolution: {integrity: sha512-63W3WNuW1BsERD6l3GS7WODVNeVN71Kix+bYcz/94iDDlqCQyanSLgko3cSMWsLyA7Rc6cwCl2Ul2MbtX2I/BQ==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-identitystore@3.1128.0':
-    resolution: {integrity: sha512-Hv/3sEIisOVp/3DdW3smDvTabVBMVRNhUTbS/a4Cd4QYxjibRk4yc+CsqaCCpQO1n18Dybv3dnxIVqwBfRofBA==}
+  '@aws-sdk/client-identitystore@3.1127.0':
+    resolution: {integrity: sha512-oLr3ZIK0/9NfHrZTPZjpoKcF5jUKnXrl58ge9Tb7AbVVPX1ureMMxzaOt82skqdyEwDPGcxTEGu0+k3zsL5fkw==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-invoicing@3.1128.0':
-    resolution: {integrity: sha512-3ZGylVSpDNhuS0BP75d2FK4nEz17XRQRVVONUzFw4YYSWm9dIxeXgpTWgFaHeldMG/NhVFO2ZpBJ54mLh0Dfjw==}
+  '@aws-sdk/client-invoicing@3.1127.0':
+    resolution: {integrity: sha512-+76fvVn0A3FvaS2SNkEmlZFhNgYluBComsTFM2Yx0jcwdpAnafMxqFRRwcAP4Fn7iyG/dBY5oMPiiJ0MMY3fuw==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-sts@3.1128.0':
-    resolution: {integrity: sha512-JF8YHz4MCt9UznWjiLhokDXXczPYRCG6hqwa+MNqyIu1KNeuK3phkf/T5EG70PgcYu9lbFPIc7vHAVTTXcHmYw==}
+  '@aws-sdk/client-sts@3.1127.0':
+    resolution: {integrity: sha512-arSFXe4+sfkKrULGB+mGLpQ4/PddJhjrZTolSOaN6j94vb4S/JoKEQhtS0jLb136KjOF/lNKvWC+tahwBqp+Fw==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/core@3.977.9':
@@ -5739,18 +5739,11 @@ packages:
     resolution: {integrity: sha512-Bf+ILmBgretUrdJxzXM0SgXLZ3XfiaUuOj/IKQHuTXip+05Xn+uyEYdVg0kYDipTBcLrCVyUzAPz7QmArb0mmw==}
     engines: {node: '>=14.0.0'}
 
-  tldts-core@6.1.86:
-    resolution: {integrity: sha512-Je6p7pkk+KMzMv2XXKmAE3McmolOQFdxkKw0R8EYNr7sELW46JqnNeTX8ybPiQgvg1ymCoF8LXs5fzFaZvJPTA==}
+  tldts-core@7.4.12:
+    resolution: {integrity: sha512-nYNzS2WRf4QJmjzFFgAxLOBjyBxAGRbCy9PVBPaglcYyYajh40VBn+v5Ngr96ZMc7oM0+aCJdtQnNejvdBnXMQ==}
 
-  tldts-core@7.4.2:
-    resolution: {integrity: sha512-nwEyF4vl4RSJjwSjBUmOSxc3BFPoIFdlRthJ6e+5v9P3bHNsoD06UjuqMUspqp7vsEZ1beaHi1km+optiE17yA==}
-
-  tldts@6.1.86:
-    resolution: {integrity: sha512-WMi/OQ2axVTf/ykqCQgXiIct+mSQDFdH2fkwhPwgEwvJ1kSzZRiinb0zF2Xb8u4+OqPChmyI6MEu4EezNJz+FQ==}
-    hasBin: true
-
-  tldts@7.4.2:
-    resolution: {integrity: sha512-kCwffuaH8ntKtygnWe1b4BJKWiCUH30n5KfoTr6IchcXOwR7chAOFJxFrH3vjANafUYrIA4a7SDL+nn7SiR4Sw==}
+  tldts@7.4.12:
+    resolution: {integrity: sha512-WylhSDKVeYnWXL3a+vKTaOxjnOeEGw938hImY8zoRWJjRRK/Jp1K+IihBzIONpUmW4e3WmXT6q5FW6vlESVZCA==}
     hasBin: true
 
   tmp-promise@3.0.3:
@@ -6180,7 +6173,7 @@ snapshots:
 
   '@asamuzakjp/nwsapi@2.3.9': {}
 
-  '@aws-sdk/client-cost-explorer@3.1128.0':
+  '@aws-sdk/client-cost-explorer@3.1127.0':
     dependencies:
       '@aws-sdk/core': 3.977.9
       '@aws-sdk/credential-provider-node': 3.972.82
@@ -6191,7 +6184,7 @@ snapshots:
       '@smithy/types': 4.18.0
       tslib: 2.8.1
 
-  '@aws-sdk/client-identitystore@3.1128.0':
+  '@aws-sdk/client-identitystore@3.1127.0':
     dependencies:
       '@aws-sdk/core': 3.977.9
       '@aws-sdk/credential-provider-node': 3.972.82
@@ -6202,7 +6195,7 @@ snapshots:
       '@smithy/types': 4.18.0
       tslib: 2.8.1
 
-  '@aws-sdk/client-invoicing@3.1128.0':
+  '@aws-sdk/client-invoicing@3.1127.0':
     dependencies:
       '@aws-sdk/core': 3.977.9
       '@aws-sdk/credential-provider-node': 3.972.82
@@ -6213,7 +6206,7 @@ snapshots:
       '@smithy/types': 4.18.0
       tslib: 2.8.1
 
-  '@aws-sdk/client-sts@3.1128.0':
+  '@aws-sdk/client-sts@3.1127.0':
     dependencies:
       '@aws-sdk/core': 3.977.9
       '@aws-sdk/credential-provider-node': 3.972.82
@@ -11623,17 +11616,11 @@ snapshots:
 
   tinyrainbow@3.1.0: {}
 
-  tldts-core@6.1.86: {}
+  tldts-core@7.4.12: {}
 
-  tldts-core@7.4.2: {}
-
-  tldts@6.1.86:
+  tldts@7.4.12:
     dependencies:
-      tldts-core: 6.1.86
-
-  tldts@7.4.2:
-    dependencies:
-      tldts-core: 7.4.2
+      tldts-core: 7.4.12
 
   tmp-promise@3.0.3:
     dependencies:
@@ -11643,7 +11630,7 @@ snapshots:
 
   tough-cookie@6.0.1:
     dependencies:
-      tldts: 7.4.2
+      tldts: 7.4.12
 
   tr46@6.0.0:
     dependencies:
