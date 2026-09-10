@@ -37,9 +37,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
-    "prepack": "tsgo -p tsconfig.build.json",
-    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run"
   },
   "dependencies": {

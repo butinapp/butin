@@ -54,9 +54,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json && node scripts/copy-assets.mjs && node scripts/build-css.mjs",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs && node scripts/build-css.mjs",
     "prepack": "pnpm build",
-    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run"
   },
   "dependencies": {
