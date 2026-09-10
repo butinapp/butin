@@ -56,6 +56,8 @@ jobs:
         with:
           name: windows
           path: packages/core/release/*.exe
+          # The release job downloads these in the same run; keeping them 90 days blows the storage quota.
+          retention-days: 1
 
   build-mac:
     needs: check
@@ -76,6 +78,8 @@ jobs:
         with:
           name: mac
           path: packages/core/release/*.dmg
+          # The release job downloads these in the same run; keeping them 90 days blows the storage quota.
+          retention-days: 1
 
   build-linux:
     needs: check
@@ -95,6 +99,8 @@ jobs:
         with:
           name: linux
           path: packages/core/release/*.AppImage
+          # The release job downloads these in the same run; keeping them 90 days blows the storage quota.
+          retention-days: 1
 
   release:
     needs: [check, build-windows, build-mac, build-linux]

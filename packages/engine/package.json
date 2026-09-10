@@ -11,11 +11,9 @@
     "typecheck": "tsgo --noEmit -p tsconfig.json",
     "test": "vitest run"
   },
-  "dependencies": {
-    "electron": "^42.11.2"
-  },
   "devDependencies": {
     "@types/node": "catalog:",
+    "electron": "^42.11.2",
     "vitest": "catalog:"
   }
 }
