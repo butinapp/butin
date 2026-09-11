@@ -1,7 +1,7 @@
 import { clearServiceCookies } from '@butinapp/engine'
 
 import { getPluginSession } from '../browser/shared-session.js'
-import { pluginById } from '../plugin/plugins.js'
+import { requirePlugin } from '../plugin/plugin-context.js'
 import { setPluginEnabled, setPluginInstalled, setPluginOnboardedAt, updatePluginEntry } from '../store/config-file.js'
 import { clearCredentials } from '../store/credentials.js'
 import { clearPluginConfig } from '../store/plugin-config.js'
@@ -26,12 +26,14 @@ export const lifecycleHandlers = {
   // service's cookies, then drop cached reports + the roster flags. Downloaded files under ~/butin/<id>/ are
   // left in place unless `eraseFolder` is set, which removes the whole service data folder too.
   uninstall: async (_event, pluginId: string, eraseFolder?: boolean) => {
+    // Resolved before anything is removed: the id names the folder an erase deletes, so only a registered
+    // plugin's id ever reaches the store.
+    const plugin = requirePlugin(pluginId)
+
     clearCredentials(pluginId)
     clearRequestCache(pluginId)
 
-    const plugin = pluginById(pluginId)
-
-    if (plugin?.session) {
+    if (plugin.session) {
       await clearServiceCookies(getPluginSession(plugin), plugin.session.cookieDomains)
     }
 

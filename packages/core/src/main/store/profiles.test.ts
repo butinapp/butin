@@ -94,6 +94,13 @@ describe('profile registry', () => {
     expect(() => deleteProfile('personal')).toThrow(/last profile/i)
   })
 
+  it('refuses an id that is not in the registry, so a path can never be removed by name', () => {
+    createProfile('Other')
+
+    expect(() => deleteProfile('..')).toThrow(/unknown profile/)
+    expect(existsSync(profileDir('personal'))).toBe(true)
+  })
+
   it('recolors a profile in place', () => {
     const { id } = createProfile('Work')
 

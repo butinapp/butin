@@ -124,7 +124,7 @@ const Hero = () => (
             macOS (Apple Silicon &amp; Intel)
           </span>
           <span className="rounded-md border border-line bg-surface/60 px-2.5 py-1">Windows 10/11</span>
-          <span className="rounded-md border border-line bg-surface/60 px-2.5 py-1">Linux (AppImage &amp; deb)</span>
+          <span className="rounded-md border border-line bg-surface/60 px-2.5 py-1">Linux (AppImage)</span>
         </div>
         <div
           className="reveal mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-xs uppercase tracking-wider text-muted"

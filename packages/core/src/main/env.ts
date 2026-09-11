@@ -1,3 +1,4 @@
+import { app } from 'electron'
 import { resolve } from 'node:path'
 
 // The single place the main process reads `process.env`. Every environment knob is declared, defaulted, and
@@ -21,8 +22,10 @@ export const env = {
   // a deterministic run (the drive/seed harness), so buckets don't drift with the machine the run happens on.
   reportingZone: process.env.BUTIN_REPORTING_ZONE,
 
-  // A development run (electron-vite dev / tests leave NODE_ENV ≠ 'production'). A plugin contract violation
-  // throws loudly in dev so the author sees it immediately; a packaged build quarantines instead (keeps the
-  // last good report, surfaces a data-invalid state) so one bad field never takes down a usable service.
-  isDev: process.env.NODE_ENV !== 'production'
+  // A development run: electron-vite dev, the built-but-unpackaged app the drive/smoke harness launches, and
+  // tests (where `app` is absent). A plugin contract violation throws loudly in dev so the author sees it
+  // immediately; a packaged build quarantines instead (keeps the last good report, surfaces a data-invalid
+  // state) so one bad field never takes down a usable service. Keyed on the package, not NODE_ENV — the main
+  // bundle ships with `process.env.NODE_ENV` unset, so a NODE_ENV check would read as dev in production.
+  isDev: !app?.isPackaged
 } as const

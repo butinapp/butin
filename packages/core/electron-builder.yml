@@ -6,6 +6,16 @@ directories:
 files:
   - out/**/*
   - package.json
+# Flipped in the packaged binary. With runAsNode on, `ELECTRON_RUN_AS_NODE=1 butin script.js` runs arbitrary
+# Node under the app's signed identity — on macOS that identity is what the Keychain grants the safeStorage key
+# to. The NODE_OPTIONS and --inspect fuses close the other two ways of loading code into the process, and the
+# asar fuses keep the main bundle to the one shipped in the installer.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
 win:
   target: nsis
   icon: build/icon.png

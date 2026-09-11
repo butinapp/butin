@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 
+import { env } from '../env.js'
+
 // A fake plugin with a node transport whose collect ignores the client (no network), so we can test
 // runCapability's orchestration in isolation. Hoisted so the vi.mock factory can reference it.
 const { fakePlugin } = vi.hoisted(() => ({
@@ -199,6 +201,23 @@ test('a contract-violating result throws in dev and is never persisted', async (
   await expect(runCapability('fake', 'broken')).rejects.toThrow(/contract violation/)
 
   expect(await readCurrent('fake', 'broken')).toBeNull()
+})
+
+test('a packaged build quarantines a contract violation as data-invalid instead of the raw error', async () => {
+  const mutable = env as { isDev: boolean }
+  const wasDev = mutable.isDev
+
+  mutable.isDev = false
+
+  try {
+    await expect(runCapability('fake', 'broken')).rejects.toMatchObject({
+      message: 'malformed data from this service',
+      dataInvalid: true
+    })
+    expect(await readCurrent('fake', 'broken')).toBeNull()
+  } finally {
+    mutable.isDev = wasDev
+  }
 })
 
 test('runCapability accumulates keyed datasets into the ledger', async () => {

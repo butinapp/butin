@@ -2,6 +2,7 @@ import { MONTH_ABBR, convert, type FxRates } from '@butinapp/sdk/util'
 import { ArrowDownRight, ArrowUpRight, ChevronDown } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
+import { Button } from '../../components/button.js'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/card.js'
 import {
   DropdownMenu,
@@ -662,12 +663,15 @@ export const Overview = ({
   plugins,
   baseCurrency = 'USD',
   rates = {},
-  onOpen
+  onOpen,
+  onManage
 }: {
   plugins: OverviewPlugin[]
   baseCurrency?: string
   rates?: FxRates
   onOpen?: (pluginId: string) => void
+  // Opens Management from the empty state. Absent in an offline embed, which has nothing to install.
+  onManage?: () => void
 }) => {
   const t = useLabels()
   const prefs = useFormat()
@@ -676,7 +680,19 @@ export const Overview = ({
   const populated = [spend.length > 0, balances.length > 0, others.length > 0].filter(Boolean).length
 
   if (populated === 0) {
-    return <p className="text-muted-foreground text-sm">{t.noDataYet}</p>
+    return (
+      <div className="space-y-3">
+        <p className="text-muted-foreground text-sm">{t.noDataYet}</p>
+        {onManage ? (
+          <>
+            <p className="text-muted-foreground text-sm">{t.noDataYetHint}</p>
+            <Button size="sm" variant="outline" onClick={onManage}>
+              {t.noDataYetAction}
+            </Button>
+          </>
+        ) : null}
+      </div>
+    )
   }
 
   const showHeaders = populated > 1

@@ -32,8 +32,13 @@ updates:
     # does not accept — electron-vite 5 pins `vite: ^5 || ^6 || ^7`, and Vite 8 swaps rollup for rolldown, which
     # breaks the config translation and yields an app that builds clean and never opens a window. Lift this once
     # electron-vite 6 (`^6 || ^7 || ^8`) is out of beta.
+    # `@types/node` tracks the Node that Electron embeds (24), not the newest Node — a newer major describes APIs
+    # the main process does not have and the typecheck would pass code that fails at runtime.
     ignore:
       - dependency-name: vite
+        update-types:
+          - version-update:semver-major
+      - dependency-name: '@types/node'
         update-types:
           - version-update:semver-major
     groups:

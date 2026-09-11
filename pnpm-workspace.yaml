@@ -7,6 +7,9 @@ overrides:
   react-dom: 'catalog:'
   '@types/react': 'catalog:'
   '@types/react-dom': 'catalog:'
+  # cheerio pulls undici for its URL loader, which no plugin calls; the pin keeps the resolved copy past the
+  # advisories against the 7.x line so the audit stays clean.
+  undici: '>=7.29.0'
 
 # Single source of truth for versions shared across packages (referenced as `catalog:` in each package.json).
 # Anything depended on by more than one package lives here so versions can't drift — bump it once.

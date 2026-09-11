@@ -119,6 +119,7 @@ const OverviewHome = () => {
         baseCurrency={fx?.baseCurrency}
         rates={fx?.rates}
         onOpen={(id) => void navigate({ to: '/service/$serviceId', params: { serviceId: id } })}
+        onManage={() => void navigate({ to: '/management' })}
       />
       <ExportDialog
         open={exportOpen}
