@@ -417,7 +417,7 @@ pnpm install            # install everything (downloads Electron)
 pnpm dev                # electron-vite dev on @butinapp/core
 pnpm dev:debug          # dev WITH the CDP DevTools endpoint open (BUTIN_REMOTE_DEBUG) — see "Driving the app"
 pnpm build              # electron-vite build (@butinapp/core main bundle)
-pnpm package            # build + electron-builder (NSIS/dmg/AppImage)
+pnpm package            # build + electron-builder (NSIS/dmg/AppImage), unsigned — release.yml signs official builds
 pnpm typecheck          # tsc --noEmit across all packages (pnpm -r typecheck)
 pnpm test               # vitest run across all packages (pnpm -r test)
 pnpm test:coverage      # tests with v8 coverage per package
