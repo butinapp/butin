@@ -121,6 +121,10 @@ jobs:
       - run: pnpm --filter @butinapp/core build
       # arch (universal) + target (dmg) come from packages/core/electron-builder.yml.
       - run: pnpm --filter @butinapp/core exec electron-builder --mac --publish never
+      - name: Verify the signature and notarization
+        run: >-
+          bash scripts/verify-mac-signature.sh "packages/core/release/mac-universal/Butin.app"
+          "Developer ID Application: Yann Allard (4ZJR6M393A)"
       - uses: actions/upload-artifact@v7
         with:
           name: mac
