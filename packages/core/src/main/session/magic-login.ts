@@ -540,7 +540,7 @@ export const runMagicLogin = (plugin: ButinPlugin, opts: MagicLoginOptions = {})
 
         if (matched) {
           creds.set(cap.storeAs, matched)
-          log.info(tag, `captured '${cap.storeAs}' from URL: ${matched}`)
+          log.info(tag, `captured '${cap.storeAs}' from URL (${matched.length} chars)`)
         }
       }
 
@@ -549,7 +549,10 @@ export const runMagicLogin = (plugin: ButinPlugin, opts: MagicLoginOptions = {})
 
         if (value) {
           creds.set(cap.storeAs, value)
-          log.info(tag, `captured '${cap.storeAs}' from ${cap.on ?? 'response'} header '${cap.header}': ${value}`)
+          log.info(
+            tag,
+            `captured '${cap.storeAs}' from ${cap.on ?? 'response'} header '${cap.header}' (${value.length} chars)`
+          )
         }
       }
 

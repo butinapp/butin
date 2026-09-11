@@ -305,6 +305,12 @@ export const deleteProfile = (id: string): void => {
     throw new Error('cannot delete the last profile')
   }
 
+  // Only a registered id names a directory to remove; an arbitrary string would resolve to a path outside
+  // the profiles tree.
+  if (!file.profiles.some((p) => p.id === id)) {
+    throw new Error(`unknown profile: ${id}`)
+  }
+
   file.profiles = file.profiles.filter((p) => p.id !== id)
 
   // Deleting the active profile falls back to the first remaining one.

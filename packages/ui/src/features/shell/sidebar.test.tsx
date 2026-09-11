@@ -119,6 +119,13 @@ test('shows the empty-state when nothing matches', async () => {
   expect(screen.getByText('No services match')).toBeInTheDocument()
 })
 
+test('a fresh install says nothing is installed rather than that nothing matches', () => {
+  renderSidebar({ services: [] })
+
+  expect(screen.getByText('Nothing installed yet')).toBeInTheDocument()
+  expect(screen.queryByText('No services match')).not.toBeInTheDocument()
+})
+
 test('shows a connection dot (titled by state) only for services that have one', () => {
   const withDots: SidebarService[] = [
     { id: 'sentry', name: 'Sentry', dot: 'connected' },

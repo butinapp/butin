@@ -32,6 +32,8 @@ export type ButinLabels = {
   servicesHeading: string
   searchPlaceholder: string
   noServicesMatch: string
+  // Shown in place of the list on a fresh install, before any service is installed.
+  noServicesInstalled: string
   // Tooltip on an installed-but-disabled service in the sidebar (shown dimmed + inert).
   sidebarDisabledHint: string
   menuLabel: string
@@ -225,6 +227,9 @@ export type ButinLabels = {
 
   // Overview tiles.
   noDataYet: string
+  // The first-launch guidance under the empty Overview, with the action that opens Management.
+  noDataYetHint: string
+  noDataYetAction: string
   // Shown when spend services can't be rolled up into the base currency (no rate yet / offline): their native
   // amounts are listed instead of blanking the band.
   spendUnconverted: (base: string) => string
@@ -538,6 +543,7 @@ export const en: ButinLabels = {
   servicesHeading: 'Services',
   searchPlaceholder: 'Search…',
   noServicesMatch: 'No services match',
+  noServicesInstalled: 'Nothing installed yet',
   sidebarDisabledHint: 'Disabled — re-enable in Management',
   menuLabel: 'Menu',
 
@@ -724,6 +730,8 @@ export const en: ButinLabels = {
   disconnectedWithData: (service) => `${service} is disconnected — showing the last loaded data.`,
 
   noDataYet: 'No data yet',
+  noDataYetHint: 'Install a service in Management and sign in once — its data lands here.',
+  noDataYetAction: 'Open Management',
   spendUnconverted: (base) => `No ${base} exchange rate yet — showing amounts as reported:`,
   serviceCount: (n) => `${n} ${n === 1 ? 'service' : 'services'}`,
   overviewSpending: 'Spending',
@@ -1030,6 +1038,7 @@ export const fr: ButinLabels = {
   servicesHeading: 'Services',
   searchPlaceholder: 'Rechercher…',
   noServicesMatch: 'Aucun service',
+  noServicesInstalled: 'Rien d’installé pour l’instant',
   sidebarDisabledHint: 'Désactivé — réactivez-le dans Gestion',
   menuLabel: 'Menu',
 
@@ -1222,6 +1231,8 @@ export const fr: ButinLabels = {
   disconnectedWithData: (service) => `${service} est déconnecté — affichage des dernières données chargées.`,
 
   noDataYet: 'Aucune donnée',
+  noDataYetHint: 'Installez un service dans Gestion et connectez-vous une fois — ses données arrivent ici.',
+  noDataYetAction: 'Ouvrir Gestion',
   spendUnconverted: (base) => `Aucun taux de change ${base} — montants tels que déclarés :`,
   serviceCount: (n) => `${n} ${n === 1 ? 'service' : 'services'}`,
   overviewSpending: 'Dépenses',

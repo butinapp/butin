@@ -109,6 +109,15 @@ test('clearServiceFolder is a no-op when the folder never existed', async () => 
   await expect(clearServiceFolder('nope')).resolves.toBeUndefined()
 })
 
+test('an id that is not a single path segment never reaches the filesystem', async () => {
+  for (const id of ['..', '.', '', '../sibling', 'a/b', 'a\b', '.hidden']) {
+    await expect(clearServiceFolder(id)).rejects.toThrow(/invalid path segment/)
+    await expect(clearReports(id)).rejects.toThrow(/invalid path segment/)
+    await expect(readCurrent(id, 'billing')).rejects.toThrow(/invalid path segment/)
+    await expect(readCurrent('claude', id)).rejects.toThrow(/invalid path segment/)
+  }
+})
+
 test('eraseLegacyStores removes reports/, history/, and snapshots/ under each plugin dir, leaves current/ledger intact', async () => {
   // Create a plugin dir with legacy stores and surviving modern stores.
   const pluginDir = join(dir, 'claude')

@@ -56,6 +56,18 @@ export const trackProfileWrite = async <T>(fn: () => Promise<T>): Promise<T> => 
 // Current data root, so sibling stores (snapshots) share the same base + test seam.
 export const dataRootDir = (): string => dataRoot
 
+// Every path under the data root is built from ids a caller hands in — a plugin id, a capability id, a cache
+// key. Each must be one plain path segment, so an id can never name a path outside the profile's tree.
+const SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
+
+const segment = (id: string): string => {
+  if (!SEGMENT.test(id)) {
+    throw new Error(`invalid path segment: ${JSON.stringify(id)}`)
+  }
+
+  return id
+}
+
 // Parse a JSON file, or null on any failure (missing/corrupt/locked) — the "no cache yet" signal everywhere
 // here. Every read flows through secure-fs against the active profile's data root, so an encrypted profile is
 // transparent: UNLOCKED decrypts, LOCKED yields null, OFF is plaintext.
@@ -65,10 +77,10 @@ const readJson = <T>(path: string): Promise<T | null> => readJsonSecure<T>(dataR
 const writeJson = (path: string, value: unknown): Promise<void> => writeJsonSecure(dataRoot, path, value)
 
 const currentPath = (pluginId: string, capabilityId: string): string =>
-  join(dataRoot, pluginId, 'current', `${capabilityId}.json`)
+  join(dataRoot, segment(pluginId), 'current', `${segment(capabilityId)}.json`)
 
 export const ledgerPath = (pluginId: string, capabilityId: string): string =>
-  join(dataRoot, pluginId, 'ledger', `${capabilityId}.json`)
+  join(dataRoot, segment(pluginId), 'ledger', `${segment(capabilityId)}.json`)
 
 // `at` preserves an existing fetch time (a repair rewriting the projection of an OLD fetch); a real run omits
 // it so the cache is stamped now.
@@ -85,7 +97,7 @@ export const saveCurrent = async (
   return lastRunAt
 }
 
-export const readCurrent = (pluginId: string, capabilityId: string): Promise<ReportEnvelope | null> =>
+export const readCurrent = async (pluginId: string, capabilityId: string): Promise<ReportEnvelope | null> =>
   readJson<ReportEnvelope>(currentPath(pluginId, capabilityId))
 
 // --- generic per-plugin disk cache --------------------------------------------------------------------
@@ -95,7 +107,7 @@ export const readCurrent = (pluginId: string, capabilityId: string): Promise<Rep
 export type CacheEnvelope<T> = { pluginId: string; namespace: string; key: string; cachedAt: string; data: T }
 
 const cachePath = (pluginId: string, namespace: string, key: string): string =>
-  join(dataRoot, pluginId, namespace, `${key}.json`)
+  join(dataRoot, segment(pluginId), segment(namespace), `${segment(key)}.json`)
 
 export const writeCache = async <T>(pluginId: string, namespace: string, key: string, data: T): Promise<string> => {
   const cachedAt = new Date().toISOString()
@@ -105,20 +117,23 @@ export const writeCache = async <T>(pluginId: string, namespace: string, key: st
   return cachedAt
 }
 
-export const readCache = <T>(pluginId: string, namespace: string, key: string): Promise<CacheEnvelope<T> | null> =>
-  readJson<CacheEnvelope<T>>(cachePath(pluginId, namespace, key))
+export const readCache = async <T>(
+  pluginId: string,
+  namespace: string,
+  key: string
+): Promise<CacheEnvelope<T> | null> => readJson<CacheEnvelope<T>>(cachePath(pluginId, namespace, key))
 
 // Drop a whole cache namespace for a plugin (e.g. on disconnect / erase). No-op when it never existed.
-export const clearCache = (pluginId: string, namespace: string): Promise<void> =>
-  rm(join(dataRoot, pluginId, namespace), { recursive: true, force: true })
+export const clearCache = async (pluginId: string, namespace: string): Promise<void> =>
+  rm(join(dataRoot, segment(pluginId), segment(namespace)), { recursive: true, force: true })
 
 // The service's data root (~/butin/<plugin>/) — the folder Settings surfaces + opens.
-export const serviceDir = (pluginId: string): string => join(dataRoot, pluginId)
+export const serviceDir = (pluginId: string): string => join(dataRoot, segment(pluginId))
 
 // Remove a service's ENTIRE data folder — cached reports, downloaded documents, extracts, caches, all of it.
 // Used by an uninstall that opts to erase all data; a plain uninstall leaves downloaded files in place. No-op
 // when the folder never existed.
-export const clearServiceFolder = (pluginId: string): Promise<void> =>
+export const clearServiceFolder = async (pluginId: string): Promise<void> =>
   rm(serviceDir(pluginId), { recursive: true, force: true })
 
 // Last-refresh timestamp per capability, keyed by capability id — the SAME time each tab shows. Merges
@@ -139,7 +154,7 @@ export const listReportTimes = async (pluginId: string): Promise<Record<string, 
     subdir: string,
     pick: (env: { lastRunAt?: string; enumeratedAt?: string }) => string | undefined
   ) => {
-    const dir = join(dataRoot, pluginId, subdir)
+    const dir = join(dataRoot, segment(pluginId), subdir)
 
     let files: string[]
 
@@ -179,9 +194,9 @@ export const newestReportTime = async (pluginId: string): Promise<string | undef
 // document manifests). Keeps the stored session, downloaded documents, and extract folders — those are
 // removed by Disconnect / a manual clean, not this.
 export const clearReports = async (pluginId: string): Promise<void> => {
-  await rm(join(dataRoot, pluginId, 'current'), { recursive: true, force: true })
-  await rm(join(dataRoot, pluginId, 'ledger'), { recursive: true, force: true })
-  await rm(join(dataRoot, pluginId, 'manifests'), { recursive: true, force: true })
+  await rm(join(dataRoot, segment(pluginId), 'current'), { recursive: true, force: true })
+  await rm(join(dataRoot, segment(pluginId), 'ledger'), { recursive: true, force: true })
+  await rm(join(dataRoot, segment(pluginId), 'manifests'), { recursive: true, force: true })
 }
 
 // Erase ONE capability's accumulated data — its current render cache, its ledger, its raw fetch union, and its
@@ -189,17 +204,17 @@ export const clearReports = async (pluginId: string): Promise<void> => {
 // stored session, and downloaded documents intact. No-op for files that never existed.
 export const clearCapabilityReports = async (pluginId: string, capabilityId: string): Promise<void> => {
   for (const sub of ['current', 'ledger', 'manifests', 'raw']) {
-    await rm(join(dataRoot, pluginId, sub, `${capabilityId}.json`), { force: true })
+    await rm(join(dataRoot, segment(pluginId), sub, `${segment(capabilityId)}.json`), { force: true })
   }
 }
 
 // Default documents folder; an override (from documents-config) wins when provided.
 export const resolveDocumentsDir = (pluginId: string, override?: string): string =>
-  override ?? join(dataRoot, pluginId, 'documents')
+  override ?? join(dataRoot, segment(pluginId), 'documents')
 
 // Extracts root for the "Extract everything" run folders: ~/butin/<plugin>/extracts/. No override — extract
 // always writes here.
-export const resolveExtractsDir = (pluginId: string): string => join(dataRoot, pluginId, 'extracts')
+export const resolveExtractsDir = (pluginId: string): string => join(dataRoot, segment(pluginId), 'extracts')
 
 // Remove on-disk stores superseded by the ledger model (the old reports/ + mergeHistory history/). Best-effort,
 // idempotent — the next fetch rebuilds the ledger. Called once on startup.
@@ -214,7 +229,7 @@ export const eraseLegacyStores = async (): Promise<void> => {
 
   for (const pluginId of entries) {
     for (const legacy of ['reports', 'history', 'snapshots']) {
-      await rm(join(dataRoot, pluginId, legacy), { recursive: true, force: true }).catch(() => {})
+      await rm(join(dataRoot, segment(pluginId), legacy), { recursive: true, force: true }).catch(() => {})
     }
   }
 }

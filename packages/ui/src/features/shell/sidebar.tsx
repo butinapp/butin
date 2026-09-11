@@ -109,7 +109,9 @@ export const Sidebar = ({
         </button>
 
         {filtered.length === 0 ? (
-          <p className="text-muted-foreground px-2 py-1.5 text-xs">{t.noServicesMatch}</p>
+          <p className="text-muted-foreground px-2 py-1.5 text-xs">
+            {services.length === 0 ? t.noServicesInstalled : t.noServicesMatch}
+          </p>
         ) : (
           filtered.map((s) => {
             const isActive = active.kind === 'service' && active.serviceId === s.id
