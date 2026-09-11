@@ -2,15 +2,16 @@ name: Release
 
 # Cut a release whenever the app's version (packages/core/package.json — the version electron-builder
 # stamps onto the installers) changes on master. Bump that field, commit, push: the matrix builds Win/mac/
-# Linux installers and publishes a GitHub release tagged v<version>. The check job no-ops if the tag exists.
+# Linux installers and publishes a GitHub release tagged v<version>. A push whose tag already exists builds
+# nothing.
 on:
   push:
     branches:
       - master
     paths:
       - packages/core/package.json
-  # A manual run builds all three installers as a dry run to verify the pipeline; the publish job below is
-  # gated to push events, so a manual run never cuts a tag or release.
+  # A manual run builds all three installers as a dry run to verify the pipeline, whether or not the version is
+  # already tagged; the publish job below is gated to push events, so a manual run never cuts a tag or release.
   workflow_dispatch:
 
 # Never cancel a release mid-build; let a started run finish even if another push lands.
@@ -32,7 +33,7 @@ jobs:
         run: |
           VERSION=$(node -p "require('./packages/core/package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          if git ls-remote --tags origin "refs/tags/v$VERSION" | grep -q .; then
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && git ls-remote --tags origin "refs/tags/v$VERSION" | grep -q .; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
