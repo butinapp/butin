@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { randomBytes } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
 import { isSealed, isUnlocked, sealForDir, unsealForDir, vaultExists } from '../vault/vault.js'
@@ -46,9 +47,17 @@ export const readBytesSync = (profileDir: string, path: string): Buffer | null =
   return decode(profileDir, readFileSync(path))
 }
 
+// A write lands whole or not at all: the bytes go to a sibling temp file that is renamed over the target,
+// so a crash mid-write leaves the previous file intact rather than a truncated one. Owner-only mode on the
+// platforms that honour it. A leftover temp file (crash between write and rename) is inert: no reader lists it.
+const tempPath = (path: string): string => `${path}.${randomBytes(4).toString('hex')}.tmp`
+
 export const writeBytesSync = (profileDir: string, path: string, bytes: Buffer): void => {
+  const tmp = tempPath(path)
+
   mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, encode(profileDir, bytes))
+  writeFileSync(tmp, encode(profileDir, bytes), { mode: 0o600 })
+  renameSync(tmp, path)
 }
 
 export const readBytes = async (profileDir: string, path: string): Promise<Buffer | null> => {
@@ -64,8 +73,11 @@ export const readBytes = async (profileDir: string, path: string): Promise<Buffe
 }
 
 export const writeBytes = async (profileDir: string, path: string, bytes: Buffer): Promise<void> => {
+  const tmp = tempPath(path)
+
   await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, encode(profileDir, bytes))
+  await writeFile(tmp, encode(profileDir, bytes), { mode: 0o600 })
+  await rename(tmp, path)
 }
 
 // JSON convenience wrappers. A locked/absent/corrupt read yields null — the same "no cache yet" signal the

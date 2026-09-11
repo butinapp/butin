@@ -25,6 +25,8 @@ export type AppSettingsDto = {
   logLevelOverrides: Record<string, LogLevel>
   // Surface debug tooling (the raw daily-change ledger in each service's Settings tab). Default false.
   devMode: boolean
+  // Fill a missing or stale exchange rate from a public rate API when the Overview opens. Default false.
+  fetchExchangeRates: boolean
 }
 
 // The user's currency settings: the currency the Overview rolls up into + the manual/fetched rate table

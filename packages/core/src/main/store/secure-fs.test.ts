@@ -1,11 +1,11 @@
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { isSealed, lockAll, lockVault, setScryptParamsForTest, setupVault } from '../vault/vault.js'
 
-import { readBytes, readJson, writeBytes, writeJson } from './secure-fs.js'
+import { readBytes, readJson, writeBytes, writeBytesSync, writeJson } from './secure-fs.js'
 
 // Lower the KDF cost so vault setup/unlock isn't dominated by scrypt.
 setScryptParamsForTest({ N: 2 ** 8, r: 8, p: 1 })
@@ -19,6 +19,16 @@ describe('secure-fs', () => {
 
   // Drop any in-memory DEK so the next case's vault state starts clean.
   afterEach(() => lockAll())
+
+  it('writes through a renamed temp file and leaves nothing beside the target', async () => {
+    const path = join(dir, 'a.json')
+
+    await writeBytes(dir, path, Buffer.from('first'))
+    writeBytesSync(dir, path, Buffer.from('second'))
+
+    expect(readdirSync(dir)).toEqual(['a.json'])
+    expect(readFileSync(path, 'utf8')).toBe('second')
+  })
 
   it('round-trips plaintext on an OFF profile and leaves the file unsealed', async () => {
     const path = join(dir, 'plain.bin')

@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 // The at-rest encryption core, scoped to a profile directory. One random 256-bit Data Encryption Key (DEK)
@@ -127,8 +127,14 @@ export const normalizeRecovery = (code: string): string => code.toUpperCase().re
 
 const readVaultFile = (dir: string): VaultFile => JSON.parse(readFileSync(vaultPath(dir), 'utf8')) as VaultFile
 
-const writeVaultFile = (dir: string, file: VaultFile): void =>
-  writeFileSync(vaultPath(dir), JSON.stringify(file, null, 2))
+// Written whole-or-nothing through a renamed temp file, owner-only: the wrapped DEK slots are what every
+// sealed file in the profile depends on, so a torn vault.json would lock the profile for good.
+const writeVaultFile = (dir: string, file: VaultFile): void => {
+  const tmp = `${vaultPath(dir)}.tmp`
+
+  writeFileSync(tmp, JSON.stringify(file, null, 2), { mode: 0o600 })
+  renameSync(tmp, vaultPath(dir))
+}
 
 export const vaultExists = (dir: string): boolean => existsSync(vaultPath(dir))
 

@@ -4,10 +4,11 @@ import type { StorageLocationKind, StorageSurface } from '../../shared/ipc.js'
 import { clearLogs, getRecentLogs, log, logDir } from '../log.js'
 import { getLoadFailures, plugins } from '../plugin/plugins.js'
 import { buildPluginDiagnostics } from '../plugin/validate-plugin.js'
-import { getSetting } from '../store/config-file.js'
+import { getSetting, sessionEncryption } from '../store/config-file.js'
 import { getActiveProfileId, listProfiles } from '../store/profiles.js'
 import { clearStorageSurface, revealStorageLocation, storageLocations, storageLocationSize } from '../store/storage.js'
 import { dataRootDir } from '../store/store.js'
+import { vaultExists } from '../vault/vault.js'
 
 import { type IpcHandlers, safeResult } from './result.js'
 
@@ -23,7 +24,8 @@ export const appHandlers = {
     activeProfile: listProfiles().find((p) => p.active)?.name ?? getActiveProfileId(),
     logDir: logDir(),
     dataDir: dataRootDir(),
-    captureLevel: getSetting('logLevel')
+    captureLevel: getSetting('logLevel'),
+    sessionEncryption: vaultExists(dataRootDir()) ? 'vault' : sessionEncryption()
   }),
 
   getLogs: () => getRecentLogs(),

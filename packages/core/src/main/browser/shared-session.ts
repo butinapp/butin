@@ -36,6 +36,15 @@ export const partitionFor = (plugin: ButinPlugin): string => {
 // Every partition we've touched, so we can promote its session cookies before quit.
 const touched = new Set<string>()
 
+// What a page loaded into a capture/replay partition may be granted. A sign-in page needs none of the
+// device permissions Chromium grants by default, so everything else is refused before a prompt could show.
+const ALLOWED_PERMISSIONS = new Set<string>(['clipboard-sanitized-write', 'fullscreen'])
+
+const restrictPermissions = (ses: Session): void => {
+  ses.setPermissionRequestHandler((_contents, permission, callback) => callback(ALLOWED_PERMISSIONS.has(permission)))
+  ses.setPermissionCheckHandler((_contents, permission) => ALLOWED_PERMISSIONS.has(permission))
+}
+
 // The partitions touched this run, for the developer Cookie Jar's partition list.
 export const touchedPartitions = (): string[] => [...touched]
 
@@ -46,6 +55,7 @@ export const getPluginSession = (plugin: ButinPlugin): Session => {
   const ses = electronSession.fromPartition(partition)
 
   applyBrowserIdentity(ses, { rewriteHeaders: !plugin.transport?.nativeBrowserHeaders })
+  restrictPermissions(ses)
   touched.add(partition)
 
   return ses
@@ -57,6 +67,7 @@ export const getSharedSession = (): Session => {
   const ses = electronSession.fromPartition(active)
 
   applyBrowserIdentity(ses, { rewriteHeaders: true })
+  restrictPermissions(ses)
   touched.add(active)
 
   return ses

@@ -43,8 +43,8 @@ const seedProfile = (id: string, extra?: (dir: string) => void): string => {
     join(dir, 'config.json'),
     JSON.stringify({
       plugins: {
-        claude: { cookie: 'sessionKey=abc123', cookie_enc: true, enabled: true, config: { orgId: 'o-1' } },
-        serper: { apiToken: 'tok-9', apiToken_enc: true, enabled: true }
+        claude: { cookie: 'sessionKey=abc123', cookie_enc: false, enabled: true, config: { orgId: 'o-1' } },
+        serper: { apiToken: 'tok-9', apiToken_enc: false, enabled: true }
       },
       tablePrefs: { 'claude.billing': { pageSize: 50 } },
       settings: { startPage: 'overview' }

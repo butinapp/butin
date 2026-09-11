@@ -279,7 +279,8 @@ export const launchChromeSignin = (
 
     const login = spawn(
       exe,
-      [`--user-data-dir=${userDataDir}`, '--no-first-run', '--no-default-browser-check', startUrl],
+      // `--` ends switch parsing, so the URL is only ever a URL.
+      [`--user-data-dir=${userDataDir}`, '--no-first-run', '--no-default-browser-check', '--', startUrl],
       {
         stdio: 'ignore'
       }
