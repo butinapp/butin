@@ -10,7 +10,7 @@ import {
   setSetting,
   setTablePrefs
 } from '../store/config-file.js'
-import { resolveFxConfig, setFxConfig } from '../store/fx-rates.js'
+import { fetchRate, resolveFxConfig, setFxConfig } from '../store/fx-rates.js'
 import { installedCurrencies } from '../store/overview.js'
 import { configureRequestPacing } from '../transport/request-pacer.js'
 
@@ -34,6 +34,7 @@ export const settingsHandlers = {
     logLevel: getSetting('logLevel'),
     logLevelOverrides: getLogLevelOverrides(),
     devMode: getSetting('devMode'),
+    fetchExchangeRates: getSetting('fetchExchangeRates'),
     ...getFormatPrefs()
   }),
 
@@ -42,6 +43,7 @@ export const settingsHandlers = {
   // AppSettingsDto field, no new channel.
   patch: (_event, patch: Partial<AppSettingsDto>) => {
     const { manualCapture, paceRequests, startPage, idleLockMinutes, lockOnSleep, cacheWindowSeconds, devMode } = patch
+    const { fetchExchangeRates } = patch
     const { logRetentionDays, logLevel, logLevelOverrides, ...format } = patch
 
     if (manualCapture !== undefined) {
@@ -68,6 +70,10 @@ export const settingsHandlers = {
 
     if (cacheWindowSeconds !== undefined) {
       setSetting('cacheWindowSeconds', cacheWindowSeconds)
+    }
+
+    if (fetchExchangeRates !== undefined) {
+      setSetting('fetchExchangeRates', fetchExchangeRates)
     }
 
     if (devMode !== undefined) {
@@ -108,10 +114,12 @@ export const settingsHandlers = {
     }
   },
 
-  // Resolving on read auto-picks the base currency from the connected services and fills any missing/stale
-  // foreign rate from the keyless rate API — so opening the Overview (or Settings) is what refreshes rates,
-  // keeping Butin pull-only. Best-effort: offline just returns the cached table.
-  getFx: async () => resolveFxConfig(await installedCurrencies()),
+  // Resolving on read auto-picks the base currency from the connected services and, only when the user has
+  // turned the fetch on, fills any missing/stale foreign rate from the keyless rate API — so opening the
+  // Overview (or Settings) is what refreshes rates, keeping Butin pull-only. Otherwise the stored table is
+  // returned as is. Best-effort: offline just returns the cached table.
+  getFx: async () =>
+    resolveFxConfig(await installedCurrencies(), getSetting('fetchExchangeRates') ? fetchRate : async () => null),
 
   // A manual save fixes the base currency (baseExplicit) so the auto-pick stops overriding it, and marks the
   // table manual so auto-fetch never overwrites the hand-entered rates.

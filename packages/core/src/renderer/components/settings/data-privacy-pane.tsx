@@ -57,6 +57,18 @@ export const DataPrivacyPane = () => {
           options={baseOptions.map((c) => ({ value: c, label: c }))}
         />
 
+        <Row
+          title={t.fetchRatesLabel}
+          hint={t.fetchRatesHint}
+          control={
+            <Switch
+              checked={settings?.fetchExchangeRates ?? false}
+              onCheckedChange={(v) => patch({ fetchExchangeRates: v })}
+              aria-label={t.fetchRatesLabel}
+            />
+          }
+        />
+
         <SettingsCell>
           <Label>{t.exchangeRatesLabel}</Label>
           <p className="text-muted-foreground text-xs">{t.exchangeRatesHint}</p>

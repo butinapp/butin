@@ -15,6 +15,9 @@ type SafeStorage = {
   isEncryptionAvailable: () => boolean
   encryptString: (s: string) => Buffer
   decryptString: (b: Buffer) => string
+  // Linux only: the keyring safeStorage bound to. `basic_text` is an obfuscation with a hardcoded key, which
+  // isEncryptionAvailable still reports as available.
+  getSelectedStorageBackend?: () => string
 }
 
 let safeStorage: SafeStorage | null = null
@@ -26,6 +29,20 @@ try {
 } catch {
   safeStorage = null
 }
+
+// How a secret written outside an encrypted profile is protected at rest: by the OS keystore, by a keystore
+// that is reversible by anyone with the file (`weak`), or not at all (no keyring, or off-Electron).
+export type SessionEncryption = 'os' | 'weak' | 'none'
+
+export const sessionEncryption = (): SessionEncryption => {
+  if (!safeStorage?.isEncryptionAvailable()) {
+    return 'none'
+  }
+
+  return safeStorage.getSelectedStorageBackend?.() === 'basic_text' ? 'weak' : 'os'
+}
+
+let warnedPlaintext = false
 
 let configRoot = join(homedir(), 'butin')
 
@@ -83,6 +100,9 @@ export type AppSettings = {
   cacheWindowSeconds?: number
   // Surface debug tooling (the raw ledger view in a service's Settings tab).
   devMode?: boolean
+  // Let the Overview fill a missing or stale exchange rate from a public rate API. Off by default: it is the
+  // only request the app makes on its own, so it has to be asked for.
+  fetchExchangeRates?: boolean
 } & Partial<FormatPrefs>
 
 export type Config = {
@@ -165,8 +185,16 @@ export const encryptValueFor = (dir: string, value: string): { stored: string; e
     return { stored: value, enc: false }
   }
 
-  if (safeStorage?.isEncryptionAvailable()) {
+  if (safeStorage && sessionEncryption() === 'os') {
     return { stored: safeStorage.encryptString(value).toString('base64'), enc: true }
+  }
+
+  if (safeStorage && !warnedPlaintext) {
+    warnedPlaintext = true
+    log.warn(
+      'config',
+      `no OS keystore protects stored sessions (${sessionEncryption()}) — secrets are written in the clear; encrypt the profile to seal them`
+    )
   }
 
   return { stored: value, enc: false }
@@ -175,8 +203,15 @@ export const encryptValueFor = (dir: string, value: string): { stored: string; e
 export const encryptValue = (value: string): { stored: string; enc: boolean } => encryptValueFor(configRoot, value)
 
 export const decryptValue = (stored: string, enc: boolean): string | undefined => {
-  if (!enc || !safeStorage?.isEncryptionAvailable()) {
+  if (!enc) {
     return stored
+  }
+
+  // Ciphertext with no keystore to open it is not a value; returning it would replay base64 as a cookie.
+  if (!safeStorage?.isEncryptionAvailable()) {
+    log.warn('config', 'a stored secret is encrypted but no OS keystore is available — treating it as absent')
+
+    return undefined
   }
 
   try {
@@ -272,7 +307,8 @@ const SETTING_DEFAULTS = {
   idleLockMinutes: DEFAULT_IDLE_LOCK_MINUTES,
   lockOnSleep: true,
   cacheWindowSeconds: DEFAULT_CACHE_WINDOW_SECONDS,
-  devMode: false
+  devMode: false,
+  fetchExchangeRates: false
 } satisfies Partial<AppSettings>
 
 type ScalarSetting = keyof typeof SETTING_DEFAULTS

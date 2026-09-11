@@ -37,10 +37,12 @@ const RootLayout = () => {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { data: plugins = [] } = useQuery({ queryKey: ['plugins'], queryFn: () => window.butin.services.list() })
   const { data: tiles = [] } = useQuery({ queryKey: ['overview'], queryFn: () => window.butin.reports.overview() })
-  const { data: loadFailures = [] } = useQuery({
+  const { data: diagnostics } = useQuery({
     queryKey: ['pluginLoadFailures'],
-    queryFn: () => window.butin.app.diagnostics().then((d) => d.failed)
+    queryFn: () => window.butin.app.diagnostics()
   })
+  const loadFailures = diagnostics?.failed ?? []
+  const sessionsUnprotected = diagnostics?.sessionEncryption === 'weak' || diagnostics?.sessionEncryption === 'none'
   const { connStateOf, isTesting } = usePluginState()
   const router = useRouter()
   const qc = useQueryClient()
@@ -228,6 +230,11 @@ const RootLayout = () => {
             <button onClick={() => openSettings('system')} className="font-medium underline underline-offset-2">
               View details
             </button>
+          </div>
+        )}
+        {sessionsUnprotected && (
+          <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+            {t.sessionsUnprotectedBanner}
           </div>
         )}
         <Outlet />

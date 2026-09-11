@@ -60,4 +60,7 @@ export type DiagnosticsDto = {
   logDir: string
   dataDir: string
   captureLevel: LogLevel
+  // How the active profile's stored sessions are protected at rest: sealed by the profile's own vault, by the
+  // OS keystore, by a keystore anyone with the file can reverse (`weak`), or not at all (`none`).
+  sessionEncryption: 'vault' | 'os' | 'weak' | 'none'
 }

@@ -184,6 +184,9 @@ export type ButinLabels = {
   baseCurrencyHint: string
   exchangeRatesLabel: string
   exchangeRatesHint: string
+  // The opt-in for filling rates from a public rate API.
+  fetchRatesLabel: string
+  fetchRatesHint: string
   exchangeRatesEmpty: string
   saveRates: string
   // Two-click confirm shared by destructive actions (the per-service uninstall/erase).
@@ -451,6 +454,8 @@ export type ButinLabels = {
   encStateUnlocked: string
   encBadgeLockedAria: string
   encBadgeUnlockedAria: string
+  // Banner when saved sign-ins sit on disk without OS encryption and the profile is not encrypted either.
+  sessionsUnprotectedBanner: string
   encryptProfile: string
   encryptProfileHint: string
   encMasterPassword: string
@@ -689,6 +694,9 @@ export const en: ButinLabels = {
   sectionCurrency: 'Currency',
   baseCurrencyLabel: 'Base currency',
   baseCurrencyHint: 'The currency the Overview totals are shown in. Other currencies are converted into it.',
+  fetchRatesLabel: 'Fetch exchange rates',
+  fetchRatesHint:
+    'Fills a missing or stale rate from a public rate API (api.frankfurter.dev, then open.er-api.com) when the Overview opens — the only request Butin makes on its own. Off, the rates below are all it uses.',
   exchangeRatesLabel: 'Exchange rates',
   exchangeRatesHint:
     'Value of 1 unit of each currency in your base currency. Without a rate, that currency is shown on its own and left out of combined totals.',
@@ -942,6 +950,8 @@ export const en: ButinLabels = {
   encStateUnlocked: 'Encrypted',
   encBadgeLockedAria: 'Profile locked',
   encBadgeUnlockedAria: 'Profile encrypted',
+  sessionsUnprotectedBanner:
+    'Saved sign-ins are stored without OS encryption on this machine — no usable keyring was found. Encrypt this profile from the profile menu to seal them.',
   encryptProfile: 'Encrypt this profile',
   encryptProfileHint:
     'Protect this profile’s sessions and data with a master password. You’ll need it to unlock the profile on each launch.',
@@ -1190,6 +1200,9 @@ export const fr: ButinLabels = {
   baseCurrencyLabel: 'Devise de référence',
   baseCurrencyHint:
     'La devise dans laquelle les totaux de l’aperçu sont affichés. Les autres devises y sont converties.',
+  fetchRatesLabel: 'Récupérer les taux de change',
+  fetchRatesHint:
+    'Complète un taux manquant ou périmé depuis une API publique (api.frankfurter.dev, puis open.er-api.com) à l’ouverture de l’aperçu — la seule requête que Butin fait de lui-même. Désactivé, seuls les taux ci-dessous sont utilisés.',
   exchangeRatesLabel: 'Taux de change',
   exchangeRatesHint:
     'Valeur d’une unité de chaque devise dans votre devise de référence. Sans taux, la devise est affichée seule et exclue des totaux combinés.',
@@ -1445,6 +1458,8 @@ export const fr: ButinLabels = {
   encStateUnlocked: 'Chiffré',
   encBadgeLockedAria: 'Profil verrouillé',
   encBadgeUnlockedAria: 'Profil chiffré',
+  sessionsUnprotectedBanner:
+    'Les connexions enregistrées sont stockées sans chiffrement du système sur cette machine — aucun trousseau utilisable. Chiffrez ce profil depuis le menu de profil pour les sceller.',
   encryptProfile: 'Chiffrer ce profil',
   encryptProfileHint:
     'Protégez les sessions et données de ce profil avec un mot de passe maître. Il sera requis pour déverrouiller le profil à chaque lancement.',
