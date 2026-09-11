@@ -22,7 +22,7 @@ catalog:
   jsdom: ^29.1.1
   # Toolchain shared across packages.
   vitest: ^4.1.7
-  '@types/node': ^25.9.3
+  '@types/node': ^26.5.0
   # Runtime libs shared across packages.
   zod: ^4.5.4
   lucide-react: ^0.525.0
