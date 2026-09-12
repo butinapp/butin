@@ -3,10 +3,12 @@
   "extends": ["config:recommended", ":dependencyDashboard", ":semanticCommits", "group:allNonMajor"],
   "schedule": ["before 6am on monday"],
   "labels": ["dependencies"],
-  "lockFileMaintenance": { "enabled": true },
+  "lockFileMaintenance": {
+    "enabled": true
+  },
   "packageRules": [
     {
-      "description": "Auto-merge non-major devDependency bumps once CI is green.",
+      "description": "Auto-merge non-major devDependency bumps once CI is green and the release has aged past minimumReleaseAge.",
       "matchDepTypes": ["devDependencies"],
       "matchUpdateTypes": ["minor", "patch"],
       "automerge": true
@@ -18,5 +20,7 @@
       "automerge": false,
       "groupName": null
     }
-  ]
+  ],
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict"
 }
