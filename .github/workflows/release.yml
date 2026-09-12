@@ -58,7 +58,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      # Repository variables set by the maintainer's Pulumi stack. A release is never built unsigned.
+      # Repository variables set by the maintainer. A release is never built unsigned.
       - name: Require the signing configuration
         shell: bash
         env:
@@ -143,7 +143,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      # Environment secrets and repository variables set by the maintainer's Pulumi stack. A release is never
+      # Environment secrets and repository variables set by the maintainer. A release is never
       # built unsigned.
       - name: Require the signing configuration
         env:
