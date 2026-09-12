@@ -100,9 +100,12 @@ export type AppSettings = {
   cacheWindowSeconds?: number
   // Surface debug tooling (the raw ledger view in a service's Settings tab).
   devMode?: boolean
-  // Let the Overview fill a missing or stale exchange rate from a public rate API. Off by default: it is the
-  // only request the app makes on its own, so it has to be asked for.
+  // Let the Overview fill a missing or stale exchange rate from a public rate API. Off by default: a request the
+  // app makes on its own has to be asked for.
   fetchExchangeRates?: boolean
+  // Ask GitHub for a newer release once per launch. On by default — the one self-initiated request that is
+  // opt-out rather than opt-in, disclosed in Settings.
+  autoUpdate?: boolean
 } & Partial<FormatPrefs>
 
 export type Config = {
@@ -308,7 +311,8 @@ const SETTING_DEFAULTS = {
   lockOnSleep: true,
   cacheWindowSeconds: DEFAULT_CACHE_WINDOW_SECONDS,
   devMode: false,
-  fetchExchangeRates: false
+  fetchExchangeRates: false,
+  autoUpdate: true
 } satisfies Partial<AppSettings>
 
 type ScalarSetting = keyof typeof SETTING_DEFAULTS

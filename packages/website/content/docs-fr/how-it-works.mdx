@@ -35,3 +35,8 @@ La confiance repose sur l'architecture, non sur une promesse commerciale :
 - **Open source.** Examinez le code, forkez le projet, écrivez vos propres plugins. L'application est sous licence Apache-2.0 et le SDK sous licence MIT. Fiez-vous à l'architecture, pas à des promesses.
 
 > Butin n'accède qu'aux données qui vous appartiennent déjà — dans votre propre session authentifiée, sur votre propre matériel. C'est un outil personnel de portabilité des données : rien ne quitte votre machine, et aucun serveur n'a la garde de vos identifiants.
+
+Butin fait deux types de requêtes de lui-même, toutes deux indiquées dans Paramètres → Données et confidentialité :
+
+- **La vérification des mises à jour**, une fois par lancement, activée par défaut. Butin demande à GitHub sa dernière version et la télécharge en arrière-plan ; la requête transmet votre adresse IP et la version de l'application, rien d'autre. Vous choisissez quand redémarrer. **Vérifier les mises à jour au lancement** la désactive.
+- **Une consultation des taux de change**, seulement si vous l'activez : avec **Récupérer les taux de change**, un taux manquant ou périmé est récupéré depuis une API publique à l'ouverture de l'aperçu. Désactivée par défaut ; saisissez les taux à la main et elle ne s'exécute jamais.

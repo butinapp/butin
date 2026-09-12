@@ -22,6 +22,10 @@ export const env = {
   // a deterministic run (the drive/seed harness), so buckets don't drift with the machine the run happens on.
   reportingZone: process.env.BUTIN_REPORTING_ZONE,
 
+  // The AppImage file the app was launched from, set by the AppImage runtime on Linux. Undefined off Linux and
+  // for a Linux run that is not the AppImage; the updater has no file to replace then.
+  appImage: process.env.APPIMAGE,
+
   // A development run: electron-vite dev, the built-but-unpackaged app the drive/smoke harness launches, and
   // tests (where `app` is absent). A plugin contract violation throws loudly in dev so the author sees it
   // immediately; a packaged build quarantines instead (keeps the last good report, surfaces a data-invalid

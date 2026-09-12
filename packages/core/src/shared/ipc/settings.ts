@@ -27,6 +27,8 @@ export type AppSettingsDto = {
   devMode: boolean
   // Fill a missing or stale exchange rate from a public rate API when the Overview opens. Default false.
   fetchExchangeRates: boolean
+  // Ask GitHub for a newer release once per launch, and download it when there is one. Default true.
+  autoUpdate: boolean
 }
 
 // The user's currency settings: the currency the Overview rolls up into + the manual/fetched rate table

@@ -53,6 +53,11 @@ The trust story is the architecture, not a privacy policy:
 > hardware. It's a personal data-portability tool: nothing leaves your machine, and no server takes
 > custody of your credentials.
 
-The one request Butin can make on its own is an exchange-rate lookup, and only if you turn it on: with
-**Fetch exchange rates** enabled in Settings → Data & privacy, a missing or stale rate is fetched from a
-public rate API when the Overview opens. Off by default; enter rates by hand and it never runs.
+Butin makes two kinds of request on its own, both disclosed in Settings → Data & privacy:
+
+- **The update check**, once per launch, on by default. Butin asks GitHub for its latest release and downloads it
+  in the background; the request carries your IP address and the app version, nothing else. You choose when to
+  restart into it. **Check for updates on launch** turns it off.
+- **An exchange-rate lookup**, only if you turn it on: with **Fetch exchange rates** enabled, a missing or stale
+  rate is fetched from a public rate API when the Overview opens. Off by default; enter rates by hand and it never
+  runs.

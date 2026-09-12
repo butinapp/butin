@@ -29,6 +29,7 @@ import type {
 } from './ipc/profiles.js'
 import type { OverviewTileDto, PeopleDto, StoredReport } from './ipc/reports.js'
 import type { AppSettingsDto, FxConfigDto, TablePrefsDto } from './ipc/settings.js'
+import type { UpdateStateDto } from './ipc/updates.js'
 
 // The DTOs live in per-domain files under ./ipc/; re-export them all so a consumer keeps importing any DTO
 // from this one module (`import type { PluginSummary } from '.../shared/ipc.js'`), while authors edit the
@@ -42,6 +43,7 @@ export type * from './ipc/plugins.js'
 export type * from './ipc/profiles.js'
 export type * from './ipc/reports.js'
 export type * from './ipc/settings.js'
+export type * from './ipc/updates.js'
 
 // IPC channel ids, grouped by domain. The two-level shape (domain → method → channel) is the ONE source of
 // truth: the preload bridge builds `window.butin.<domain>.<method>` from it, and the main-process registration
@@ -128,6 +130,12 @@ export const IPC = {
     getFx: 'fx:get',
     setFx: 'fx:set'
   },
+  // The app's own next release: where it stands, a manual check, the restart that applies it.
+  updates: {
+    state: 'updates:state',
+    check: 'updates:check',
+    install: 'updates:install'
+  },
   notifications: {
     list: 'notifications:list',
     markRead: 'notifications:mark-read',
@@ -177,7 +185,8 @@ export const IPC = {
 export const IPC_EVENT = {
   jobProgress: 'job:progress',
   archiveProgress: 'archive:progress',
-  notificationsChanged: 'notifications:changed'
+  notificationsChanged: 'notifications:changed',
+  updateState: 'updates:state-changed'
 } as const
 
 // The surface exposed to the renderer via contextBridge as `window.butin`. Grouped by domain, mirroring the
@@ -337,6 +346,15 @@ export type ButinApi = {
     getFx: () => Promise<FxConfigDto>
     setFx: (cfg: FxConfigDto) => Promise<void>
   }
+  updates: {
+    // Where the app stands with its next release, for a pane that mounts mid-download (`onUpdateState` carries
+    // every change after that).
+    state: () => Promise<UpdateStateDto>
+    // Ask GitHub for a newer release now; a no-op while a check or download runs, and off an updatable build.
+    check: () => Promise<void>
+    // Quit into the downloaded update and relaunch. Only meaningful in the `ready` state; a no-op otherwise.
+    install: () => Promise<void>
+  }
   notifications: {
     // The notification list + the configurable alert thresholds/health toggles. The mutators return the new
     // list so the renderer can update without a round-trip; `onNotificationsChanged` fires after a refresh
@@ -426,4 +444,6 @@ export type ButinApi = {
   onArchiveProgress: (cb: (p: ArchiveProgressDto) => void) => () => void
   // Fires (no payload) when a refresh re-evaluates alerts; the renderer invalidates its notifications query.
   onNotificationsChanged: (cb: () => void) => () => void
+  // Every change of the app's update state, from the launch check through a downloaded release.
+  onUpdateState: (cb: (state: UpdateStateDto) => void) => () => void
 }

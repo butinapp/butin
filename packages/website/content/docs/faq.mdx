@@ -45,3 +45,10 @@ If it saves you time, a ⭐ on the [GitHub repo](https://github.com/butinapp/but
 ### What platforms does it run on?
 
 macOS, Windows, and Linux (it's an Electron desktop app).
+
+### Does Butin phone home?
+
+Once per launch it asks GitHub whether a newer release exists, and downloads it in the background if so. That
+request carries your IP address and the app version, nothing else, and the restart is always yours to click.
+**Check for updates on launch** in Settings → Data & privacy turns it off; **Check for updates** in Settings → About
+runs it by hand. Nothing else in Butin reaches the network on its own.

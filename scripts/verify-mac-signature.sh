@@ -3,7 +3,7 @@
 # authority, carry a stapled notarization ticket, and be accepted by Gatekeeper as a notarized Developer ID app.
 # An ad-hoc or missing signature fails the authority, stapler and Gatekeeper checks.
 #
-#   bash scripts/verify-mac-signature.sh "packages/core/release/mac-universal/Butin.app" \
+#   bash scripts/verify-mac-signature.sh "packages/core/release/mac-arm64/Butin.app" \
 #     "Developer ID Application: Yann Allard (4ZJR6M393A)"
 set -u
 app="$1"

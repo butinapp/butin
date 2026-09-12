@@ -36,7 +36,8 @@ Each **plugin** connects one service:
    session — reproducing whatever each service needs (a genuine browser fingerprint for services that
    require one, CSRF tokens, short-lived JWTs, rotating refresh tokens, GraphQL / HTML parsing).
 3. **Everything stays local.** Normalized data lands under `~/butin/` (per profile, per service).
-   Nothing leaves your machine.
+   Nothing leaves your machine. The one request Butin makes on its own is a once-per-launch check for its next
+   release on GitHub, and a Settings toggle turns it off.
 
 ## Quick start
 

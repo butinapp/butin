@@ -102,7 +102,10 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: windows
-          path: packages/core/release/*.exe
+          path: |
+            packages/core/release/*.exe
+            packages/core/release/*.blockmap
+            packages/core/release/latest.yml
           # The release job downloads these in the same run; keeping them 90 days blows the storage quota.
           retention-days: 1
 
@@ -153,13 +156,17 @@ jobs:
           APPLE_API_ISSUER: ${{ vars.APPLE_API_ISSUER }}
         run: pnpm --filter @butinapp/core exec electron-builder --mac --publish never --config.mac.notarize=true
       - name: Verify the signature and notarization
-        run: >-
-          bash scripts/verify-mac-signature.sh "packages/core/release/mac-universal/Butin.app"
-          "Developer ID Application: Yann Allard (4ZJR6M393A)"
+        run: |
+          for app in packages/core/release/mac/Butin.app packages/core/release/mac-arm64/Butin.app; do
+            bash scripts/verify-mac-signature.sh "$app" "Developer ID Application: Yann Allard (4ZJR6M393A)"
+          done
       - uses: actions/upload-artifact@v7
         with:
           name: mac
-          path: packages/core/release/*.dmg
+          path: |
+            packages/core/release/*.dmg
+            packages/core/release/*.zip
+            packages/core/release/latest-mac.yml
           # The release job downloads these in the same run; keeping them 90 days blows the storage quota.
           retention-days: 1
 
@@ -180,7 +187,9 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: linux
-          path: packages/core/release/*.AppImage
+          path: |
+            packages/core/release/*.AppImage
+            packages/core/release/latest-linux.yml
           # The release job downloads these in the same run; keeping them 90 days blows the storage quota.
           retention-days: 1
 

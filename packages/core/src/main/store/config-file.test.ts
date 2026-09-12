@@ -105,6 +105,15 @@ describe('manual-capture setting', () => {
     expect(getSetting('manualCapture')).toBe(false)
   })
 
+  it('the launch update check is on until it is turned off', () => {
+    setConfigRoot(mkdtempSync(join(tmpdir(), 'butin-auto-update-')))
+
+    expect(getSetting('autoUpdate')).toBe(true)
+
+    setSetting('autoUpdate', false)
+    expect(getSetting('autoUpdate')).toBe(false)
+  })
+
   it('is preserved alongside plugin entries', () => {
     setConfigRoot(mkdtempSync(join(tmpdir(), 'butin-capture-mix-')))
 

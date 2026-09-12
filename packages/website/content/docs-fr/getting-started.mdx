@@ -7,7 +7,7 @@ Butin est une application de bureau pour macOS, Windows et Linux. Aucun compte �
 
 ## Installation
 
-**Depuis un paquet officiel** — téléchargez l'installateur correspondant à votre système d'exploitation depuis les [Versions GitHub](https://github.com/butinapp/butin/releases) et lancez Butin comme n'importe quelle autre application.
+**Depuis un paquet officiel** — téléchargez l'installateur correspondant à votre système d'exploitation depuis les [Versions GitHub](https://github.com/butinapp/butin/releases) et lancez Butin comme n'importe quelle autre application. Sur Mac, choisissez le téléchargement `arm64` pour une puce Apple et `x64` pour un Mac Intel.
 
 **Depuis le code source** (développeurs) :
 
@@ -19,6 +19,10 @@ pnpm dev
 ```
 
 Si Electron ne se lance pas après l'installation, exécutez `node node_modules/electron/install.js` une fois, puis relancez `pnpm dev`.
+
+## Mises à jour
+
+Un Butin installé vérifie une fois par lancement si GitHub propose une version plus récente et la télécharge en arrière-plan. Quand elle est prête, un avis propose de redémarrer ; c'est toujours vous qui décidez, et une mise à jour ignorée s'installe à la prochaine fermeture normale. Désactivez la vérification avec **Vérifier les mises à jour au lancement** dans Paramètres → Données et confidentialité, ou lancez-la à la main depuis Paramètres → À propos.
 
 ## Premier lancement
 
