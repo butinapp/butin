@@ -21,6 +21,7 @@ import type { IpcHandler, IpcHandlers } from './ipc/result.js'
 import { serviceHandlers } from './ipc/service.js'
 import { settingsHandlers } from './ipc/settings.js'
 import { shellHandlers } from './ipc/shell.js'
+import { updateHandlers } from './ipc/updates.js'
 import { vaultHandlers } from './ipc/vault.js'
 import { getMainWindow, setMainWindow } from './ipc/window-ref.js'
 import { windowHandlers } from './ipc/window.js'
@@ -31,6 +32,7 @@ import { applyActiveProfile, ensureProfilesInitialized, getActiveProfileId, prof
 import { repairSnapshotCurrents } from './store/repair-snapshots.js'
 import { eraseLegacyStores } from './store/store.js'
 import { configureRequestPacing } from './transport/request-pacer.js'
+import { configureUpdater, scheduleLaunchCheck } from './update/updater.js'
 import { anyUnlocked, lockAll, vaultState } from './vault/vault.js'
 import { createWindow } from './window.js'
 
@@ -110,6 +112,7 @@ const handlers: IpcHandlers = {
   files: fileHandlers,
   shell: shellHandlers,
   settings: settingsHandlers,
+  updates: updateHandlers,
   notifications: notificationHandlers,
   chromeSignin: chromeSigninHandlers,
   profiles: profileHandlers,
@@ -216,6 +219,11 @@ void app.whenReady().then(async () => {
   setMainWindow(createWindow())
 
   startAutoLock()
+
+  // The one request the user did not click: a delayed, opt-out check for a newer release. Nothing else in the app
+  // reaches the network on its own.
+  configureUpdater()
+  scheduleLaunchCheck()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

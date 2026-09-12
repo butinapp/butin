@@ -188,6 +188,19 @@ export type ButinLabels = {
   fetchRatesLabel: string
   fetchRatesHint: string
   exchangeRatesEmpty: string
+  // The app's own updates: the opt-out launch check, and the status + actions under the version in About.
+  sectionUpdates: string
+  autoUpdateLabel: string
+  autoUpdateHint: string
+  updateCheck: string
+  updateChecking: string
+  updateUpToDate: (when: string) => string
+  updateDownloading: (version: string, percent: number) => string
+  updateReady: (version: string) => string
+  updateRestart: string
+  updateRestartShort: string
+  updateError: (message: string) => string
+  updateUnavailable: string
   saveRates: string
   // Two-click confirm shared by destructive actions (the per-service uninstall/erase).
   clearDataConfirm: string
@@ -696,11 +709,24 @@ export const en: ButinLabels = {
   baseCurrencyHint: 'The currency the Overview totals are shown in. Other currencies are converted into it.',
   fetchRatesLabel: 'Fetch exchange rates',
   fetchRatesHint:
-    'Fills a missing or stale rate from a public rate API (api.frankfurter.dev, then open.er-api.com) when the Overview opens — the only request Butin makes on its own. Off, the rates below are all it uses.',
+    'Fills a missing or stale rate from a public rate API (api.frankfurter.dev, then open.er-api.com) when the Overview opens. Off, the rates below are all it uses.',
   exchangeRatesLabel: 'Exchange rates',
   exchangeRatesHint:
     'Value of 1 unit of each currency in your base currency. Without a rate, that currency is shown on its own and left out of combined totals.',
   exchangeRatesEmpty: 'Every connected service already reports in your base currency — no rates needed.',
+  sectionUpdates: 'Updates',
+  autoUpdateLabel: 'Check for updates on launch',
+  autoUpdateHint:
+    'Once per launch, Butin asks GitHub for its latest release and downloads it in the background; you choose when to restart. That request carries your IP address and the app version, nothing else.',
+  updateCheck: 'Check for updates',
+  updateChecking: 'Checking…',
+  updateUpToDate: (when) => `Up to date — checked ${when}`,
+  updateDownloading: (version, percent) => `Downloading ${version}… ${percent}%`,
+  updateReady: (version) => `Butin ${version} is ready`,
+  updateRestart: 'Restart to update',
+  updateRestartShort: 'Restart',
+  updateError: (message) => `Update check failed: ${message}`,
+  updateUnavailable: 'Updates apply to the installed app only.',
   saveRates: 'Save rates',
   clearDataConfirm: 'Click again to confirm',
 
@@ -1202,11 +1228,24 @@ export const fr: ButinLabels = {
     'La devise dans laquelle les totaux de l’aperçu sont affichés. Les autres devises y sont converties.',
   fetchRatesLabel: 'Récupérer les taux de change',
   fetchRatesHint:
-    'Complète un taux manquant ou périmé depuis une API publique (api.frankfurter.dev, puis open.er-api.com) à l’ouverture de l’aperçu — la seule requête que Butin fait de lui-même. Désactivé, seuls les taux ci-dessous sont utilisés.',
+    'Complète un taux manquant ou périmé depuis une API publique (api.frankfurter.dev, puis open.er-api.com) à l’ouverture de l’aperçu. Si cette option est désactivée, seuls les taux ci-dessous sont utilisés.',
   exchangeRatesLabel: 'Taux de change',
   exchangeRatesHint:
     'Valeur d’une unité de chaque devise dans votre devise de référence. Sans taux, la devise est affichée seule et exclue des totaux combinés.',
   exchangeRatesEmpty: 'Tous les services connectés utilisent déjà votre devise de référence — aucun taux requis.',
+  sectionUpdates: 'Mises à jour',
+  autoUpdateLabel: 'Vérifier les mises à jour au lancement',
+  autoUpdateHint:
+    'À chaque lancement, Butin vérifie auprès de GitHub si une nouvelle version est disponible et la télécharge en arrière-plan ; vous choisissez quand redémarrer. Cette requête transmet uniquement votre adresse IP et la version de l’application, rien d’autre.',
+  updateCheck: 'Vérifier les mises à jour',
+  updateChecking: 'Vérification…',
+  updateUpToDate: (when) => `À jour — vérifié à ${when}`,
+  updateDownloading: (version, percent) => `Téléchargement de ${version}… ${percent} %`,
+  updateReady: (version) => `La mise à jour Butin ${version} est prête`,
+  updateRestart: 'Redémarrer pour mettre à jour',
+  updateRestartShort: 'Redémarrer',
+  updateError: (message) => `Échec de la vérification : ${message}`,
+  updateUnavailable: 'Les mises à jour sont uniquement disponibles pour l’application installée.',
   saveRates: 'Enregistrer les taux',
   clearDataConfirm: 'Cliquez à nouveau pour confirmer',
 

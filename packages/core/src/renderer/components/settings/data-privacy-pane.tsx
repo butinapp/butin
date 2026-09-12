@@ -15,8 +15,9 @@ const COMMON_CURRENCIES = ['USD', 'CAD', 'EUR', 'GBP', 'CHF', 'AUD', 'JPY']
 // Idle-lock options (minutes); 0 = never idle-lock.
 const IDLE_LOCK_MINUTES = [5, 15, 30, 60]
 
-// Data & Privacy: the currency rollup + FX rates and encrypted-profile auto-lock. The on-disk folders and the
-// data-wipe actions live in the Storage pane.
+// Data & Privacy: the currency rollup + FX rates, the requests the app makes on its own (exchange rates, the
+// launch update check), and encrypted-profile auto-lock. The on-disk folders and the data-wipe actions live in
+// the Storage pane.
 export const DataPrivacyPane = () => {
   const t = useLabels()
   const qc = useQueryClient()
@@ -109,6 +110,20 @@ export const DataPrivacyPane = () => {
             {t.saveRates}
           </Button>
         </SettingsCell>
+      </SettingsGroup>
+
+      <SettingsGroup title={t.sectionUpdates}>
+        <Row
+          title={t.autoUpdateLabel}
+          hint={t.autoUpdateHint}
+          control={
+            <Switch
+              checked={settings?.autoUpdate ?? true}
+              onCheckedChange={(v) => patch({ autoUpdate: v })}
+              aria-label={t.autoUpdateLabel}
+            />
+          }
+        />
       </SettingsGroup>
 
       <SettingsGroup title={t.sectionSecurity}>

@@ -35,6 +35,7 @@ export const settingsHandlers = {
     logLevelOverrides: getLogLevelOverrides(),
     devMode: getSetting('devMode'),
     fetchExchangeRates: getSetting('fetchExchangeRates'),
+    autoUpdate: getSetting('autoUpdate'),
     ...getFormatPrefs()
   }),
 
@@ -43,7 +44,7 @@ export const settingsHandlers = {
   // AppSettingsDto field, no new channel.
   patch: (_event, patch: Partial<AppSettingsDto>) => {
     const { manualCapture, paceRequests, startPage, idleLockMinutes, lockOnSleep, cacheWindowSeconds, devMode } = patch
-    const { fetchExchangeRates } = patch
+    const { fetchExchangeRates, autoUpdate } = patch
     const { logRetentionDays, logLevel, logLevelOverrides, ...format } = patch
 
     if (manualCapture !== undefined) {
@@ -78,6 +79,10 @@ export const settingsHandlers = {
 
     if (devMode !== undefined) {
       setSetting('devMode', devMode)
+    }
+
+    if (autoUpdate !== undefined) {
+      setSetting('autoUpdate', autoUpdate)
     }
 
     if (logRetentionDays !== undefined) {

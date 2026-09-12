@@ -420,7 +420,9 @@ const LocalFirst = () => (
           <div>
             <h4 className="font-mono text-xs font-semibold uppercase tracking-wider text-ink">Zero Telemetry</h4>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              No tracking scripts, external analytics, or phone-home pings. All retrieved data stays strictly within{' '}
+              No tracking scripts and no analytics. The one request Butin makes on its own is a check for its next
+              release, once per launch: it asks GitHub for the latest version and carries your IP address and the app
+              version, nothing else. One toggle in Settings turns it off. All retrieved data stays strictly within{' '}
               <code className="text-teal-soft">~/butin/</code> on your computer.
             </p>
           </div>

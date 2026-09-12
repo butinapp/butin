@@ -279,13 +279,15 @@ host-imported). Layered subpaths so an import line says its tier — app-SPECIFI
 - **`session/`** — magic-login (capture) · spa-session (offscreen bearer mint)
 - **`plugin/`** — plugins (registry) · plugin-host (`runCapability` + `testConnection`) · plugin-context · validate-plugin · auth-resolve · connection ·
   failure-classifier
-- **`ipc/`** — per-domain handler fragments (app · plugins · reports · files · shell · settings · notifications · profiles · vault · window), composed in `index.ts`
-  into the one handler table the registration loop walks
+- **`ipc/`** — per-domain handler fragments (app · plugins · reports · files · shell · settings · updates · notifications · profiles · vault · window), composed
+  in `index.ts` into the one handler table the registration loop walks
 - **`store/`** — credentials · config-file · plugin-config (encrypted store) · profiles (switchable isolated account contexts) · store (paths) · report-store ·
   snapshots · overview (home assembler)
 - **`export/`** — documents{,-config,-plan} · export{,-bundle} · extract (`runExtractAll`) · extract-serialize
 - **`archive/`** — the portable profile archive (moving a profile to another computer): container (the sealed
   format) · export-profile · import-profile
+- **`update/`** — the app's own next release: updater (electron-updater bound to the GitHub release the build was published from — the delayed opt-out launch
+  check, the background download, the user-clicked restart) · update-state (the pure event → state reduction + the packaged/AppImage availability gate)
 
 **`src/dev/`** — dev-only tooling, NOT reachable from the main entry (excluded from the shipped bundle): `seed/` (prng · evolver · fallback · synthesize) — the
 `pnpm seed-demo` generator. Lives outside `main/` precisely so it reads as dev tooling, not a subsystem.
@@ -580,5 +582,8 @@ ServicePageShell · ServiceSettingsPanel · ProfileSwitcher · Dialog · Switch`
 
 **Manual-only — non-goals (for now), do NOT propose or build:** OS-boot / auto-start, any background process, auto-refresh on launch, a scheduled/cron/interval
 refresh, or scheduled push. **Every fetch is user-initiated** via the per-tab Refresh + page-level Refresh-All (both already built). Keep it pull-only.
+**The one carve-out is the update check** (`main/update/`): a packaged build asks GitHub for a newer release once per launch, delayed after the
+window shows, opt-out via the `autoUpdate` setting; the download runs in the background and the install waits for the user's restart (or the next
+normal quit). It is disclosed in Settings → Data & privacy and on the site's "Zero Telemetry" block — any other self-initiated request stays opt-in.
 
 Roadmap and open work are tracked in [`ROADMAP.md`](ROADMAP.md) and the issue tracker.

@@ -23,6 +23,7 @@ import { SettingsDialog, type SettingsSection } from '@/components/settings/sett
 import { ThemeToggleButton } from '@/components/theme-toggle-button'
 import { usePluginState } from '@/use-plugin-state'
 import { titleBarInset, useTitleBarOverlaySync } from '@/use-titlebar'
+import { useUpdateToast } from '@/use-update-state'
 
 // Carried in the router context so beforeLoad guards can read cached IPC data (the plugin list).
 export type RouterContext = {
@@ -76,6 +77,7 @@ const RootLayout = () => {
   }
 
   useTitleBarOverlaySync()
+  useUpdateToast()
 
   // Start page = "last visited": remember the last meaningful route, and on the initial landing restore it.
   // Overview (`/`) is the default, so it's never recorded — restoring nothing just leaves you on Overview.

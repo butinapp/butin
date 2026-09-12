@@ -34,3 +34,7 @@ Oui — Butin est gratuit et open source. L'application de bureau est sous licen
 ### Sur quelles plateformes Butin fonctionne-t-il ?
 
 macOS, Windows et Linux (il s'agit d'une application de bureau Electron).
+
+### Butin communique-t-il avec un serveur ?
+
+À chaque lancement, l'application vérifie auprès de GitHub si une version plus récente existe et, le cas échéant, la télécharge en arrière-plan. Cette requête transmet uniquement votre adresse IP et la version de l'application (rien d'autre), et vous choisissez toujours le moment du redémarrage. L'option **Vérifier les mises à jour au lancement** dans Paramètres → Données et confidentialité permet de désactiver cette vérification, tandis que le bouton **Vérifier les mises à jour** dans Paramètres → À propos permet d'en lancer une manuellement. En dehors de cela, rien dans Butin n'accède au réseau de sa propre initiative.

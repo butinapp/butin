@@ -3,6 +3,13 @@ productName: Butin
 executableName: butin
 directories:
   output: release
+# Where a packaged app looks for a newer release. electron-builder writes the update manifests (latest*.yml) next to
+# the installers and stamps resources/app-update.yml into the app from this; `--publish never` keeps it from
+# uploading anything itself — the release workflow publishes the files.
+publish:
+  provider: github
+  owner: butinapp
+  repo: butin
 files:
   - out/**/*
   - package.json
@@ -19,14 +26,23 @@ electronFuses:
 win:
   target: nsis
   icon: build/icon.png
+  # Space-free so the asset name the manifest records is the URL GitHub serves it at.
+  artifactName: ${productName}-Setup-${version}.${ext}
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
 mac:
+  # One build per architecture rather than a universal app: an update downloads the whole app, and a universal
+  # zip would make every Mac fetch the binary for the CPU it doesn't have. The dmg is the human download; the zip
+  # is what Squirrel.Mac applies an update from. The `arm64` marker in the name is how electron-updater picks the
+  # file for the running architecture, so the arch must stay in artifactName.
   target:
-    target: dmg
-    arch: universal
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  artifactName: ${productName}-${version}-${arch}.${ext}
   category: public.app-category.utilities
   icon: build/icon.png
 linux:

@@ -9,7 +9,8 @@ up for — all it needs is you, signing into your own services.
 ## Install
 
 **From a packaged build** — download the installer for your platform from
-[GitHub Releases](https://github.com/butinapp/butin/releases) and launch Butin like any other app.
+[GitHub Releases](https://github.com/butinapp/butin/releases) and launch Butin like any other app. On a Mac,
+pick the `arm64` download for Apple silicon and `x64` for an Intel Mac.
 
 **From source** (developers):
 
@@ -22,6 +23,13 @@ pnpm dev
 
 If Electron doesn't launch after install, run `node node_modules/electron/install.js` once, then
 `pnpm dev` again.
+
+## Updates
+
+A packaged Butin checks GitHub for a newer release once per launch and downloads it in the background. When one is
+ready, a notice offers to restart; the restart is always yours to click, and an update you ignore installs on the
+next normal quit. Turn the check off with **Check for updates on launch** in Settings → Data & privacy, or run it by
+hand from Settings → About.
 
 ## First launch
 

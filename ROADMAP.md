@@ -7,7 +7,7 @@ Butin is an active project. This file tracks direction; day-to-day work lives in
 These are deliberate and not up for revision:
 
 - **Pull-only.** Every fetch is user-initiated (per-tab Refresh + a page-level Refresh-All). No background process, no auto-refresh on launch, no scheduled/cron
-  refresh. Butin is a dashboard you open and refresh by hand.
+  refresh. Butin is a dashboard you open and refresh by hand. The one carve-out is the once-per-launch check for a newer release, disclosed and opt-out.
 - **Local-first.** Captured data never leaves the machine, and the account a plugin reads is always your own.
 
 ## Near-term

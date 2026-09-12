@@ -446,7 +446,10 @@ const LocalFirst = () => (
           <div>
             <h4 className="font-mono text-xs font-semibold uppercase tracking-wider text-ink">Zéro télémétrie</h4>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              Aucun script de traçage, aucune analyse externe. Toutes vos données restent strictement confinées dans{' '}
+              Aucun script de traçage, aucune analyse externe. La seule requête que Butin effectue de lui-même est une
+              vérification à chaque lancement pour rechercher une éventuelle mise à jour : l’application contacte GitHub
+              en transmettant uniquement votre adresse IP et le numéro de version, rien d’autre. Une option dans les
+              paramètres permet de la désactiver. Toutes vos données restent strictement confinées dans{' '}
               <code className="text-teal-soft">~/butin/</code> sur votre disque.
             </p>
           </div>
