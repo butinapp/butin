@@ -1,4 +1,4 @@
-import { autoUpdater } from 'electron-updater'
+import electronUpdater from 'electron-updater'
 
 import { IPC_EVENT, type UpdateStateDto } from '../../shared/ipc.js'
 import { env } from '../env.js'
@@ -12,6 +12,10 @@ import { reduceUpdateEvent, type UpdateEvent, updaterAvailability } from './upda
 // competes with first paint or the first refresh.
 const LAUNCH_CHECK_DELAY_MS = 10_000
 
+// electron-updater is CommonJS and defines `autoUpdater` as a getter that builds the platform updater on first
+// read. Node's ESM interop does not expose it as a named export, so it is read off the default (module.exports)
+// object — and read lazily, so a run that never updates never constructs it.
+const updater = () => electronUpdater.autoUpdater
 const availability = updaterAvailability({ isDev: env.isDev, platform: process.platform, appImage: env.appImage })
 
 let state: UpdateStateDto = availability ? { kind: 'unavailable', reason: availability } : { kind: 'idle' }
@@ -30,6 +34,8 @@ export const configureUpdater = (): void => {
   if (availability) {
     return
   }
+
+  const autoUpdater = updater()
 
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
@@ -57,7 +63,9 @@ export const checkForUpdate = (): void => {
     return
   }
 
-  void autoUpdater.checkForUpdates().catch(() => undefined)
+  void updater()
+    .checkForUpdates()
+    .catch(() => undefined)
 }
 
 // The launch check: delayed, and only while the setting allows it. Read at fire time so turning the setting off
@@ -82,5 +90,5 @@ export const installUpdate = (): void => {
     return
   }
 
-  autoUpdater.quitAndInstall(true, true)
+  updater().quitAndInstall(true, true)
 }
