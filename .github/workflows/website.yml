@@ -15,11 +15,9 @@ on:
       - packages/website/**
       - .github/workflows/website.yml
 
-# The repository default is read-only, so the sticky preview comment fails with "Resource not accessible by
-# integration" unless the write is asked for here. Named at the top rather than per job: an omission is the failure.
+# Read-only by default; the preview job alone asks for the pull-request write its sticky comment needs.
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: website-${{ github.ref }}
@@ -30,7 +28,9 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup
       - run: pnpm -C packages/website build
 
@@ -38,7 +38,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm dlx wrangler@4 deploy
+        run: pnpm exec wrangler deploy
 
       # The failure that actually happens with static assets is a site that builds green and serves nothing, because
       # the output directory was wrong. A 200 on / is the cheapest thing that catches it.
@@ -55,8 +55,15 @@ jobs:
   preview:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    # The repository default is read-only, so the sticky preview comment fails with "Resource not accessible by
+    # integration" unless the write is asked for here.
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup
       - run: pnpm -C packages/website build
 
@@ -67,8 +74,9 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PR_NUMBER: ${{ github.event.number }}
         run: |
-          pnpm dlx wrangler@4 versions upload --preview-alias pr${{ github.event.number }} | tee upload.log
+          pnpm exec wrangler versions upload --preview-alias "pr$PR_NUMBER" | tee upload.log
           # The alias URL survives every push to the branch, so the comment keeps pointing at the newest build
           # instead of minting a fresh dead link each time. Falls back to the version URL if the alias ever moves.
           url=$(grep -oE 'https://pr[0-9]+-[^[:space:]]*\.workers\.dev' upload.log | head -1)

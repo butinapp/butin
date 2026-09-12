@@ -13,6 +13,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Every job only reads the checkout; nothing here writes back to the repository.
+permissions:
+  contents: read
+
 # check / build / test run as independent parallel jobs so a fast failure (lint, typecheck) surfaces without
 # waiting on the long test suite, and the wall-clock is the slowest single job rather than their sum. The test
 # suite — the long pole — is itself sharded across runners (see the matrix). Every job runs on Linux: faster,
@@ -23,10 +27,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup
       - name: Turbo cache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-check-${{ github.sha }}
@@ -36,10 +42,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup
       - name: Turbo cache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-build-${{ github.sha }}
@@ -74,14 +82,16 @@ jobs:
           - { name: core, args: --filter=@butinapp/core }
           - { name: rest, args: --filter=!@butinapp/plugins --filter=!@butinapp/core }
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup
       # Restore Turbo's cache so an unchanged package's tests replay instead of re-executing on a fresh runner.
       # Keyed per-sha (a fresh save each run) with a per-shard prefix restore-key, so each shard keeps its own
       # warm lineage and the parallel jobs don't clobber each other's cache; Turbo's content hashing then
       # decides the real hits.
       - name: Turbo cache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-test-${{ matrix.shard.name }}-${{ github.sha }}

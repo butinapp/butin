@@ -41,3 +41,5 @@ allowBuilds:
   electron: true
   electron-winstaller: true
   sharp: true
+  # wrangler's local runtime; only `wrangler dev` needs the binary, and nothing here runs that.
+  workerd: false

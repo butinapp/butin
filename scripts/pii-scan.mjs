@@ -35,6 +35,8 @@ const MAX_PAYLOAD = 60_000
 // Added lines in these files get the semantic pass — everything a recording normally gets transcribed into.
 const FIXTURE_SHAPED = /(\.test\.[jt]sx?$|(^|\/)sample\.ts$|\/fixtures?\/|\.fixture\.[jt]s$|\/recordings?\/)/
 const TEXTUAL = /\.(ts|tsx|js|jsx|mjs|cjs|json|md|html|txt|csv|ya?ml)$/
+// A lockfile is package names plus integrity hashes; a short denylist term matches inside a hash by chance.
+const LOCKFILE = /(^|\/)(pnpm-lock\.yaml|package-lock\.json|yarn\.lock)$/
 
 const PROMPT = `You are a pre-commit privacy gate for a repository about to be published publicly. The lines below come from
 test fixtures and sample data, which in this project are routinely transcribed from real recorded sessions of the
@@ -76,7 +78,7 @@ const parseDiff = (diff) => {
 
   for (const line of diff.split('\n')) {
     if (line.startsWith('+++ b/')) {
-      file = line.slice(6)
+      file = LOCKFILE.test(line.slice(6)) ? null : line.slice(6)
     } else if (file && line.startsWith('+') && !line.startsWith('+++')) {
       added.push({ file, text: line.slice(1) })
     }
@@ -96,7 +98,7 @@ const rangeAdditions = (revs) => parseDiff(git(['log', '-p', '-U0', '--no-merges
 const trackedLines = () =>
   git(['ls-files'])
     .split('\n')
-    .filter((f) => f && TEXTUAL.test(f) && existsSync(f) && statSync(f).size < 2_000_000)
+    .filter((f) => f && TEXTUAL.test(f) && !LOCKFILE.test(f) && existsSync(f) && statSync(f).size < 2_000_000)
     .flatMap((file) =>
       readFileSync(file, 'utf8')
         .split('\n')
