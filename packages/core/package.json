@@ -1,6 +1,6 @@
 {
   "name": "@butinapp/core",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "private": true,
   "description": "Butin — a local-first desktop app that brings your own data home.",
   "license": "Apache-2.0",
