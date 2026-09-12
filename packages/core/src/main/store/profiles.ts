@@ -45,6 +45,16 @@ const registryPath = (): string => join(homeRoot, 'profiles.json')
 // A profile's self-contained folder: its config.json + <plugin>/ data tree live here.
 export const profileDir = (id: string): string => join(homeRoot, 'profiles', id)
 
+// The directory of a REGISTERED profile, for a handler that receives the id from the renderer. Only an id in the
+// registry names a directory; an arbitrary string would resolve to a path outside the profiles tree.
+export const registeredProfileDir = (id: string): string => {
+  if (!readRegistry().profiles.some((p) => p.id === id)) {
+    throw new Error(`unknown profile: ${id}`)
+  }
+
+  return profileDir(id)
+}
+
 // Where profile folders live. An import extracts into a dot-prefixed staging folder here (siblings of the real
 // profiles, so the final install is a same-volume rename) before it is adopted.
 export const profilesDir = (): string => join(homeRoot, 'profiles')

@@ -72,9 +72,10 @@ app.on('web-contents-created', (_event, contents) => contents.setUserAgent(BROWS
 app.disableHardwareAcceleration()
 
 // Opt-in DevTools-protocol endpoint for driving the app from a CDP client (Playwright / chrome-devtools MCP)
-// during development. Off unless BUTIN_REMOTE_DEBUG is set — the open port relaxes the Chromium sandbox, so
-// it must never be on for a shipped build. Must be set before the app is ready.
-if (env.remoteDebug) {
+// during development. Off unless BUTIN_REMOTE_DEBUG is set, and never on a packaged build whatever the
+// environment says: the open port hands any local process every cookie of every partition. Must be set before
+// the app is ready.
+if (env.remoteDebug && env.isDev) {
   app.commandLine.appendSwitch('remote-debugging-port', env.remoteDebugPort)
 }
 
