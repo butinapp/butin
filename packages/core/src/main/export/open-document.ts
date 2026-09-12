@@ -61,11 +61,13 @@ export const openDocumentFile = async (path: string): Promise<void> => {
 
     const dir = openTempDir()
 
-    await mkdir(dir, { recursive: true })
+    // The temp root is shared by every user of the machine; the copy is a decrypted document, so it is readable
+    // by this user alone (mode is a no-op on Windows, where the per-user temp dir already does this).
+    await mkdir(dir, { recursive: true, mode: 0o700 })
 
     const tempPath = join(dir, `${Date.now()}-${basename(path)}`)
 
-    await writeFile(tempPath, plaintext)
+    await writeFile(tempPath, plaintext, { mode: 0o600 })
     await shell.openPath(tempPath)
     scheduleCleanup(tempPath)
   } catch (err) {

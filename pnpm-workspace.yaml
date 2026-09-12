@@ -10,6 +10,11 @@ overrides:
   # cheerio pulls undici for its URL loader, which no plugin calls; the pin keeps the resolved copy past the
   # advisories against the 7.x line so the audit stays clean.
   undici: '>=7.29.0'
+  # electron-updater parses the remote latest*.yml with js-yaml; the pin keeps the resolved copy past the
+  # merge-key / !!omap CPU-exhaustion advisories against 4.2, within the major electron-updater declares.
+  js-yaml: '^4.3.2'
+  # next's browserslist mapping; the pin clears the advisory against 2.10 (build-time only).
+  baseline-browser-mapping: '>=2.11.0'
 
 # Single source of truth for versions shared across packages (referenced as `catalog:` in each package.json).
 # Anything depended on by more than one package lives here so versions can't drift — bump it once.
@@ -41,3 +46,5 @@ allowBuilds:
   electron: true
   electron-winstaller: true
   sharp: true
+  # wrangler's local runtime; only `wrangler dev` needs the binary, and nothing here runs that.
+  workerd: false

@@ -98,6 +98,10 @@ const mintBearer = (pluginId: string, strategy: SpaBearerAuth, bootTimeoutMs?: n
     webPreferences: { partition: partitionFor(plugin), backgroundThrottling: false }
   })
 
+  // The page runs unseen on the plugin's authenticated partition; a popup it opens would be a visible window
+  // carrying that session with no chrome around it.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+
   return new Promise<string>((resolvePromise, rejectPromise) => {
     let settled = false
 
