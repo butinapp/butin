@@ -46,7 +46,7 @@
     "@types/luxon": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "^5.2.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "electron": "^44.2.0",
     "electron-builder": "^26.16.1",
     "electron-vite": "^5.0.0",
