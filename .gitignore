@@ -27,7 +27,7 @@ CLAUDE.local.md
 # data — it must never be committed. Start from .pii-denylist.example.
 .pii-denylist
 
-# Environment files. Nothing here has ever held one, and it stays that way.
+# Environment files. A local one may hold a deploy token; none is ever committed.
 .env
 .env.*
 !.env.example

@@ -10,3 +10,7 @@ next-env.d.ts
 
 # misc
 *.tsbuildinfo
+
+# Environment files stay out of the tree from this directory too.
+.env
+.env.*
