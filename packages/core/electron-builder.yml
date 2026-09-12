@@ -17,8 +17,13 @@ files:
 # Node under the app's signed identity — on macOS that identity is what the Keychain grants the safeStorage key
 # to. The NODE_OPTIONS and --inspect fuses close the other two ways of loading code into the process, and the
 # asar fuses keep the main bundle to the one shipped in the installer.
+# enableCookieEncryption seals the Chromium cookie store under the same OS key safeStorage uses, so a captured
+# session is never plaintext on disk — config.json is already encrypted; the jar the partitions replay from must
+# be too. Chromium reads both the plain and the encrypted column, so an install that predates the fuse keeps its
+# cookies.
 electronFuses:
   runAsNode: false
+  enableCookieEncryption: true
   enableNodeOptionsEnvironmentVariable: false
   enableNodeCliInspectArguments: false
   enableEmbeddedAsarIntegrityValidation: true

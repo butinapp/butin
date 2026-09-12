@@ -20,6 +20,7 @@ import {
   movePluginToProfile,
   profileDir,
   recolorProfile,
+  registeredProfileDir,
   renameProfile,
   setActiveProfile,
   setProfilesRoot
@@ -99,6 +100,14 @@ describe('profile registry', () => {
 
     expect(() => deleteProfile('..')).toThrow(/unknown profile/)
     expect(existsSync(profileDir('personal'))).toBe(true)
+  })
+
+  it('resolves a directory only for a registered id, so a renderer string can never name a path', () => {
+    const { id } = createProfile('Work')
+
+    expect(registeredProfileDir(id)).toBe(profileDir(id))
+    expect(() => registeredProfileDir('../../elsewhere')).toThrow(/unknown profile/)
+    expect(() => registeredProfileDir('ghost')).toThrow(/unknown profile/)
   })
 
   it('recolors a profile in place', () => {

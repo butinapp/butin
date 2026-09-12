@@ -1,6 +1,28 @@
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { cookieRemoveUrl, cookieToDto, partitionLabel } from './dev.js'
+import { setConfigRoot, setSetting } from '../store/config-file.js'
+
+import { cookieRemoveUrl, cookieToDto, devHandlers, partitionLabel } from './dev.js'
+
+describe('the developer channels are inert until developer mode is on', () => {
+  test('a cookie read is refused while developer mode is off', async () => {
+    setConfigRoot(mkdtempSync(join(tmpdir(), 'butin-devmode-')))
+
+    await expect(devHandlers.listCookies({} as never, 'persist:butin')).rejects.toThrow(/developer mode/)
+    await expect(devHandlers.listPartitions()).rejects.toThrow(/developer mode/)
+  })
+
+  test('turning developer mode on lets the channel through to the session lookup', async () => {
+    setConfigRoot(mkdtempSync(join(tmpdir(), 'butin-devmode-on-')))
+    setSetting('devMode', true)
+
+    // Off-Electron there is no session module, so a permitted call fails later and differently.
+    await expect(devHandlers.listCookies({} as never, 'persist:butin')).rejects.not.toThrow(/developer mode/)
+  })
+})
 
 describe('cookieToDto', () => {
   test('maps an Electron cookie, computing size and session/expires', () => {

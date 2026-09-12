@@ -76,6 +76,10 @@ export const createBrowserSession = (plugin: ButinPlugin): BrowserSession => ({
       webPreferences: { partition: partitionFor(plugin), backgroundThrottling: false }
     })
 
+    // The page runs unseen on the plugin's authenticated partition; a popup it opens would be a visible window
+    // carrying that session with no chrome around it.
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+
     const evaluate = <R>(expression: string, label: string): Promise<R> =>
       withTimeout(win.webContents.executeJavaScript(expression, true) as Promise<R>, label)
 
