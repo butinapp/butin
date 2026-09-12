@@ -1228,7 +1228,7 @@ export const fr: ButinLabels = {
     'La devise dans laquelle les totaux de l’aperçu sont affichés. Les autres devises y sont converties.',
   fetchRatesLabel: 'Récupérer les taux de change',
   fetchRatesHint:
-    'Complète un taux manquant ou périmé depuis une API publique (api.frankfurter.dev, puis open.er-api.com) à l’ouverture de l’aperçu. Désactivé, seuls les taux ci-dessous sont utilisés.',
+    'Complète un taux manquant ou périmé depuis une API publique (api.frankfurter.dev, puis open.er-api.com) à l’ouverture de l’aperçu. Si cette option est désactivée, seuls les taux ci-dessous sont utilisés.',
   exchangeRatesLabel: 'Taux de change',
   exchangeRatesHint:
     'Valeur d’une unité de chaque devise dans votre devise de référence. Sans taux, la devise est affichée seule et exclue des totaux combinés.',
@@ -1236,16 +1236,16 @@ export const fr: ButinLabels = {
   sectionUpdates: 'Mises à jour',
   autoUpdateLabel: 'Vérifier les mises à jour au lancement',
   autoUpdateHint:
-    'À chaque lancement, Butin demande à GitHub sa dernière version et la télécharge en arrière-plan ; vous choisissez quand redémarrer. Cette requête transmet votre adresse IP et la version de l’application, rien d’autre.',
+    'À chaque lancement, Butin vérifie auprès de GitHub si une nouvelle version est disponible et la télécharge en arrière-plan ; vous choisissez quand redémarrer. Cette requête transmet uniquement votre adresse IP et la version de l’application, rien d’autre.',
   updateCheck: 'Vérifier les mises à jour',
   updateChecking: 'Vérification…',
-  updateUpToDate: (when) => `À jour — vérifié ${when}`,
+  updateUpToDate: (when) => `À jour — vérifié à ${when}`,
   updateDownloading: (version, percent) => `Téléchargement de ${version}… ${percent} %`,
-  updateReady: (version) => `Butin ${version} est prêt`,
+  updateReady: (version) => `La mise à jour Butin ${version} est prête`,
   updateRestart: 'Redémarrer pour mettre à jour',
   updateRestartShort: 'Redémarrer',
   updateError: (message) => `Échec de la vérification : ${message}`,
-  updateUnavailable: 'Les mises à jour ne concernent que l’application installée.',
+  updateUnavailable: 'Les mises à jour sont uniquement disponibles pour l’application installée.',
   saveRates: 'Enregistrer les taux',
   clearDataConfirm: 'Cliquez à nouveau pour confirmer',
 
