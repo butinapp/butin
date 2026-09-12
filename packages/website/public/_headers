@@ -1,0 +1,12 @@
+# Response headers for every path butin.app serves. Cloudflare Workers static assets apply this file at the edge
+# (Next copies it from public/ into the export root). The site is a static export with no server, so the script
+# policy has to admit the inline bootstrap scripts Next emits; everything else is same-origin only — the site loads
+# no third-party script, style, font, image or frame, and makes no request to another host.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
