@@ -79,11 +79,13 @@
     "@testing-library/user-event": "catalog:",
     "@types/lodash-es": "catalog:",
     "@types/luxon": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "jsdom": "catalog:",
     "postcss": "^8.5.32",
-    "tailwindcss": "catalog:"
+    "tailwindcss": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "react": "catalog:",
