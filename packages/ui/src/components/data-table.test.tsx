@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 
 import type { DataTableColumn, DataTableState } from './data-table-model.js'
@@ -210,4 +211,24 @@ test('the header checkbox reads checked once this page is selected, and clears j
 
   // Clearing drops this page's rows and leaves the off-page selection alone.
   expect(onSelectionChange.mock.calls[0][0]).toEqual(new Set(['27']))
+})
+
+test('a column marked unsortable keeps a disabled header, and the columns menu hides a hideable column', async () => {
+  const twoCols: DataTableColumn<Row>[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'id', label: 'Id', sortable: false }
+  ]
+
+  render(<DataTable columns={twoCols} rows={[rows[0]]} getRowId={getRowId} columnsMenu />)
+
+  expect(screen.getByRole('button', { name: 'Id' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Name' })).toBeEnabled()
+
+  await userEvent.click(screen.getByRole('button', { name: /columns/i }))
+  await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'Id' }))
+  // The open menu marks the rest of the page aria-hidden; close it so the header queries see the table again.
+  await userEvent.keyboard('{Escape}')
+
+  expect(screen.queryByRole('button', { name: 'Id' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Name' })).toBeInTheDocument()
 })
