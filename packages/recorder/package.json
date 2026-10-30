@@ -17,19 +17,19 @@
     "@butinapp/ui": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "tldts": "^7.4.12"
+    "tldts": "^7.4.19"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "^5.2.0",
-    "electron": "^44.2.0",
-    "electron-vite": "^5.0.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.10.0",
+    "electron-vite": "^6.0.0",
     "jsdom": "catalog:",
     "tailwindcss": "catalog:",
-    "vite": "^7.3.6",
+    "vite": "^8.3.5",
     "vitest": "catalog:"
   }
 }

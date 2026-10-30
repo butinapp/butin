@@ -160,7 +160,7 @@ A standard `collect()` returns a **`CapabilityResult = { datasets, views?, summa
 **`<DashboardRenderer>`** in `@butinapp/ui` renders it — there is no per-capability React.
 
 - **Datasets** (`dataset.ts`) are `table` or `record` with **semantic-role**-typed columns (`money · count · percent · timestamp · status · category · label ·
-identifier · url · text`), so the renderer formats every value correctly with no per-plugin code. Badge coloring is the renderer's: a `status` value auto-tones by
+  identifier · url · text`), so the renderer formats every value correctly with no per-plugin code. Badge coloring is the renderer's: a `status` value auto-tones by
   sentiment (a column's optional `badges` map overrides a value the built-in lexicon can't infer); a `category` value (a role, a seat tier — no sentiment) gets a
   stable distinct hue. A free-text column may set `truncate` to cap itself to one ellipsized line (so it stops squashing its neighbours) while keeping the full value
   reachable — a native-title hover peek plus a click-to-open copyable popover.
@@ -405,7 +405,7 @@ The UI is built so **pieces ship standalone and embed anywhere, dark or light**.
 The pure, prop-driven boundary above is what lets a snapshot-fed dashboard embed in other sites — fed from a published snapshot instead of live IPC — without
 pulling in the Electron app.
 
-Workspace packages ship **raw TS** (no build step). `electron.vite.config.ts` excludes `@butinapp/*` from `externalizeDepsPlugin` so they're bundled into the main
+Workspace packages ship **raw TS** (no build step). `electron.vite.config.ts` excludes `@butinapp/*` from `build.externalizeDeps` so they're bundled into the main
 output; `tsconfig` `paths` map the subpaths to source for typechecking; vitest/vite resolve them via the workspace symlinks.
 
 ---
@@ -441,7 +441,7 @@ DevTools protocol):
 
 - **Interactive, against a live logged-in session** — run **`pnpm dev:debug`** (sets `BUTIN_REMOTE_DEBUG`, which opens a `remote-debugging-port` — env-gated in
   `main/index.ts`, off for shipped builds). Then a CDP client attaches to the running app: the **`butin-app`** MCP server in `.mcp.json` is `@playwright/mcp
---cdp-endpoint http://127.0.0.1:9222` (a new server in `.mcp.json` needs a Claude Code restart / `/mcp` reconnect to register). This drives the REAL app with your
+  --cdp-endpoint http://127.0.0.1:9222` (a new server in `.mcp.json` needs a Claude Code restart / `/mcp` reconnect to register). This drives the REAL app with your
   real captured sessions — snapshot · click · type · screenshot · evaluate. (Caveat: Playwright emulates `prefers-color-scheme: light` on the pages it drives, so a
   `system`-themed app flips to light while connected — purely the debugging connection, the OS default is untouched. Undo it for the session by resetting the
   override: run `page.emulateMedia({ colorScheme: null })` to follow the real OS again.)
@@ -567,7 +567,7 @@ plugins cover the full auth taxonomy; session reuse survives relaunch.
 - `@butinapp/sdk` — the full contract + the data-view contract (dataset · view · summary · result · presets incl. blocks) + `defineCapability` (the fetch/build
   split with a drift-proof `sample`), typechecks.
 - `@butinapp/ui` — embeddable, theme-portable design system + the generic data-view renderer + rich Overview + the app shell (`AppShell · Sidebar · ServiceTabs ·
-ServicePageShell · ServiceSettingsPanel · ProfileSwitcher · Dialog · Switch`) + en/fr i18n contract.
+  ServicePageShell · ServiceSettingsPanel · ProfileSwitcher · Dialog · Switch`) + en/fr i18n contract.
 - `@butinapp/core` — encrypted credential/config store · auth resolution (the full auth taxonomy + memoized `resolve()` hook + offscreen spa-bearer mint) ·
   dual-transport `ButinClient` (axios + Electron `net.request`) + a built-in per-plugin query cache · browser session subsystem (real-Chromium identity,
   promote-on-quit cookies, shared `persist:butin` partition) · Magic Login + Disconnect · profiles · cached report store · Overview assembler · plugin host.

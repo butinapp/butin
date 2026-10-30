@@ -2,10 +2,13 @@ import {
   type ColumnDef,
   type ColumnOrderState,
   type SortingState,
-  type VisibilityState,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable
+  type ColumnVisibilityState,
+  type RowData,
+  columnOrderingFeature,
+  columnVisibilityFeature,
+  rowSortingFeature,
+  tableFeatures,
+  useTable
 } from '@tanstack/react-table'
 import {
   ArrowDown,
@@ -100,10 +103,13 @@ const DEFAULT_PAGE_SIZES = [15, 25, 50, 100]
 // The page size a table opens at when nothing is saved (see pageSize seeding below).
 const DEFAULT_PAGE_SIZE = 25
 
-// Generic, headless, theme-portable table. TanStack owns sorting/column-order/visibility/pagination;
-// selection (external Set) and grouping (manual collapsible sections over the sorted rows) are layered
-// on top so grouping stays fully controllable. Pure — prefs in via props, export out via callback.
-export const DataTable = <Row,>({
+const features = tableFeatures({ columnOrderingFeature, columnVisibilityFeature, rowSortingFeature })
+
+// Generic, headless, theme-portable table. TanStack owns the sorting/column-order/visibility state; the row
+// pipeline (sort, search, pagination), selection (external Set) and grouping (manual collapsible sections over the
+// sorted rows) are layered on top so grouping stays fully controllable. Pure — prefs in via props, export out via
+// callback.
+export const DataTable = <Row extends RowData>({
   columns,
   rows,
   getRowId,
@@ -155,7 +161,7 @@ export const DataTable = <Row,>({
     () => ({
       sorting: (seed.sort ? [{ id: seed.sort.key, desc: seed.sort.dir === 'desc' }] : []) as SortingState,
       columnOrder: (seed.columnOrder ?? []) as ColumnOrderState,
-      columnVisibility: (seed.columnVisibility ?? {}) as VisibilityState,
+      columnVisibility: (seed.columnVisibility ?? {}) as ColumnVisibilityState,
       pageSize:
         seed.pageSize ??
         (pageSizes.includes(DEFAULT_PAGE_SIZE) ? DEFAULT_PAGE_SIZE : (pageSizes[0] ?? DEFAULT_PAGE_SIZE))
@@ -165,7 +171,7 @@ export const DataTable = <Row,>({
 
   const [sorting, setSorting] = useState<SortingState>(seedStates.sorting)
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(seedStates.columnOrder)
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(seedStates.columnVisibility)
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>(seedStates.columnVisibility)
   const [pageSize, setPageSize] = useState(seedStates.pageSize)
   const [pageIndex, setPageIndex] = useState(0)
   const [query, setQuery] = useState('')
@@ -223,7 +229,7 @@ export const DataTable = <Row,>({
     })
   }, [sorting, columnOrder, columnVisibility, pageSize])
 
-  const tanCols = useMemo<ColumnDef<Row>[]>(
+  const tanCols = useMemo<ColumnDef<typeof features, Row>[]>(
     () =>
       columns.map((col) => ({
         id: col.key,
@@ -235,16 +241,15 @@ export const DataTable = <Row,>({
     [columns]
   )
 
-  const table = useReactTable({
+  const table = useTable({
+    features,
     data: rows,
     columns: tanCols,
-    state: { sorting, columnOrder, columnVisibility, ...(usePaging ? { pagination: { pageIndex, pageSize } } : {}) },
+    state: { sorting, columnOrder, columnVisibility },
     onSortingChange: setSorting,
     onColumnOrderChange: setColumnOrder,
     onColumnVisibilityChange: setColumnVisibility,
-    getRowId: (row) => getRowId(row),
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel()
+    getRowId: (row) => getRowId(row)
   })
 
   // The fully-resolved, ordered, visible leaf columns (for export + drag reorder + header render).

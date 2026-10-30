@@ -35,7 +35,7 @@ Brand tokens + fonts in `app/global.css` and `app/layout.tsx`.
   (id, name, vendor, color, capability tabs), grouped `ai` / `dev` / `beyond`. Entries flagged `held: true`
   are not rendered (flip deliberately). Re-sync when plugins change.
 - **Product screenshots:** `public/shots/*.png` are captured from the seeded demo (`pnpm seed-demo --home
-./.demo-home` → `pnpm build` → `node scripts/shots.mjs`), so they carry only synthetic data. Re-run
+  ./.demo-home` → `pnpm build` → `node scripts/shots.mjs`), so they carry only synthetic data. Re-run
   `scripts/shots.mjs` to refresh them after a UI change.
 
 ## Status — live on butin.app (2026-09-09)

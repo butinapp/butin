@@ -12,7 +12,7 @@ A plugin is a pure descriptor (`definePlugin({...})`):
   `external`-auth plugins, which hold no capturable browser session.
 - **`auth`** — how the stored session becomes request auth. A discriminated union on `kind` over **8
   strategies**: `cookie · bearer-token · external · api-key · cookie-csrf · minted-jwt · rotating-refresh ·
-spa-bearer` (some carry an optional/required `resolve()` hook).
+  spa-bearer` (some carry an optional/required `resolve()` hook).
 - **`transport?`** / **`backends?`** — the engine (`node` axios / `electron` net.request for sites that need the browser engine),
   plus any secondary hosts under the same session, reached via `ctx.clientFor(key)`.
 - **`capabilities`** — the feature set; there is ONE shape, `{ id, label, collect, fetchFile? }`, and each

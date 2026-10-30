@@ -1,6 +1,6 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import { defineConfig } from 'electron-vite'
 import { resolve } from 'node:path'
 
 // Workspace packages ship raw TS (no build step), so they must be bundled into the output rather than
@@ -12,14 +12,20 @@ const bundledWorkspace = ['@butinapp/engine', '@butinapp/sdk', '@butinapp/shapes
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin({ exclude: bundledWorkspace })],
     // sourcemap so a thrown error in a bundled plugin/collector resolves to its real .ts:line in the stack,
     // not an opaque out/main/index.js:23336 offset.
-    build: { sourcemap: true, rollupOptions: { input: { index: 'src/main/index.ts' } } }
+    build: {
+      externalizeDeps: { exclude: bundledWorkspace },
+      sourcemap: true,
+      rolldownOptions: { input: { index: 'src/main/index.ts' } }
+    }
   },
   preload: {
-    plugins: [externalizeDepsPlugin({ exclude: bundledWorkspace })],
-    build: { sourcemap: 'inline', rollupOptions: { input: { index: 'src/preload/index.ts' } } }
+    build: {
+      externalizeDeps: { exclude: bundledWorkspace },
+      sourcemap: 'inline',
+      rolldownOptions: { input: { index: 'src/preload/index.ts' } }
+    }
   },
   renderer: {
     root: 'src/renderer',
@@ -27,6 +33,6 @@ export default defineConfig({
     server: { port: 5817, strictPort: true },
     resolve: { alias: { '@': resolve(import.meta.dirname, 'src/renderer') } },
     plugins: [react(), tailwindcss()],
-    build: { sourcemap: true, rollupOptions: { input: { index: 'src/renderer/index.html' } } }
+    build: { sourcemap: true, rolldownOptions: { input: { index: 'src/renderer/index.html' } } }
   }
 })
