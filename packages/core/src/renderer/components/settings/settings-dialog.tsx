@@ -1,6 +1,6 @@
 import { useLabels } from '@butinapp/ui/i18n'
 import { cn, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@butinapp/ui/primitives'
-import { Bell, Chrome, Info, HardDrive, Settings2, ShieldCheck, SlidersHorizontal, Stethoscope } from 'lucide-react'
+import { Bell, Globe, HardDrive, Info, Settings2, ShieldCheck, SlidersHorizontal, Stethoscope } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { AboutPane } from './about-pane.js'
@@ -67,7 +67,7 @@ export const SettingsDialog = ({
     { id: 'general', label: t.settingsNavGeneral, icon: <SlidersHorizontal className="size-4 shrink-0" /> },
     { id: 'alerts', label: t.notifications.title, icon: <Bell className="size-4 shrink-0" /> },
     { id: 'data', label: t.sectionDataPrivacy, icon: <ShieldCheck className="size-4 shrink-0" /> },
-    { id: 'browser', label: t.settingsNavBrowserSignin, icon: <Chrome className="size-4 shrink-0" /> },
+    { id: 'browser', label: t.settingsNavBrowserSignin, icon: <Globe className="size-4 shrink-0" /> },
     { id: 'advanced', label: t.settingsNavAdvanced, icon: <Settings2 className="size-4 shrink-0" /> },
     { id: 'storage', label: t.settingsNavStorage, icon: <HardDrive className="size-4 shrink-0" /> },
     { id: 'system', label: t.settingsNavSystem, icon: <Stethoscope className="size-4 shrink-0" /> },
