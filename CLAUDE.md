@@ -405,7 +405,7 @@ The UI is built so **pieces ship standalone and embed anywhere, dark or light**.
 The pure, prop-driven boundary above is what lets a snapshot-fed dashboard embed in other sites — fed from a published snapshot instead of live IPC — without
 pulling in the Electron app.
 
-Workspace packages ship **raw TS** (no build step). `electron.vite.config.ts` excludes `@butinapp/*` from `externalizeDepsPlugin` so they're bundled into the main
+Workspace packages ship **raw TS** (no build step). `electron.vite.config.ts` excludes `@butinapp/*` from `build.externalizeDeps` so they're bundled into the main
 output; `tsconfig` `paths` map the subpaths to source for typechecking; vitest/vite resolve them via the workspace symlinks.
 
 ---

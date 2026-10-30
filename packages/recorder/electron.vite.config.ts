@@ -1,6 +1,6 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import { defineConfig } from 'electron-vite'
 import { resolve } from 'node:path'
 
 // Workspace packages ship raw TS (no build step), so they must be bundled into the output rather than
@@ -10,14 +10,17 @@ const bundledWorkspace = ['@butinapp/engine', '@butinapp/sdk', '@butinapp/ui']
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin({ exclude: bundledWorkspace })],
-    build: { sourcemap: true, rollupOptions: { input: { index: 'src/main/index.ts' } } }
+    build: {
+      externalizeDeps: { exclude: bundledWorkspace },
+      sourcemap: true,
+      rolldownOptions: { input: { index: 'src/main/index.ts' } }
+    }
   },
   preload: {
-    plugins: [externalizeDepsPlugin({ exclude: bundledWorkspace })],
     build: {
+      externalizeDeps: { exclude: bundledWorkspace },
       sourcemap: 'inline',
-      rollupOptions: {
+      rolldownOptions: {
         input: {
           index: 'src/preload/index.ts'
         }
@@ -30,7 +33,7 @@ export default defineConfig({
     plugins: [react(), tailwindcss()],
     build: {
       sourcemap: true,
-      rollupOptions: {
+      rolldownOptions: {
         input: {
           index: resolve(import.meta.dirname, 'src/renderer/index.html')
         }
