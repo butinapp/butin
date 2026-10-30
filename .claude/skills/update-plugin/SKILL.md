@@ -240,7 +240,7 @@ A standard `collect()` returns `{ datasets, views?, summary?, snapshots? }` (val
   custom (see serper's payment-method record + daily-credits timeseries).
 - **Datasets** — `table(id, columns, rows)` or `record(id, fields, value)`. Every column carries a
   **semantic role** so the renderer formats it with no per-plugin code: `money · count · percent ·
-timestamp · status · label · identifier · url · text`. For `role:'status'` add a `badges` map
+  timestamp · status · label · identifier · url · text`. For `role:'status'` add a `badges` map
   (value → tone: `success|warning|danger|info|neutral|accent|…`) — reach for the ready-made
   `tones.status` / `tones.role` from `@butinapp/sdk/presets` before hand-mapping common statuses. The renderer
   **title-cases** a status value for display (`startCase`; tone still matches the RAW value case-insensitively),
@@ -251,10 +251,10 @@ timestamp · status · label · identifier · url · text`. For `role:'status'` 
   enforces this).
 - **Summary** — a headline metric with a controlled `section` (`spend · balance · other`) + `role`
   (`money|count|percent`), an optional `basis` display label (`accrued · invoiced · flat · upcoming ·
-lastInvoice`), and an optional `headline` override. This is what the cross-service **Overview** bands by —
+  lastInvoice`), and an optional `headline` override. This is what the cross-service **Overview** bands by —
   only `section: 'spend'` sums across services; `balance` and `other` show per-service, so pick the right one.
 - **Rich stat cards** — a `stat` view's `fields` take more than a bare key: a `{ key, max?, unit?, caption?,
-tone? }` spec adds `max` → a `value / max` denominator + progress bar (fold a PAIR — seats used/purchased,
+  tone? }` spec adds `max` → a `value / max` denominator + progress bar (fold a PAIR — seats used/purchased,
   usage/limit — into ONE card via `max`), `unit` → a muted suffix (`/mo`), `caption` → a breakdown/context
   line, `tone` (`positive|negative|muted`) → a value tint (a negative spend delta reads green). All literals
   the plugin computes per fetch. The `billing*Result` presets forward them via `BillingStat`
