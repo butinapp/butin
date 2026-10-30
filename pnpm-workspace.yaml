@@ -9,7 +9,7 @@ overrides:
   '@types/react-dom': 'catalog:'
   # cheerio pulls undici for its URL loader, which no plugin calls; the pin keeps the resolved copy past the
   # advisories against the 7.x line so the audit stays clean.
-  undici: '>=7.29.0'
+  undici: '^7.29.0'
   # electron-updater parses the remote latest*.yml with js-yaml; the pin keeps the resolved copy past the
   # merge-key / !!omap CPU-exhaustion advisories against 4.2, within the major electron-updater declares.
   js-yaml: '^4.3.2'
@@ -20,24 +20,24 @@ overrides:
 # Anything depended on by more than one package lives here so versions can't drift — bump it once.
 catalog:
   # React + the UI test stack (React is also pinned in pnpm.overrides so the whole graph resolves one copy).
-  react: ^19.2.8
-  react-dom: ^19.2.8
-  '@types/react': ^19.2.18
-  '@types/react-dom': ^19.2.7
+  react: ^19.3.1
+  react-dom: ^19.3.1
+  '@types/react': ^19.3.0
+  '@types/react-dom': ^19.3.0
   '@testing-library/react': ^16.3.3
   '@testing-library/jest-dom': ^6.9.1
-  '@testing-library/user-event': ^14.6.7
+  '@testing-library/user-event': ^14.6.8
   jsdom: ^29.1.1
   # Toolchain shared across packages.
-  vitest: ^4.1.7
-  '@types/node': ^25.9.3
+  vitest: ^4.1.12
+  '@types/node': ^25.9.9
   # Runtime libs shared across packages.
-  zod: ^4.5.4
+  zod: ^4.6.7
   lucide-react: ^0.525.0
   cheerio: ^1.2.0
   tailwindcss: ^4.3.3
   luxon: ^3.7.2
-  '@types/luxon': ^3.7.5
+  '@types/luxon': ^3.7.6
   lodash-es: ^4.18.1
   '@types/lodash-es': ^4.17.12
 

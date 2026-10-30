@@ -13,10 +13,10 @@
     "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
-    "fumadocs-core": "^16.15.7",
-    "fumadocs-mdx": "^15.4.0",
-    "fumadocs-ui": "^16.15.7",
-    "next": "^16.3.4",
+    "fumadocs-core": "^16.17.9",
+    "fumadocs-mdx": "^15.4.10",
+    "fumadocs-ui": "^16.17.9",
+    "next": "^16.4.3",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
@@ -28,6 +28,6 @@
     "@types/react-dom": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "^6.0.3",
-    "wrangler": "4.129.1"
+    "wrangler": "4.155.0"
   }
 }
