@@ -20,16 +20,16 @@
     "tldts": "^7.4.19"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.5",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "^6.1.2",
+    "@vitejs/plugin-react": "^6.3.0",
     "electron": "^44.10.0",
     "electron-vite": "^6.0.0",
     "jsdom": "catalog:",
     "tailwindcss": "catalog:",
-    "vite": "^8.3.5",
+    "vite": "^8.3.7",
     "vitest": "catalog:"
   }
 }
