@@ -73,7 +73,7 @@
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/postcss": "^4.3.5",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@testing-library/user-event": "catalog:",
@@ -83,7 +83,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "jsdom": "catalog:",
-    "postcss": "^8.5.32",
+    "postcss": "^8.5.33",
     "tailwindcss": "catalog:",
     "vitest": "catalog:"
   },
