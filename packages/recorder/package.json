@@ -17,7 +17,7 @@
     "@butinapp/ui": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "tldts": "^7.4.19"
+    "tldts": "^7.5.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

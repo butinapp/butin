@@ -70,7 +70,7 @@
     "lucide-react": "catalog:",
     "luxon": "catalog:",
     "radix-ui": "^1.8.1",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
