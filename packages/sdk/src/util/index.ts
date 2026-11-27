@@ -7,6 +7,7 @@ export {
   centsToMajor,
   centsStringToMajor,
   millicentsToMajor,
+  microsToMajor,
   parseDecimalAmount,
   normalizeCurrency,
   round2,
