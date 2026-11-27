@@ -6,6 +6,7 @@ import {
   normalizeCurrency,
   parseDecimalAmount,
   parseFrAmount,
+  microsToMajor,
   millicentsToMajor,
   round2
 } from './money.js'
@@ -24,6 +25,12 @@ test('centsStringToMajor parses a cents string', () => {
 test('millicentsToMajor converts thousandths of a cent', () => {
   expect(millicentsToMajor('100000')).toBe(1)
   expect(millicentsToMajor()).toBe(0)
+})
+
+test('microsToMajor converts millionths from a number or an int64 string', () => {
+  expect(microsToMajor('12500000')).toBe(12.5)
+  expect(microsToMajor(-250000)).toBe(-0.25)
+  expect(microsToMajor()).toBe(0)
 })
 
 test('parseDecimalAmount strips currency formatting', () => {

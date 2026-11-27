@@ -3,6 +3,7 @@
 // named separately by `reportingCurrency` / a Column's `currency`. Unit conversion, not currency conversion.
 const CENTS_PER_MAJOR = 100
 const MILLICENTS_PER_MAJOR = 100_000
+const MICROS_PER_MAJOR = 1_000_000
 
 export const centsToMajor = (value?: number | null): number => (value ?? 0) / CENTS_PER_MAJOR
 
@@ -12,6 +13,13 @@ export const millicentsToMajor = (value?: string): number => {
   const n = value ? parseInt(value, 10) : 0
 
   return Number.isFinite(n) ? n / MILLICENTS_PER_MAJOR : 0
+}
+
+// Millionths of a major unit, as a number or an int64 string (Google's `asMicros` / `*Micros` columns).
+export const microsToMajor = (value?: string | number | null): number => {
+  const n = typeof value === 'string' ? parseInt(value, 10) : (value ?? 0)
+
+  return Number.isFinite(n) ? n / MICROS_PER_MAJOR : 0
 }
 
 export const parseDecimalAmount = (value?: string): number => {
